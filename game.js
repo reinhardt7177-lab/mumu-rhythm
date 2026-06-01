@@ -54,6 +54,8 @@ let audioContext;
 let masterGain;
 let musicBus;
 let compressor;
+const trackBuffers = new Map();
+let trackSource = null;
 let startAudioTime = 0;
 let startVisualTime = 0;
 let started = false;
@@ -181,6 +183,16 @@ const nurserySongs = [
     lesson: "빠른 음 바꾸기",
     melody: ["C4", "E4", "G4", "E4", "F4", "A4", "G4", "E4", "D4", "F4", "A4", "F4", "E4", "G4", "C5", "G4"],
   },
+  {
+    id: "eunhasu",
+    title: "강진중앙초 은하수",
+    difficulty: "보통",
+    bpm: 150,
+    duration: 194,
+    audio: "./assets/music/eunhasu.mp3",
+    image: "./assets/intro-hero.png",
+    lesson: "실제 노래에 맞춰 박자 탭",
+  },
 ];
 
 let selectedSongIndex = 0;
@@ -252,7 +264,43 @@ function makeRichArrangement(song, profile) {
   return arranged;
 }
 
+// 실제 MP3 트랙용 차트: 멜로디 전사가 없으므로 박자 그리드 위에 탭 노트를 흘린다.
+// 레인은 사인파로 부드럽게 좌우를 오가며 가끔 점프해 단조로움을 던다.
+function buildAudioChart(song) {
+  const duration = song.duration || 60;
+  const scale = ["C4", "D4", "E4", "G4", "A4", "C5"];
+  const interval = 0.8;
+  const maxNotes = 170;
+  const notesOut = [];
+
+  let t = 3.2; // 인트로 살짝 지나서 시작
+  let i = 0;
+  let prevLane = -1;
+  while (t < duration - 2 && notesOut.length < maxNotes) {
+    let lane = Math.round(((Math.sin(i * 0.6) + 1) / 2) * (laneX.length - 1));
+    if (i % 5 === 4) lane = (lane + 2) % laneX.length; // 가끔 점프
+    if (lane === prevLane) lane = (lane + 1) % laneX.length;
+    prevLane = lane;
+    notesOut.push({
+      time: Number(t.toFixed(4)),
+      lane,
+      pitch: scale[i % scale.length],
+      hit: false,
+      missed: false,
+      mesh: null,
+      glow: null,
+    });
+    i += 1;
+    t += interval;
+  }
+
+  songLength = Math.ceil(Math.min(duration, t + 2));
+  return notesOut;
+}
+
 function buildChart() {
+  if (selectedSong.audio) return buildAudioChart(selectedSong);
+
   const notesOut = [];
   const beat = 60 / bpm;
   const profile = difficultyProfile(selectedSong.difficulty);
@@ -564,11 +612,12 @@ function selectSong(index) {
   document.querySelectorAll(".song-card").forEach((card, cardIndex) => {
     card.classList.toggle("selected", cardIndex === selectedSongIndex);
   });
-  syncSelectedSongUi();
+  // 먼저 차트를 다시 만들어 songLength를 갱신한 뒤 HUD를 동기화한다
   if (scene) {
     clearNotes();
     createNotes();
   }
+  syncSelectedSongUi();
   const selectedCard = document.querySelector(`.song-card[data-index="${selectedSongIndex}"]`);
   selectedCard?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
 }
@@ -620,6 +669,26 @@ function setupAudio() {
   musicBus = audioContext.createGain();
   musicBus.gain.value = 0.8;
   musicBus.connect(masterGain);
+}
+
+// MP3 트랙을 받아 디코드해 캐시한다 (한 번만 디코드)
+async function ensureTrackLoaded(url) {
+  if (trackBuffers.has(url)) return trackBuffers.get(url);
+  const res = await fetch(url);
+  const arr = await res.arrayBuffer();
+  const buffer = await audioContext.decodeAudioData(arr);
+  trackBuffers.set(url, buffer);
+  return buffer;
+}
+
+function stopTrack() {
+  if (!trackSource) return;
+  try {
+    trackSource.stop();
+  } catch {
+    /* 이미 멈춤 */
+  }
+  trackSource = null;
 }
 
 function now() {
@@ -682,6 +751,29 @@ function playPiano(pitch, when = audioContext.currentTime, velocity = 1, destina
     bell.start(when);
     bell.stop(when + 0.52);
   }
+}
+
+// MP3 트랙 곡에서 노트를 칠 때의 가벼운 타격음 (실제 노래의 조성과 부딪히지 않게 음정 없는 클릭)
+function playClick(when = audioContext.currentTime) {
+  const noise = audioContext.createBufferSource();
+  const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.05, audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i += 1) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  }
+  const filter = audioContext.createBiquadFilter();
+  const gain = audioContext.createGain();
+  filter.type = "highpass";
+  filter.frequency.setValueAtTime(3000, when);
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(0.12, when + 0.004);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
+  noise.buffer = buffer;
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(masterGain);
+  noise.start(when);
+  noise.stop(when + 0.06);
 }
 
 function playKick(when = audioContext.currentTime, destination = masterGain) {
@@ -898,7 +990,17 @@ function startGame() {
     startAudioTime = audioContext.currentTime + lead;
     startVisualTime = performance.now() * 0.001 + lead;
     started = true;
-    if (withAudio) {
+    if (!withAudio) return;
+
+    const trackBuffer = selectedSong.audio ? trackBuffers.get(selectedSong.audio) : null;
+    if (trackBuffer) {
+      // 실제 노래를 트랙으로 재생하고, 이 곡에선 합성 반주를 끈다
+      stopTrack();
+      trackSource = audioContext.createBufferSource();
+      trackSource.buffer = trackBuffer;
+      trackSource.connect(masterGain);
+      trackSource.start(startAudioTime);
+    } else {
       playStartCue(audioContext.currentTime + 0.01);
       playKick(audioContext.currentTime + 0.03);
       startBackingTrack();
@@ -906,7 +1008,17 @@ function startGame() {
   };
 
   resumePromise
-    .then(() => begin(true))
+    .then(async () => {
+      // MP3 트랙 곡이면 먼저 디코드해 두고 시작 (디코드 실패 시 합성 반주로 폴백)
+      if (selectedSong.audio) {
+        try {
+          await ensureTrackLoaded(selectedSong.audio);
+        } catch {
+          /* 디코드 실패는 무시하고 합성 반주로 진행 */
+        }
+      }
+      begin(true);
+    })
     .catch(() => {
       if (audioStatus) audioStatus.textContent = "오디오는 브라우저 설정을 확인해 주세요";
       begin(false);
@@ -914,6 +1026,7 @@ function startGame() {
 }
 
 function resetGame() {
+  stopTrack();
   score = 0;
   combo = 0;
   maxCombo = 0;
@@ -950,7 +1063,9 @@ function judgeLane(lane) {
   candidate.note.mesh.visible = false;
   candidate.note.glow.intensity = 0;
   spawnBurst(laneX[lane], judgeZ, laneColors[lane]);
-  playPiano(candidate.note.pitch, audioContext.currentTime, 1);
+  // MP3 트랙 곡은 음정 없는 클릭, 합성 동요는 피아노 키음
+  if (selectedSong.audio) playClick(audioContext.currentTime);
+  else playPiano(candidate.note.pitch, audioContext.currentTime, 1);
 
   if (candidate.delta <= perfectWindow) {
     registerJudgment(lane, "PERFECT", 1000, 1);
@@ -1146,6 +1261,7 @@ function endGame(cleared) {
   if (!started) return;
   started = false;
   gameOver = !cleared;
+  stopTrack();
   commitBest();
   startOverlay.classList.remove("hidden");
   startOverlay.style.display = "";
