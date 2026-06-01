@@ -193,6 +193,16 @@ const nurserySongs = [
     image: "./assets/intro-hero.png",
     lesson: "실제 노래에 맞춰 박자 탭",
   },
+  {
+    id: "morning",
+    title: "강진중앙의 아침",
+    difficulty: "쉬움",
+    bpm: 100,
+    duration: 30,
+    audio: "./assets/music/morning.mp3",
+    image: "./assets/intro-hero.png",
+    lesson: "실제 노래에 맞춰 박자 탭",
+  },
 ];
 
 let selectedSongIndex = 0;
