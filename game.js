@@ -133,12 +133,12 @@ const nurserySongs = [
   {
     id: "morning",
     title: "강진중앙의 아침",
-    difficulty: "쉬움",
+    difficulty: "어려움",
     bpm: 100,
     duration: 30,
     audio: "./assets/music/morning.mp3",
     image: "./assets/intro-hero.png",
-    lesson: "실제 노래에 맞춰 박자 탭",
+    lesson: "빠른 연타 · 계단 런 · 동시치기",
   },
 ];
 
@@ -216,32 +216,64 @@ function makeRichArrangement(song, profile) {
 function buildAudioChart(song) {
   const duration = song.duration || 60;
   const scale = ["C4", "D4", "E4", "G4", "A4", "C5"];
-  const interval = 0.8;
-  const maxNotes = 170;
+  const hard = song.difficulty === "어려움";
+  const interval = hard ? 0.42 : 0.8; // 어려움은 빠른 연타로 화려하게
+  const maxNotes = hard ? 280 : 170;
   const notesOut = [];
 
-  let t = 3.2; // 인트로 살짝 지나서 시작
-  let i = 0;
-  let prevLane = -1;
-  while (t < duration - 2 && notesOut.length < maxNotes) {
-    let lane = Math.round(((Math.sin(i * 0.6) + 1) / 2) * (laneX.length - 1));
-    if (i % 5 === 4) lane = (lane + 2) % laneX.length; // 가끔 점프
-    if (lane === prevLane) lane = (lane + 1) % laneX.length;
-    prevLane = lane;
+  const addNote = (lane, pitch, time) => {
     notesOut.push({
-      time: Number(t.toFixed(4)),
+      time: Number(time.toFixed(4)),
       lane,
-      pitch: scale[i % scale.length],
+      pitch,
       hit: false,
       missed: false,
       mesh: null,
       glow: null,
     });
+  };
+
+  let t = hard ? 2.6 : 3.2; // 인트로 살짝 지나서 시작
+  let i = 0;
+  let prevLane = -1;
+  let dir = 1;
+  while (t < duration - 1.4 && notesOut.length < maxNotes) {
+    let lane;
+    if (hard) {
+      // 패턴 블록을 번갈아 화려하게: 계단 런 → 좌우 점프 → 사인 웨이브
+      const block = Math.floor(i / 6) % 3;
+      if (block === 0) {
+        lane = prevLane < 0 ? 0 : prevLane + dir;
+        if (lane > laneX.length - 1) {
+          lane = laneX.length - 2;
+          dir = -1;
+        } else if (lane < 0) {
+          lane = 1;
+          dir = 1;
+        }
+      } else if (block === 1) {
+        lane = [0, 4, 1, 3, 2][i % 5]; // 양끝을 오가는 점프
+      } else {
+        lane = Math.round(((Math.sin(i * 0.9) + 1) / 2) * (laneX.length - 1));
+      }
+    } else {
+      lane = Math.round(((Math.sin(i * 0.6) + 1) / 2) * (laneX.length - 1));
+      if (i % 5 === 4) lane = (lane + 2) % laneX.length;
+    }
+    if (lane === prevLane) lane = (lane + 1) % laneX.length;
+    prevLane = lane;
+    addNote(lane, scale[i % scale.length], t);
+
+    // 어려움: 강박마다 다른 레인 동시치기로 화려함을 더한다
+    if (hard && i % 4 === 0) {
+      addNote((lane + 2) % laneX.length, scale[(i + 3) % scale.length], t);
+    }
+
     i += 1;
     t += interval;
   }
 
-  songLength = Math.ceil(Math.min(duration, t + 2));
+  songLength = Math.ceil(Math.min(duration, t + 1.4));
   return notesOut;
 }
 
