@@ -1,0 +1,16 @@
+# 브라우저 디버그 캐시 (대용량 잡동사니)
+.edge-debug*/
+
+# Claude 로컬 개인 설정
+.claude/settings.local.json
+
+# Vercel
+.vercel/
+
+# 의존성 / 빌드 산출물
+node_modules/
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+*.log
