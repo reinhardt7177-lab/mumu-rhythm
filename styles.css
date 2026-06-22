@@ -32,6 +32,16 @@ body {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  /* 태블릿/터치: 더블탭 줌·텍스트 선택·스크롤 바운스 방지 */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#stage {
+  touch-action: none;
 }
 
 button {
@@ -179,9 +189,10 @@ button {
   left: 50%;
   bottom: 34px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(72px, 104px));
-  gap: 8px;
+  grid-template-columns: repeat(8, minmax(40px, 88px));
+  gap: 7px;
   transform: translateX(-50%);
+  max-width: calc(100vw - 16px);
 }
 
 .keybar button {
@@ -195,6 +206,10 @@ button {
   box-shadow:
     inset 0 0 18px rgba(255, 255, 255, 0.06),
     0 16px 60px rgba(0, 0, 0, 0.44);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .keybar button.active {
@@ -209,27 +224,35 @@ button {
 
 .keybar button:nth-child(1).active,
 .keybar button:nth-child(1) em {
-  color: var(--cyan);
+  color: #36e6ff;
 }
-
 .keybar button:nth-child(2).active,
 .keybar button:nth-child(2) em {
-  color: var(--pink);
+  color: #4db5ff;
 }
-
 .keybar button:nth-child(3).active,
 .keybar button:nth-child(3) em {
-  color: var(--amber);
+  color: #9b6bff;
 }
-
 .keybar button:nth-child(4).active,
 .keybar button:nth-child(4) em {
-  color: var(--green);
+  color: #ff5fd0;
 }
-
 .keybar button:nth-child(5).active,
 .keybar button:nth-child(5) em {
-  color: white;
+  color: #ff5f7a;
+}
+.keybar button:nth-child(6).active,
+.keybar button:nth-child(6) em {
+  color: #ffb04d;
+}
+.keybar button:nth-child(7).active,
+.keybar button:nth-child(7) em {
+  color: #7cff6b;
+}
+.keybar button:nth-child(8).active,
+.keybar button:nth-child(8) em {
+  color: #ffffff;
 }
 
 .keybar span {
@@ -479,16 +502,21 @@ button {
   }
 
   .keybar {
-    left: 8px;
-    bottom: 18px;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    width: min(calc(100vw - 16px), 374px);
-    gap: 8px;
-    transform: none;
+    left: 50%;
+    bottom: 16px;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    width: calc(100vw - 12px);
+    max-width: 100vw;
+    gap: 5px;
+    transform: translateX(-50%);
   }
 
   .keybar button {
-    height: 58px;
+    height: 56px;
+  }
+
+  .keybar span {
+    font-size: 14px;
   }
 
   .start-overlay {

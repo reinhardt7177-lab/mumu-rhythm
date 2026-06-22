@@ -19,7 +19,7 @@ const quickStartButton = document.querySelector("#quickStartButton");
 const audioStatus = document.querySelector("#audioStatus");
 const toast = document.querySelector("#toast");
 const keyButtons = [...document.querySelectorAll(".keybar button")];
-const judgeEls = [0, 1, 2, 3, 4].map((lane) => document.querySelector(`#judge${lane}`));
+const judgeEls = [0, 1, 2, 3, 4, 5, 6, 7].map((lane) => document.querySelector(`#judge${lane}`));
 const selectedSongTitle = document.querySelector("#selectedSongTitle");
 const selectedSongComposer = document.querySelector("#selectedSongComposer");
 const selectedSongMeta = document.querySelector("#selectedSongMeta");
@@ -32,12 +32,16 @@ const laneKeys = new Map([
   ["KeyA", 0],
   ["KeyS", 1],
   ["KeyD", 2],
-  ["KeyJ", 3],
-  ["KeyK", 4],
+  ["KeyF", 3],
+  ["KeyJ", 4],
+  ["KeyK", 5],
+  ["KeyL", 6],
+  ["Semicolon", 7],
 ]);
 
-const LANES = 5;
-const LANE_COLORS = ["#36e6ff", "#ff3fd4", "#ffc857", "#55ff9a", "#ffffff"];
+const LANES = 8;
+const LANE_COLORS = ["#36e6ff", "#4db5ff", "#9b6bff", "#ff5fd0", "#ff5f7a", "#ffb04d", "#7cff6b", "#ffffff"];
+const LANE_CENTER = (LANES - 1) / 2;
 let approachTime = 2.4; // 노트가 스폰→판정선까지 걸리는 시간(난이도별로 변경)
 let bpm = 96;
 let songLength = 36;
@@ -66,9 +70,9 @@ let pulse = 0;
 let trauma = 0; // 스크린셰이크 강도(감쇠)
 let chart = [];
 let notes = [];
-let lanePitches = ["C4", "E4", "G4", "C5", "E5"]; // 레인별 폴백 음(곡 로드 시 갱신)
+let lanePitches = ["C4", "D4", "E4", "G4", "A4", "C5", "D5", "E5"]; // 레인별 폴백 음(곡 로드 시 갱신)
 let particles = [];
-const receptorPop = [0, 0, 0, 0, 0];
+const receptorPop = new Array(LANES).fill(0);
 let poseName = "idol";
 let poseTimer = 0;
 const urlParams = new URLSearchParams(window.location.search);
@@ -308,7 +312,7 @@ function buildChart() {
   songLength = Math.ceil(time + 2);
 
   // 레인별 대표 음(중앙값) — 노트가 없는 타이밍에 눌러도 그 곡 조성에 맞는 음이 나도록
-  const perLane = [[], [], [], [], []];
+  const perLane = Array.from({ length: LANES }, () => []);
   notesOut.forEach((n) => perLane[n.lane].push(n.pitch));
   lanePitches = perLane.map((arr) => {
     if (!arr.length) return null;
@@ -403,10 +407,11 @@ function judgeY() {
   return H * 0.8;
 }
 function spread(p) {
-  return lerp(W * 0.05, W * 0.118, p);
+  // 하이웨이 전체 폭(상단 좁고 하단 넓음)을 레인 수로 나눈 레인 간격
+  return lerp(W * 0.24, W * 0.56, p) / (LANES - 1);
 }
 function laneCenterX(lane, p) {
-  return W * 0.5 + (lane - 2) * spread(p);
+  return W * 0.5 + (lane - LANE_CENTER) * spread(p);
 }
 function noteY(p) {
   return lerp(topY(), judgeY(), Math.pow(clamp(p, 0, 1), 1.5));
@@ -415,7 +420,8 @@ function laneScale(p) {
   return lerp(0.42, 1.18, clamp(p, 0, 1));
 }
 function noteBase() {
-  return H * 0.075;
+  // 좁은 화면(8레인)에서 노트가 겹치지 않도록 레인 폭에도 맞춤
+  return Math.min(H * 0.072, spread(1) * 1.05);
 }
 
 // ===== 오디오: 실제 그랜드 피아노 샘플 + 알고리즘 리버브 =====
@@ -1064,8 +1070,8 @@ function drawHighway() {
   // 어두운 무대 패널
   ctx.beginPath();
   ctx.moveTo(laneCenterX(0, 0) - spread(0) * 0.5, tY);
-  ctx.lineTo(laneCenterX(4, 0) + spread(0) * 0.5, tY);
-  ctx.lineTo(laneCenterX(4, 1) + spread(1) * 0.5, jY);
+  ctx.lineTo(laneCenterX(LANES - 1, 0) + spread(0) * 0.5, tY);
+  ctx.lineTo(laneCenterX(LANES - 1, 1) + spread(1) * 0.5, jY);
   ctx.lineTo(laneCenterX(0, 1) - spread(1) * 0.5, jY);
   ctx.closePath();
   ctx.fillStyle = "rgba(4,6,16,0.6)";
@@ -1098,7 +1104,7 @@ function drawHighway() {
   ctx.strokeStyle = "#ffffff";
   ctx.beginPath();
   ctx.moveTo(laneCenterX(0, 1) - spread(1) * 0.5, jY);
-  ctx.lineTo(laneCenterX(4, 1) + spread(1) * 0.5, jY);
+  ctx.lineTo(laneCenterX(LANES - 1, 1) + spread(1) * 0.5, jY);
   ctx.stroke();
   ctx.globalAlpha = 1;
 }

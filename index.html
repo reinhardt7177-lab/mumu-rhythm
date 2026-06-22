@@ -2,7 +2,10 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>MUMU Rhythm Arcade</title>
     <link
       rel="stylesheet"
@@ -10,7 +13,7 @@
       media="print"
       onload="this.media='all'"
     />
-    <link rel="stylesheet" href="./styles.css?v=24" />
+    <link rel="stylesheet" href="./styles.css?v=25" />
   </head>
   <body>
     <main id="game">
@@ -58,8 +61,11 @@
         <button data-lane="0"><span>A</span><em id="judge0">READY</em></button>
         <button data-lane="1"><span>S</span><em id="judge1">READY</em></button>
         <button data-lane="2"><span>D</span><em id="judge2">READY</em></button>
-        <button data-lane="3"><span>J</span><em id="judge3">READY</em></button>
-        <button data-lane="4"><span>K</span><em id="judge4">READY</em></button>
+        <button data-lane="3"><span>F</span><em id="judge3">READY</em></button>
+        <button data-lane="4"><span>J</span><em id="judge4">READY</em></button>
+        <button data-lane="5"><span>K</span><em id="judge5">READY</em></button>
+        <button data-lane="6"><span>L</span><em id="judge6">READY</em></button>
+        <button data-lane="7"><span>;</span><em id="judge7">READY</em></button>
       </section>
 
       <section id="startOverlay" class="start-overlay">
@@ -87,6 +93,6 @@
       <div id="toast" class="toast">PERFECT</div>
     </main>
 
-    <script type="module" src="./game.js?v=24"></script>
+    <script type="module" src="./game.js?v=25"></script>
   </body>
 </html>
