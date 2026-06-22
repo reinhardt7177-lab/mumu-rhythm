@@ -1223,8 +1223,11 @@ function animate() {
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
-  W = canvas.clientWidth || window.innerWidth || document.documentElement.clientWidth || 360;
-  H = canvas.clientHeight || window.innerHeight || document.documentElement.clientHeight || 640;
+  // 캔버스 자신(clientWidth/Height)을 읽으면 style로 박은 고정 크기를 되읽어 순환 → 창을 키워도 안 커진다.
+  // 부모(#game = 전체 뷰포트, CSS 100%)를 기준으로 측정한다.
+  const rect = canvas.parentElement?.getBoundingClientRect();
+  W = Math.round(rect?.width) || window.innerWidth || document.documentElement.clientWidth || 360;
+  H = Math.round(rect?.height) || window.innerHeight || document.documentElement.clientHeight || 640;
   canvas.width = Math.floor(W * DPR);
   canvas.height = Math.floor(H * DPR);
   canvas.style.width = W + "px";
