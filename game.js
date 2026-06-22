@@ -19,7 +19,7 @@ const quickStartButton = document.querySelector("#quickStartButton");
 const audioStatus = document.querySelector("#audioStatus");
 const toast = document.querySelector("#toast");
 const keyButtons = [...document.querySelectorAll(".keybar button")];
-const judgeEls = [0, 1, 2, 3, 4, 5, 6, 7].map((lane) => document.querySelector(`#judge${lane}`));
+const judgeEls = [0, 1, 2, 3, 4].map((lane) => document.querySelector(`#judge${lane}`));
 const selectedSongTitle = document.querySelector("#selectedSongTitle");
 const selectedSongComposer = document.querySelector("#selectedSongComposer");
 const selectedSongMeta = document.querySelector("#selectedSongMeta");
@@ -33,14 +33,11 @@ const laneKeys = new Map([
   ["KeyS", 1],
   ["KeyD", 2],
   ["KeyF", 3],
-  ["KeyJ", 4],
-  ["KeyK", 5],
-  ["KeyL", 6],
-  ["Semicolon", 7],
+  ["KeyG", 4],
 ]);
 
-const LANES = 8;
-const LANE_COLORS = ["#36e6ff", "#4db5ff", "#9b6bff", "#ff5fd0", "#ff5f7a", "#ffb04d", "#7cff6b", "#ffffff"];
+const LANES = 5;
+const LANE_COLORS = ["#36e6ff", "#9b6bff", "#ff5fd0", "#ffb04d", "#7cff6b"];
 const LANE_CENTER = (LANES - 1) / 2;
 let approachTime = 2.4; // 노트가 스폰→판정선까지 걸리는 시간(난이도별로 변경)
 let bpm = 96;
@@ -70,7 +67,7 @@ let pulse = 0;
 let trauma = 0; // 스크린셰이크 강도(감쇠)
 let chart = [];
 let notes = [];
-let lanePitches = ["C4", "D4", "E4", "G4", "A4", "C5", "D5", "E5"]; // 레인별 폴백 음(곡 로드 시 갱신)
+let lanePitches = ["C4", "E4", "G4", "C5", "E5"]; // 레인별 폴백 음(곡 로드 시 갱신)
 let particles = [];
 const receptorPop = new Array(LANES).fill(0);
 let poseName = "idol";
@@ -408,7 +405,7 @@ function judgeY() {
 }
 function spread(p) {
   // 하이웨이 전체 폭(상단 좁고 하단 넓음)을 레인 수로 나눈 레인 간격
-  return lerp(W * 0.24, W * 0.56, p) / (LANES - 1);
+  return lerp(W * 0.2, W * 0.5, p) / (LANES - 1);
 }
 function laneCenterX(lane, p) {
   return W * 0.5 + (lane - LANE_CENTER) * spread(p);

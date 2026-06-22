@@ -19,7 +19,7 @@ http://127.0.0.1:8080/index.html
 
 - 곡 선택: 주크박스에서 `‹` `›` 버튼 또는 키보드 `←` `→`
 - 시작: `선택한 곡 시작` 버튼 또는 `Space`
-- 연주: `A` `S` `D` `J` `K` (낮은 음 → 왼쪽, 높은 음 → 오른쪽)
+- 연주: `A` `S` `D` `F` `G` (낮은 음 → 왼쪽, 높은 음 → 오른쪽)
 - 태블릿/모바일: 하단 5개 패드 터치
 
 ## 수록곡 (클래식 피아노 독주 10곡)
@@ -73,3 +73,4 @@ http://127.0.0.1:8080/index.html?demo=1&demoTime=7
 ## 크레딧
 
 - 피아노 음원: **Salamander Grand Piano V3** by Alexander Holm (CC-BY 3.0). `assets/piano/`의 샘플은 해당 음원에서 추출했습니다.
+- 픽셀 폰트: **Galmuri** by Lee Minseo(quiple) (SIL OFL 1.1). `assets/fonts/`의 한글 픽셀 글꼴.
