@@ -66,6 +66,7 @@ let pulse = 0;
 let trauma = 0; // 스크린셰이크 강도(감쇠)
 let chart = [];
 let notes = [];
+let lanePitches = ["C4", "E4", "G4", "C5", "E5"]; // 레인별 폴백 음(곡 로드 시 갱신)
 let particles = [];
 const receptorPop = [0, 0, 0, 0, 0];
 let poseName = "idol";
@@ -295,6 +296,19 @@ function buildChart() {
   });
 
   songLength = Math.ceil(time + 2);
+
+  // 레인별 대표 음(중앙값) — 노트가 없는 타이밍에 눌러도 그 곡 조성에 맞는 음이 나도록
+  const perLane = [[], [], [], [], []];
+  notesOut.forEach((n) => perLane[n.lane].push(n.pitch));
+  lanePitches = perLane.map((arr) => {
+    if (!arr.length) return null;
+    const sorted = [...arr].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+    return sorted[Math.floor(sorted.length / 2)];
+  });
+  for (let i = 0; i < LANES; i += 1) {
+    if (!lanePitches[i]) lanePitches[i] = lanePitches.find((p) => p) || "C4";
+  }
+
   return notesOut;
 }
 
@@ -394,24 +408,112 @@ function noteBase() {
   return H * 0.075;
 }
 
-// ===== 오디오 (Web Audio 합성 — 렌더러와 무관, 원본 유지) =====
+// ===== 오디오: 실제 그랜드 피아노 샘플 + 알고리즘 리버브 =====
+// 음역(G3~E6)을 단3도 간격으로 커버하는 Salamander Grand Piano 샘플(퍼블릭/CC-BY).
+// 누른 음과 가장 가까운 샘플을 골라 playbackRate로 미세 피치시프트(±1.5반음) → 진짜 피아노 음색.
+const SAMPLE_NOTES = {
+  45: "A2", 48: "C3", 51: "Ds3", 54: "Fs3", 57: "A3", 60: "C4", 63: "Ds4", 66: "Fs4",
+  69: "A4", 72: "C5", 75: "Ds5", 78: "Fs5", 81: "A5", 84: "C6", 87: "Ds6", 90: "Fs6",
+};
+const sampleBuffers = new Map(); // midi -> AudioBuffer
+const sampleMidis = [];
+let samplesReady = false;
+let samplesLoading = false;
+let reverbSend = null;
+
 function setupAudio() {
   if (audioContext) return;
   audioContext = new AudioContext({ latencyHint: "interactive" });
   masterGain = audioContext.createGain();
   compressor = audioContext.createDynamicsCompressor();
-  compressor.threshold.value = -18;
+  compressor.threshold.value = -16;
   compressor.knee.value = 18;
-  compressor.ratio.value = 5;
+  compressor.ratio.value = 4;
   compressor.attack.value = 0.004;
-  compressor.release.value = 0.18;
-  masterGain.gain.value = 1.25;
+  compressor.release.value = 0.2;
+  masterGain.gain.value = 1.0;
   masterGain.connect(compressor);
   compressor.connect(audioContext.destination);
 
   musicBus = audioContext.createGain();
   musicBus.gain.value = 0.8;
   musicBus.connect(masterGain);
+
+  setupReverb();
+  loadPianoSamples();
+}
+
+// 합성 임펄스 응답 기반 홀 리버브 (지수 감쇠 노이즈)
+function setupReverb() {
+  const conv = audioContext.createConvolver();
+  const len = Math.floor(audioContext.sampleRate * 2.4);
+  const ir = audioContext.createBuffer(2, len, audioContext.sampleRate);
+  for (let ch = 0; ch < 2; ch += 1) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < len; i += 1) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+    }
+  }
+  conv.buffer = ir;
+  reverbSend = audioContext.createGain();
+  reverbSend.gain.value = 1.0;
+  const wet = audioContext.createGain();
+  wet.gain.value = 0.28;
+  reverbSend.connect(conv);
+  conv.connect(wet);
+  wet.connect(masterGain);
+}
+
+async function loadPianoSamples() {
+  if (samplesLoading || samplesReady || !audioContext) return;
+  samplesLoading = true;
+  await Promise.all(
+    Object.entries(SAMPLE_NOTES).map(async ([midi, name]) => {
+      try {
+        const res = await fetch(`./assets/piano/${name}.mp3`);
+        const buf = await audioContext.decodeAudioData(await res.arrayBuffer());
+        sampleBuffers.set(Number(midi), buf);
+      } catch {
+        /* 샘플 로드 실패 시 해당 음은 합성음으로 폴백 */
+      }
+    }),
+  );
+  sampleMidis.length = 0;
+  sampleMidis.push(...[...sampleBuffers.keys()].sort((a, b) => a - b));
+  samplesReady = sampleBuffers.size > 0;
+  samplesLoading = false;
+}
+
+function nearestSampleMidi(midi) {
+  let best = sampleMidis[0];
+  let bd = Infinity;
+  for (const m of sampleMidis) {
+    const d = Math.abs(m - midi);
+    if (d < bd) {
+      bd = d;
+      best = m;
+    }
+  }
+  return best;
+}
+
+function playSampledPiano(midi, when, velocity, destination) {
+  const sm = nearestSampleMidi(midi);
+  const buf = sampleBuffers.get(sm);
+  if (!buf) return false;
+  const src = audioContext.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = Math.pow(2, (midi - sm) / 12);
+  const g = audioContext.createGain();
+  const v = Math.max(0.12, Math.min(1, velocity)) * 0.85;
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.linearRampToValueAtTime(v, when + 0.006);
+  src.connect(g);
+  g.connect(destination);
+  if (reverbSend) g.connect(reverbSend);
+  src.start(when);
+  src.stop(when + 7);
+  return true;
 }
 
 async function ensureTrackLoaded(url) {
@@ -450,6 +552,10 @@ function playStartCue(when = audioContext.currentTime) {
 }
 
 function playPiano(pitch, when = audioContext.currentTime, velocity = 1, destination = masterGain) {
+  const midi = noteToMidi(pitch);
+  if (midi == null) return;
+  // 샘플이 준비됐으면 진짜 피아노 음, 아니면 합성음으로 폴백
+  if (samplesReady && playSampledPiano(midi, when, velocity, destination)) return;
   const freq = noteToFreq(pitch);
   if (!freq) return;
   const gain = audioContext.createGain();
@@ -473,6 +579,7 @@ function playPiano(pitch, when = audioContext.currentTime, velocity = 1, destina
 
   filter.connect(gain);
   gain.connect(destination);
+  if (reverbSend) gain.connect(reverbSend);
 
   if (velocity > 0.8 && freq < 1200) {
     const bellGain = audioContext.createGain();
@@ -729,9 +836,15 @@ function judgeLane(lane) {
   keyButtons[lane].classList.add("active");
   window.setTimeout(() => keyButtons[lane].classList.remove("active"), 92);
 
-  if (!candidate || candidate.delta > missWindow) {
+  // 어떤 입력이든 항상 피아노 음을 낸다. 박자가 맞으면 그 노트 음, 아니면
+  // 가까운(다음) 노트 음 또는 레인 대표음 → 곡 조성에서 벗어나지 않아 늘 듣기 좋다.
+  const soundPitch = candidate ? candidate.note.pitch : lanePitches[lane];
+  const onBeat = candidate && candidate.delta <= missWindow;
+  playPiano(soundPitch, audioContext.currentTime, onBeat ? 1 : 0.62);
+
+  if (!onBeat) {
     registerJudgment(lane, "BAD", 0, 0);
-    health = Math.max(0, health - 4);
+    health = Math.max(0, health - 2);
     combo = 0;
     setPose("idolMiss", 0.32);
     return;
@@ -739,7 +852,6 @@ function judgeLane(lane) {
 
   candidate.note.hit = true;
   spawnHit(lane);
-  playPiano(candidate.note.pitch, audioContext.currentTime, 1);
 
   if (candidate.delta <= perfectWindow) {
     registerJudgment(lane, "PERFECT", 1000, 1);
@@ -1135,6 +1247,19 @@ document.addEventListener("keydown", (event) => {
 keyButtons.forEach((button) => {
   button.addEventListener("pointerdown", () => judgeLane(Number(button.dataset.lane)));
 });
+
+// 첫 사용자 입력에서 오디오 컨텍스트 + 피아노 샘플을 미리 로드(브라우저 자동재생 정책 준수)
+const primeAudio = () => {
+  try {
+    setupAudio();
+  } catch {
+    /* 컨텍스트 생성 실패는 무시 */
+  }
+  window.removeEventListener("pointerdown", primeAudio);
+  window.removeEventListener("keydown", primeAudio);
+};
+window.addEventListener("pointerdown", primeAudio);
+window.addEventListener("keydown", primeAudio);
 
 startButton.addEventListener("click", startGame);
 quickStartButton?.addEventListener("click", startGame);
