@@ -348,137 +348,88 @@ button {
     0 0 48px rgba(255, 63, 212, 0.3);
 }
 
-.song-carousel-wrap {
-  position: relative;
-  width: 100%;
-}
-
-.song-carousel {
+.jukebox {
+  flex: 1;
   display: flex;
-  gap: 22px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  padding: 6px max(12px, calc(50vw - 235px)) 12px;
-  scrollbar-width: none;
-}
-
-.song-carousel::-webkit-scrollbar {
-  display: none;
-}
-
-.song-card {
-  flex: 0 0 min(470px, 76vw);
-  scroll-snap-align: center;
-  border: 1px solid rgba(85, 210, 255, 0.28);
-  border-radius: 14px;
-  overflow: hidden;
-  background: rgba(4, 10, 22, 0.78);
-  box-shadow:
-    0 22px 70px rgba(0, 0, 0, 0.5),
-    0 0 34px rgba(54, 230, 255, 0.12);
-  cursor: pointer;
-  transform: scale(0.92);
-  transition:
-    transform 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.song-card.selected {
-  transform: scale(1);
-  border-color: rgba(255, 63, 212, 0.9);
-  box-shadow:
-    0 26px 90px rgba(0, 0, 0, 0.58),
-    0 0 38px rgba(255, 63, 212, 0.34),
-    0 0 44px rgba(54, 230, 255, 0.22);
-}
-
-.song-card img {
-  display: block;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 3vw, 36px);
   width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
 }
 
-.song-card-body {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px 14px;
-  padding: 14px;
+.jukebox-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(760px, 78vw);
+  padding: clamp(22px, 4vw, 38px) 24px;
+  border: 1px solid rgba(85, 210, 255, 0.28);
+  border-radius: 16px;
+  background: rgba(5, 12, 28, 0.72);
+  box-shadow:
+    0 26px 90px rgba(0, 0, 0, 0.55),
+    0 0 44px rgba(54, 230, 255, 0.14),
+    inset 0 0 40px rgba(54, 230, 255, 0.05);
+  backdrop-filter: blur(14px);
+  text-align: center;
 }
 
-.song-card h2 {
-  margin: 0;
-  font-size: clamp(22px, 3vw, 34px);
-  line-height: 1;
+.jukebox-index {
+  font-family: "Press Start 2P", ui-monospace, monospace;
+  font-size: clamp(10px, 1.4vw, 14px);
+  color: var(--amber);
+  letter-spacing: 1px;
 }
 
-.song-card p {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #b8c9e4;
-  font-size: 14px;
+.jukebox-title {
+  font-family: "Press Start 2P", ui-monospace, monospace;
+  font-size: clamp(20px, 4.4vw, 46px);
+  line-height: 1.3;
+  color: var(--cyan);
+  text-shadow:
+    0 0 18px rgba(54, 230, 255, 0.85),
+    0 0 36px rgba(255, 63, 212, 0.5);
+}
+
+.jukebox-composer {
+  font-size: clamp(13px, 1.9vw, 21px);
   font-weight: 800;
+  letter-spacing: 2px;
+  color: #cfe3ff;
+  text-transform: uppercase;
 }
 
-.difficulty {
-  align-self: start;
+.jukebox-difficulty {
+  font-family: "Press Start 2P", ui-monospace, monospace;
+  font-size: clamp(9px, 1.2vw, 12px);
+  color: #ffd27a;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  padding: 7px 10px;
-  color: var(--amber);
-  font-size: 12px;
-  font-weight: 950;
+  padding: 8px 12px;
 }
 
 .carousel-nav {
-  position: absolute;
-  z-index: 2;
-  top: 50%;
-  width: 48px;
-  height: 72px;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 84px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(5, 8, 17, 0.7);
   color: white;
   font-size: 44px;
   line-height: 1;
-  transform: translateY(-50%);
   cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
-.carousel-nav.prev {
-  left: 0;
-}
-
-.carousel-nav.next {
-  right: 0;
-}
-
-.selected-song-panel {
-  width: min(720px, 100%);
-  margin: 0 auto;
-  border: 1px solid rgba(85, 210, 255, 0.24);
-  border-radius: 10px;
-  background: rgba(5, 12, 28, 0.78);
-  padding: 12px 16px;
-  text-align: center;
-  backdrop-filter: blur(14px);
-}
-
-.selected-song-panel strong {
-  display: block;
-  margin-top: 3px;
-  color: var(--cyan);
-  font-size: clamp(24px, 4vw, 42px);
-  line-height: 1;
-}
-
-.selected-song-panel p {
-  margin: 6px 0 0;
-  color: #dce8ff;
-  font-weight: 850;
+.carousel-nav:hover {
+  transform: translateY(-1px);
+  border-color: rgba(54, 230, 255, 0.7);
+  box-shadow: 0 0 22px rgba(54, 230, 255, 0.4);
 }
 
 .quick-start-button {
@@ -554,16 +505,18 @@ button {
   }
 
   .carousel-nav {
-    display: none;
+    width: 44px;
+    height: 68px;
+    font-size: 34px;
   }
 
-  .song-carousel {
-    gap: 14px;
-    padding-inline: 10px;
+  .jukebox {
+    gap: 8px;
   }
 
-  .song-card {
-    flex-basis: 82vw;
+  .jukebox-display {
+    width: 100%;
+    padding: 22px 14px;
   }
 }
 

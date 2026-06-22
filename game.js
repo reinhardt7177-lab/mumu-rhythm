@@ -20,9 +20,11 @@ const audioStatus = document.querySelector("#audioStatus");
 const toast = document.querySelector("#toast");
 const keyButtons = [...document.querySelectorAll(".keybar button")];
 const judgeEls = [0, 1, 2, 3, 4].map((lane) => document.querySelector(`#judge${lane}`));
-const songCarousel = document.querySelector("#songCarousel");
 const selectedSongTitle = document.querySelector("#selectedSongTitle");
+const selectedSongComposer = document.querySelector("#selectedSongComposer");
 const selectedSongMeta = document.querySelector("#selectedSongMeta");
+const songIndexEl = document.querySelector("#songIndex");
+const songCountEl = document.querySelector("#songCount");
 const carouselPrev = document.querySelector(".carousel-nav.prev");
 const carouselNext = document.querySelector(".carousel-nav.next");
 
@@ -36,7 +38,7 @@ const laneKeys = new Map([
 
 const LANES = 5;
 const LANE_COLORS = ["#36e6ff", "#ff3fd4", "#ffc857", "#55ff9a", "#ffffff"];
-const approachTime = 2.4; // 노트가 스폰→판정선까지 걸리는 시간(스크롤 속도)
+let approachTime = 2.4; // 노트가 스폰→판정선까지 걸리는 시간(난이도별로 변경)
 let bpm = 96;
 let songLength = 36;
 const perfectWindow = 0.045;
@@ -77,226 +79,219 @@ const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").mat
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-const pianoNotes = {
-  C4: 261.63,
-  D4: 293.66,
-  E4: 329.63,
-  F4: 349.23,
-  G4: 392,
-  A4: 440,
-  B4: 493.88,
-  C5: 523.25,
-  D5: 587.33,
-  E5: 659.25,
-};
+// 음이름(예: "C#5","Eb3","A4") → MIDI / 주파수. "rest"는 무음 간격.
+const NOTE_SEMITONES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+function noteToMidi(name) {
+  const m = /^([A-Ga-g])([#b]*)(-?\d+)$/.exec(String(name).trim());
+  if (!m) return null;
+  let semi = NOTE_SEMITONES[m[1].toUpperCase()];
+  for (const acc of m[2]) semi += acc === "#" ? 1 : -1;
+  return semi + (Number(m[3]) + 1) * 12; // C4 = 60, A4 = 69
+}
+const freqCache = new Map();
+function noteToFreq(name) {
+  if (name == null || name === "rest") return null;
+  if (freqCache.has(name)) return freqCache.get(name);
+  const midi = noteToMidi(name);
+  const freq = midi == null ? null : 440 * Math.pow(2, (midi - 69) / 12);
+  freqCache.set(name, freq);
+  return freq;
+}
 
-const nurserySongs = [
+// 클래식 피아노 독주 10곡. melody = {n: 음이름|"rest", b: 박자}
+// 6곡(엘리제·월광·터키행진곡·짐노페디·녹턴·클레르 드 륀)은 퍼블릭 도메인 MIDI에서
+// 멜로디 라인 추출 후 정리(tools/midi_to_melody.mjs), 4곡은 악보 기반 직접 작성.
+const songs = [
   {
-    id: "twinkle",
-    title: "반짝반짝 작은 별",
-    difficulty: "쉬움",
-    bpm: 96,
-    stage: "city",
-    image: "./assets/songs/twinkle.png",
-    lesson: "계이름 반복과 4박 감각",
-    melody: ["C4", "C4", "G4", "G4", "A4", "A4", "G4", "F4", "F4", "E4", "E4", "D4", "D4", "C4"],
+    id: "fur-elise", title: "Für Elise", composer: "L. v. Beethoven",
+    difficulty: "NORMAL", bpm: 100, stage: "city", lesson: "반음 트릴과 아르페지오",
+    melody: [
+      {n:"E5",b:0.5},{n:"D#5",b:0.5},{n:"E5",b:0.5},{n:"D#5",b:0.5},{n:"E5",b:0.5},{n:"B4",b:0.5},{n:"D5",b:0.5},{n:"C5",b:0.5},
+      {n:"A4",b:1},{n:"rest",b:0.5},{n:"C4",b:0.5},{n:"E4",b:0.5},{n:"A4",b:0.5},{n:"B4",b:1},{n:"rest",b:0.5},{n:"E4",b:0.5},
+      {n:"G#4",b:0.5},{n:"B4",b:0.5},{n:"C5",b:1},{n:"rest",b:0.5},{n:"E4",b:0.5},{n:"E5",b:0.5},{n:"D#5",b:0.5},{n:"E5",b:0.5},
+      {n:"D#5",b:0.5},{n:"E5",b:0.5},{n:"B4",b:0.5},{n:"D5",b:0.5},{n:"C5",b:0.5},{n:"A4",b:1},{n:"rest",b:0.5},{n:"C4",b:0.5},
+      {n:"E4",b:0.5},{n:"A4",b:0.5},{n:"B4",b:1},{n:"rest",b:0.5},{n:"E4",b:0.5},{n:"C5",b:0.5},{n:"B4",b:0.5},{n:"A4",b:1},
+      {n:"rest",b:1},{n:"E5",b:0.5},{n:"D#5",b:0.5},{n:"E5",b:0.5},{n:"D#5",b:0.5},{n:"E5",b:0.5},{n:"B4",b:0.5},{n:"D5",b:0.5},
+      {n:"C5",b:0.5},{n:"A4",b:1},{n:"rest",b:0.5},{n:"C4",b:0.5},{n:"E4",b:0.5},{n:"A4",b:0.5},{n:"B4",b:1},{n:"rest",b:0.5},
+      {n:"E4",b:0.5},{n:"G#4",b:0.5},{n:"B4",b:0.5},{n:"C5",b:1},{n:"rest",b:0.5},{n:"E4",b:0.5},{n:"E5",b:0.5},{n:"D#5",b:0.5},
+      {n:"E5",b:0.5},{n:"D#5",b:0.5},{n:"E5",b:0.5},{n:"B4",b:0.5},{n:"D5",b:0.5},{n:"C5",b:0.5},{n:"A4",b:1},{n:"rest",b:0.5},
+      {n:"C4",b:0.5},{n:"E4",b:0.5},{n:"A4",b:0.5},{n:"B4",b:1},{n:"rest",b:0.5},{n:"E4",b:0.5},{n:"C5",b:0.5},{n:"B4",b:0.5},
+      {n:"A4",b:2},
+    ],
   },
   {
-    id: "mary",
-    title: "작은 양 메리",
-    difficulty: "쉬움",
-    bpm: 104,
-    stage: "sunset",
-    image: "./assets/songs/mary-lamb.png",
-    lesson: "한 음씩 내려가는 멜로디",
-    melody: ["E4", "D4", "C4", "D4", "E4", "E4", "E4", "D4", "D4", "D4", "E4", "G4", "G4"],
+    id: "ode-to-joy", title: "환희의 송가", composer: "L. v. Beethoven",
+    difficulty: "EASY", bpm: 100, stage: "arena", lesson: "순차진행 4박 감각",
+    melody: [
+      {n:"E4",b:1},{n:"E4",b:1},{n:"F4",b:1},{n:"G4",b:1},{n:"G4",b:1},{n:"F4",b:1},{n:"E4",b:1},{n:"D4",b:1},
+      {n:"C4",b:1},{n:"C4",b:1},{n:"D4",b:1},{n:"E4",b:1},{n:"E4",b:1.5},{n:"D4",b:0.5},{n:"D4",b:2},
+      {n:"E4",b:1},{n:"E4",b:1},{n:"F4",b:1},{n:"G4",b:1},{n:"G4",b:1},{n:"F4",b:1},{n:"E4",b:1},{n:"D4",b:1},
+      {n:"C4",b:1},{n:"C4",b:1},{n:"D4",b:1},{n:"E4",b:1},{n:"D4",b:1.5},{n:"C4",b:0.5},{n:"C4",b:2},
+      {n:"D4",b:1},{n:"D4",b:1},{n:"E4",b:1},{n:"C4",b:1},{n:"D4",b:1},{n:"E4",b:0.5},{n:"F4",b:0.5},{n:"E4",b:1},{n:"C4",b:1},
+      {n:"D4",b:1},{n:"E4",b:0.5},{n:"F4",b:0.5},{n:"E4",b:1},{n:"D4",b:1},{n:"C4",b:1},{n:"D4",b:1},{n:"G3",b:2},
+      {n:"E4",b:1},{n:"E4",b:1},{n:"F4",b:1},{n:"G4",b:1},{n:"G4",b:1},{n:"F4",b:1},{n:"E4",b:1},{n:"D4",b:1},
+      {n:"C4",b:1},{n:"C4",b:1},{n:"D4",b:1},{n:"E4",b:1},{n:"D4",b:1.5},{n:"C4",b:0.5},{n:"C4",b:2},
+    ],
   },
   {
-    id: "ode",
-    title: "환희의 노래",
-    difficulty: "보통",
-    bpm: 108,
-    stage: "arena",
-    image: "./assets/songs/ode-joy.png",
-    lesson: "순차 진행과 반복 리듬",
-    melody: ["E4", "E4", "F4", "G4", "G4", "F4", "E4", "D4", "C4", "C4", "D4", "E4", "E4", "D4", "D4"],
+    id: "moonlight", title: "Moonlight Sonata", composer: "L. v. Beethoven",
+    difficulty: "HARD", bpm: 52, stage: "galaxy", lesson: "셋잇단 아르페지오",
+    melody: [
+      {n:"G#3",b:0.25},{n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},
+      {n:"E4",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"G#3",b:0.25},
+      {n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},{n:"E4",b:0.25},
+      {n:"A3",b:0.25},{n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"A3",b:0.25},{n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"A3",b:0.25},{n:"D4",b:0.25},
+      {n:"F#4",b:0.25},{n:"A3",b:0.25},{n:"D4",b:0.25},{n:"F#4",b:0.25},{n:"G#3",b:0.25},{n:"C4",b:0.25},{n:"F#4",b:0.25},{n:"G#3",b:0.25},
+      {n:"C#4",b:0.25},{n:"E4",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},{n:"D#4",b:0.25},{n:"F#3",b:0.5},{n:"C4",b:0.5},{n:"D#4",b:0.5},
+      {n:"E3",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},{n:"G#3",b:0.25},{n:"C#4",b:0.25},
+    ],
   },
   {
-    id: "eunhasu",
-    title: "강진중앙초 은하수",
-    difficulty: "보통",
-    bpm: 150,
-    duration: 194,
-    stage: "galaxy",
-    audio: "./assets/music/eunhasu.mp3",
-    image: "./assets/intro-hero.png",
-    lesson: "실제 노래에 맞춰 박자 탭",
+    id: "turkish-march", title: "Rondo Alla Turca", composer: "W. A. Mozart",
+    difficulty: "HARD", bpm: 96, stage: "arena", lesson: "빠른 16분 런과 도약",
+    melody: [
+      {n:"B4",b:0.5},{n:"A4",b:0.5},{n:"G#4",b:0.5},{n:"A4",b:0.5},{n:"C5",b:1},{n:"rest",b:0.5},{n:"D5",b:0.5},{n:"C5",b:0.5},
+      {n:"B4",b:0.5},{n:"C5",b:0.5},{n:"E5",b:1},{n:"rest",b:0.5},{n:"F5",b:0.5},{n:"E5",b:0.5},{n:"D#5",b:0.5},{n:"E5",b:0.5},
+      {n:"B5",b:0.5},{n:"A5",b:0.5},{n:"G#5",b:0.5},{n:"A5",b:0.5},{n:"B5",b:0.5},{n:"A5",b:0.5},{n:"G#5",b:0.5},{n:"A5",b:0.5},
+      {n:"C6",b:1},{n:"rest",b:0.5},
+      {n:"B4",b:0.5},{n:"A4",b:0.5},{n:"G#4",b:0.5},{n:"A4",b:0.5},{n:"C5",b:1},{n:"rest",b:0.5},{n:"D5",b:0.5},{n:"C5",b:0.5},
+      {n:"B4",b:0.5},{n:"C5",b:0.5},{n:"E5",b:1},{n:"rest",b:0.5},{n:"F5",b:0.5},{n:"E5",b:0.5},{n:"D#5",b:0.5},{n:"E5",b:0.5},
+      {n:"B5",b:0.5},{n:"A5",b:0.5},{n:"G#5",b:0.5},{n:"A5",b:0.5},{n:"C6",b:0.5},{n:"B5",b:0.5},{n:"A5",b:0.5},{n:"G#5",b:0.5},
+      {n:"A5",b:2},
+    ],
   },
   {
-    id: "morning",
-    title: "강진중앙의 아침",
-    difficulty: "어려움",
-    bpm: 100,
-    duration: 30,
-    stage: "school",
-    audio: "./assets/music/morning.mp3",
-    image: "./assets/intro-hero.png",
-    lesson: "빠른 연타 · 계단 런 · 동시치기",
+    id: "clair-de-lune", title: "Clair de Lune", composer: "C. Debussy",
+    difficulty: "NORMAL", bpm: 60, stage: "sunset", lesson: "인상주의 화성과 호흡",
+    melody: [
+      {n:"G#4",b:0.5},{n:"G#5",b:1.5},{n:"F5",b:1.25},{n:"A4",b:0.5},{n:"D#5",b:0.25},{n:"F5",b:0.25},{n:"D#5",b:1.75},{n:"G#4",b:0.25},
+      {n:"C#5",b:0.25},{n:"D#5",b:0.25},{n:"C#5",b:0.5},{n:"F5",b:1},{n:"C#5",b:0.5},{n:"F#4",b:0.25},{n:"C5",b:0.25},{n:"C#5",b:0.25},
+      {n:"C5",b:1.75},{n:"F#4",b:0.25},{n:"A#4",b:0.25},{n:"C5",b:0.25},{n:"A#4",b:0.25},{n:"D#5",b:0.25},{n:"A#4",b:0.25},{n:"G#4",b:0.25},
+      {n:"A#4",b:0.25},{n:"G#4",b:0.25},{n:"D#4",b:0.25},{n:"F#4",b:0.25},{n:"G#4",b:0.25},{n:"F#4",b:1},{n:"F4",b:1.25},{n:"C#4",b:0.25},
+      {n:"F4",b:0.25},{n:"F#4",b:0.25},{n:"F4",b:0.25},{n:"A#4",b:0.25},{n:"F4",b:0.25},{n:"D#4",b:0.25},{n:"F4",b:0.25},{n:"D#4",b:0.5},
+      {n:"C#4",b:0.25},{n:"D#4",b:0.25},{n:"C#4",b:1},{n:"C4",b:1.5},
+    ],
+  },
+  {
+    id: "nocturne", title: "Nocturne Op.9 No.2", composer: "F. Chopin",
+    difficulty: "NORMAL", bpm: 92, stage: "galaxy", lesson: "장식음과 긴 호흡의 칸타빌레",
+    melody: [
+      {n:"A#4",b:1.5},{n:"G5",b:3},{n:"F5",b:1},{n:"G5",b:1.25},{n:"F5",b:2.75},{n:"D#5",b:1.5},{n:"rest",b:0.25},{n:"A#4",b:1.25},
+      {n:"G5",b:1.75},{n:"C5",b:0.25},{n:"C#5",b:0.25},{n:"B4",b:0.25},{n:"C5",b:0.75},{n:"C6",b:1.75},{n:"G5",b:1},{n:"A#5",b:2.5},
+      {n:"G#5",b:1.75},{n:"G5",b:1},{n:"F5",b:2.5},{n:"rest",b:0.25},{n:"G5",b:1.75},
+    ],
+  },
+  {
+    id: "gymnopedie", title: "Gymnopédie No.1", composer: "E. Satie",
+    difficulty: "EASY", bpm: 76, stage: "sunset", lesson: "느린 3박 서정",
+    melody: [
+      {n:"F#4",b:2},{n:"rest",b:1},{n:"F#4",b:2},{n:"rest",b:1},{n:"F#4",b:2},{n:"rest",b:1},{n:"F#4",b:2},{n:"rest",b:1},
+      {n:"F#5",b:1},{n:"A5",b:1},{n:"G5",b:1},{n:"F#5",b:1},{n:"C#5",b:1},{n:"B4",b:1},{n:"C#5",b:1},{n:"D5",b:1},
+      {n:"A4",b:1},{n:"F#4",b:2},{n:"rest",b:1},
+      {n:"F#5",b:1},{n:"A5",b:1},{n:"G5",b:1},{n:"F#5",b:1},{n:"C#5",b:1},{n:"B4",b:1},{n:"C#5",b:1},{n:"D5",b:1},
+      {n:"A4",b:1},{n:"F#4",b:3},
+    ],
+  },
+  {
+    id: "minuet-g", title: "Minuet in G", composer: "C. Petzold",
+    difficulty: "EASY", bpm: 120, stage: "school", lesson: "우아한 3박 미뉴에트",
+    melody: [
+      {n:"D5",b:1},{n:"G4",b:0.5},{n:"A4",b:0.5},{n:"B4",b:0.5},{n:"C5",b:0.5},{n:"D5",b:1},{n:"G4",b:1},{n:"G4",b:1},
+      {n:"E5",b:1},{n:"C5",b:0.5},{n:"D5",b:0.5},{n:"E5",b:0.5},{n:"F#5",b:0.5},{n:"G5",b:1},{n:"G4",b:1},{n:"G4",b:1},
+      {n:"C5",b:1},{n:"D5",b:0.5},{n:"C5",b:0.5},{n:"B4",b:0.5},{n:"A4",b:0.5},{n:"B4",b:1},{n:"C5",b:0.5},{n:"B4",b:0.5},{n:"A4",b:0.5},{n:"G4",b:0.5},
+      {n:"A4",b:1},{n:"B4",b:0.5},{n:"A4",b:0.5},{n:"G4",b:0.5},{n:"F#4",b:0.5},{n:"G4",b:3},
+      {n:"D5",b:1},{n:"G4",b:0.5},{n:"A4",b:0.5},{n:"B4",b:0.5},{n:"C5",b:0.5},{n:"D5",b:1},{n:"G4",b:1},{n:"G4",b:1},
+      {n:"E5",b:1},{n:"C5",b:0.5},{n:"D5",b:0.5},{n:"E5",b:0.5},{n:"F#5",b:0.5},{n:"G5",b:1},{n:"G4",b:1},{n:"G4",b:1},
+    ],
+  },
+  {
+    id: "canon-d", title: "Canon in D", composer: "J. Pachelbel",
+    difficulty: "EASY", bpm: 96, stage: "galaxy", lesson: "하행 시퀀스와 화성",
+    melody: [
+      {n:"F#5",b:2},{n:"E5",b:2},{n:"D5",b:2},{n:"C#5",b:2},{n:"B4",b:2},{n:"A4",b:2},{n:"B4",b:2},{n:"C#5",b:2},
+      {n:"D5",b:1},{n:"C#5",b:1},{n:"B4",b:1},{n:"A4",b:1},{n:"G4",b:1},{n:"F#4",b:1},{n:"G4",b:1},{n:"A4",b:1},
+      {n:"F#5",b:1},{n:"E5",b:1},{n:"D5",b:1},{n:"C#5",b:1},{n:"B4",b:1},{n:"A4",b:1},{n:"B4",b:1},{n:"C#5",b:1},
+      {n:"D5",b:0.5},{n:"E5",b:0.5},{n:"F#5",b:0.5},{n:"G5",b:0.5},{n:"A5",b:0.5},{n:"G5",b:0.5},{n:"F#5",b:0.5},{n:"E5",b:0.5},
+      {n:"D5",b:0.5},{n:"C#5",b:0.5},{n:"B4",b:0.5},{n:"A4",b:0.5},{n:"B4",b:0.5},{n:"C#5",b:0.5},{n:"D5",b:0.5},{n:"E5",b:0.5},
+      {n:"F#5",b:2},
+    ],
+  },
+  {
+    id: "prelude-c", title: "Prelude in C", composer: "J. S. Bach",
+    difficulty: "NORMAL", bpm: 84, stage: "city", lesson: "분산화음(아르페지오) 연습",
+    melody: [
+      {n:"C4",b:0.5},{n:"E4",b:0.5},{n:"G4",b:0.5},{n:"C5",b:0.5},{n:"E5",b:0.5},{n:"G4",b:0.5},{n:"C5",b:0.5},{n:"E5",b:0.5},
+      {n:"C4",b:0.5},{n:"D4",b:0.5},{n:"A4",b:0.5},{n:"D5",b:0.5},{n:"F5",b:0.5},{n:"A4",b:0.5},{n:"D5",b:0.5},{n:"F5",b:0.5},
+      {n:"B3",b:0.5},{n:"D4",b:0.5},{n:"G4",b:0.5},{n:"D5",b:0.5},{n:"F5",b:0.5},{n:"G4",b:0.5},{n:"D5",b:0.5},{n:"F5",b:0.5},
+      {n:"C4",b:0.5},{n:"E4",b:0.5},{n:"G4",b:0.5},{n:"C5",b:0.5},{n:"E5",b:0.5},{n:"G4",b:0.5},{n:"C5",b:0.5},{n:"E5",b:0.5},
+      {n:"C4",b:0.5},{n:"E4",b:0.5},{n:"A4",b:0.5},{n:"E5",b:0.5},{n:"A5",b:0.5},{n:"A4",b:0.5},{n:"E5",b:0.5},{n:"A5",b:0.5},
+      {n:"C4",b:0.5},{n:"D4",b:0.5},{n:"F#4",b:0.5},{n:"A4",b:0.5},{n:"D5",b:0.5},{n:"F#4",b:0.5},{n:"A4",b:0.5},{n:"D5",b:0.5},
+      {n:"B3",b:0.5},{n:"D4",b:0.5},{n:"G4",b:0.5},{n:"D5",b:0.5},{n:"G5",b:0.5},{n:"G4",b:0.5},{n:"D5",b:0.5},{n:"G5",b:0.5},
+      {n:"C4",b:0.5},{n:"E4",b:0.5},{n:"G4",b:0.5},{n:"C5",b:0.5},{n:"E5",b:0.5},{n:"G4",b:0.5},{n:"C5",b:0.5},{n:"E5",b:0.5},
+    ],
   },
 ];
 
 let selectedSongIndex = 0;
-let selectedSong = nurserySongs[selectedSongIndex];
+let selectedSong = songs[selectedSongIndex];
 
-const scaleNotes = Object.keys(pianoNotes);
-
-function shiftPitch(pitch, steps) {
-  const index = scaleNotes.indexOf(pitch);
-  if (index < 0) return pitch;
-  return scaleNotes[Math.max(0, Math.min(scaleNotes.length - 1, index + steps))];
-}
-
-// ===== 채보 생성 (음높이→레인 매핑은 우리 게임의 교육 코어) =====
-function difficultyProfile(difficulty) {
+// ===== 채보 생성 (멜로디 → 5레인 매핑. 소리는 히트한 노트에서만 난다) =====
+// 난이도 → 스크롤 속도(approach) / 긴 음 동시치기 여부
+function classicalProfile(difficulty) {
   switch (difficulty) {
-    case "어려움":
-      return { eighthSplit: true, doubleAccent: true, rotateLanes: true };
-    case "보통":
-      return { eighthSplit: true, doubleAccent: false, rotateLanes: true };
-    default:
-      return { eighthSplit: false, doubleAccent: false, rotateLanes: false };
+    case "HARD":
+      return { approach: 1.95, doubleAccent: true };
+    case "NORMAL":
+      return { approach: 2.3, doubleAccent: false };
+    default: // EASY
+      return { approach: 2.75, doubleAccent: false };
   }
 }
 
-function makeRichArrangement(song, profile) {
-  const base = song.melody;
-  const verse = base.map((pitch) => ({ pitch, beats: 1, accent: false }));
-  const answer = base.map((pitch, index) => ({
-    pitch: index % 4 === 1 ? shiftPitch(pitch, 1) : pitch,
-    beats: index === base.length - 1 ? 2 : 1,
-    accent: index === base.length - 1,
-  }));
-  const sparkle = base.flatMap((pitch, index) => {
-    if (profile.eighthSplit && index % 4 === 3) {
-      return [{ pitch, beats: 0.5, accent: false }, { pitch: shiftPitch(pitch, 1), beats: 0.5, accent: false }];
-    }
-    if (profile.eighthSplit && index % 6 === 2) {
-      return [{ pitch, beats: 0.5, accent: false }, { pitch: shiftPitch(pitch, -1), beats: 0.5, accent: false }];
-    }
-    return [{ pitch, beats: 1, accent: false }];
-  });
-  const cadence = [
-    { pitch: base[0], beats: 1, accent: false },
-    { pitch: shiftPitch(base[0], 2), beats: 1, accent: false },
-    { pitch: shiftPitch(base[0], 4), beats: 1.5, accent: true },
-    { pitch: shiftPitch(base[0], 2), beats: 0.5, accent: false },
-    { pitch: base[0], beats: 2, accent: true },
-  ];
-
-  const phrase = [...verse, ...answer, ...sparkle, ...cadence];
-  const targetBeats = (34 * song.bpm) / 60;
-  const arranged = [];
-  let totalBeats = 0;
-  let cycle = 0;
-
-  while (totalBeats < targetBeats) {
-    phrase.forEach((item) => {
-      arranged.push({ ...item, cycle });
-      totalBeats += item.beats;
-    });
-    cycle += 1;
-  }
-
-  return arranged;
-}
-
-// 실제 MP3 트랙용: 박자 그리드 위 탭 노트
-function buildAudioChart(song) {
-  const duration = song.duration || 60;
-  const scale = ["C4", "D4", "E4", "G4", "A4", "C5"];
-  const hard = song.difficulty === "어려움";
-  const interval = hard ? 0.42 : 0.8;
-  const maxNotes = hard ? 280 : 170;
-  const notesOut = [];
-
-  const addNote = (lane, pitch, time) => {
-    notesOut.push({ time: Number(time.toFixed(4)), lane, pitch, hit: false, missed: false });
-  };
-
-  let t = hard ? 2.6 : 3.2;
-  let i = 0;
-  let prevLane = -1;
-  let dir = 1;
-  while (t < duration - 1.4 && notesOut.length < maxNotes) {
-    let lane;
-    if (hard) {
-      const block = Math.floor(i / 6) % 3;
-      if (block === 0) {
-        lane = prevLane < 0 ? 0 : prevLane + dir;
-        if (lane > LANES - 1) {
-          lane = LANES - 2;
-          dir = -1;
-        } else if (lane < 0) {
-          lane = 1;
-          dir = 1;
-        }
-      } else if (block === 1) {
-        lane = [0, 4, 1, 3, 2][i % 5];
-      } else {
-        lane = Math.round(((Math.sin(i * 0.9) + 1) / 2) * (LANES - 1));
-      }
-    } else {
-      lane = Math.round(((Math.sin(i * 0.6) + 1) / 2) * (LANES - 1));
-      if (i % 5 === 4) lane = (lane + 2) % LANES;
-    }
-    if (lane === prevLane) lane = (lane + 1) % LANES;
-    prevLane = lane;
-    addNote(lane, scale[i % scale.length], t);
-
-    if (hard && i % 4 === 0) {
-      addNote((lane + 2) % LANES, scale[(i + 3) % scale.length], t);
-    }
-
-    i += 1;
-    t += interval;
-  }
-
-  songLength = Math.ceil(Math.min(duration, t + 1.4));
-  return notesOut;
-}
-
+// 멜로디({n,b}) → 5레인 채보. rest는 시간만 진행시키고 노트는 만들지 않는다.
+// 음높이가 낮을수록 왼쪽(레인 0), 높을수록 오른쪽(레인 4)에 배치 → 손가락이 곡선을 따라간다.
 function buildChart() {
-  if (selectedSong.audio) return buildAudioChart(selectedSong);
+  const beat = 60 / bpm;
+  const mel = selectedSong.melody || [];
+  const profile = classicalProfile(selectedSong.difficulty);
+  approachTime = profile.approach;
+
+  const midis = mel.filter((e) => e.n !== "rest").map((e) => noteToMidi(e.n));
+  const lo = Math.min(...midis);
+  const hi = Math.max(...midis);
+  // 2옥타브를 넘는 광음역은 옥타브 폴딩으로 접어 contour(레인 분포)를 보존
+  const fold = (m) => {
+    while (m - lo > 24) m -= 12;
+    while (hi - m > 24) m += 12;
+    return m;
+  };
+  const folded = midis.map(fold);
+  const foldedLo = Math.min(...folded);
+  const span = Math.max(1, Math.max(...folded) - foldedLo);
 
   const notesOut = [];
-  const beat = 60 / bpm;
-  const profile = difficultyProfile(selectedSong.difficulty);
-  const arrangedMelody = makeRichArrangement(selectedSong, profile);
-
-  const indices = arrangedMelody.map((item) => Math.max(0, scaleNotes.indexOf(item.pitch)));
-  const minIdx = Math.min(...indices);
-  const span = Math.max(1, Math.max(...indices) - minIdx);
-
   const pushNote = (lane, pitch, t) => {
     notesOut.push({ time: Number(t.toFixed(4)), lane, pitch, hit: false, missed: false });
   };
 
-  let time = 2;
+  let time = 2; // 2초 리드인
   let prevLane = -1;
-  arrangedMelody.forEach((item) => {
-    const idx = Math.max(0, scaleNotes.indexOf(item.pitch));
-    let lane = Math.round(((idx - minIdx) / span) * (LANES - 1));
-    if (profile.rotateLanes) lane = (lane + item.cycle) % LANES;
-    if (lane === prevLane) lane = (lane + 1) % LANES;
+  mel.forEach((e) => {
+    if (e.n === "rest") {
+      time += e.b * beat;
+      return;
+    }
+    const midi = fold(noteToMidi(e.n));
+    let lane = Math.round(((midi - foldedLo) / span) * (LANES - 1));
+    if (lane === prevLane) lane = lane >= LANES - 1 ? lane - 1 : lane + 1;
     prevLane = lane;
 
-    pushNote(lane, item.pitch, time);
-
-    if (profile.doubleAccent && item.accent) {
-      pushNote((lane + 2) % LANES, item.pitch, time);
+    pushNote(lane, e.n, time);
+    if (profile.doubleAccent && e.b >= 1.5) {
+      pushNote((lane + 2) % LANES, e.n, time);
     }
 
-    time += item.beats * beat;
+    time += e.b * beat;
   });
 
   songLength = Math.ceil(time + 2);
@@ -455,7 +450,8 @@ function playStartCue(when = audioContext.currentTime) {
 }
 
 function playPiano(pitch, when = audioContext.currentTime, velocity = 1, destination = masterGain) {
-  const freq = pianoNotes[pitch] ?? pianoNotes.C4;
+  const freq = noteToFreq(pitch);
+  if (!freq) return;
   const gain = audioContext.createGain();
   const filter = audioContext.createBiquadFilter();
   filter.type = "lowpass";
@@ -478,7 +474,7 @@ function playPiano(pitch, when = audioContext.currentTime, velocity = 1, destina
   filter.connect(gain);
   gain.connect(destination);
 
-  if (velocity > 0.8) {
+  if (velocity > 0.8 && freq < 1200) {
     const bellGain = audioContext.createGain();
     const bell = audioContext.createOscillator();
     bell.type = "sine";
@@ -660,46 +656,8 @@ function playPluck(freq, when, destination = masterGain) {
   osc.stop(when + 0.24);
 }
 
-function startBackingTrack() {
-  const beat = 60 / bpm;
-  const bar = beat * 4;
-  const progression = [
-    [pianoNotes.C4, pianoNotes.E4, pianoNotes.G4],
-    [pianoNotes.F4, pianoNotes.A4, pianoNotes.C5],
-    [pianoNotes.G4, pianoNotes.B4, pianoNotes.D5],
-    [pianoNotes.C4, pianoNotes.E4, pianoNotes.G4],
-  ];
-  const totalBars = Math.ceil(songLength / bar);
-
-  for (let barIndex = 0; barIndex < totalBars; barIndex += 1) {
-    const barStart = startAudioTime + barIndex * bar;
-    if (barIndex * bar >= songLength) break;
-    const chord = progression[barIndex % progression.length];
-    const [root, third, fifth] = chord;
-
-    playPad(chord.map((freq) => freq / 2), barStart, bar * 0.98, musicBus);
-    playBass(root / 2, barStart, beat * 1.6, musicBus);
-    playBass(fifth / 2, barStart + beat * 2, beat * 1.6, musicBus);
-
-    const arp = [root, fifth, third, fifth];
-    for (let eighth = 0; eighth < 8; eighth += 1) {
-      playPluck(arp[eighth % arp.length], barStart + eighth * (beat / 2), musicBus);
-    }
-
-    for (let b = 0; b < 4; b += 1) {
-      const when = barStart + b * beat;
-      if (b === 0 || b === 2) playKick(when, musicBus);
-      else playSnare(when, musicBus);
-      playHat(when, false, musicBus);
-      playHat(when + beat / 2, b === 3, musicBus);
-    }
-  }
-
-  notes.forEach((note) => {
-    if (note.time >= songLength) return;
-    playPiano(note.pitch, startAudioTime + note.time, 0.5, musicBus);
-  });
-}
+// 연주형: 자동 반주(드럼/베이스/패드/멜로디 자동재생) 없음.
+// 소리는 오직 플레이어가 노트를 누를 때 judgeLane()에서 난다.
 
 // ===== 게임 흐름 =====
 function now() {
@@ -729,30 +687,12 @@ function startGame() {
     startVisualTime = performance.now() * 0.001 + lead;
     started = true;
     if (!withAudio) return;
-
-    const trackBuffer = selectedSong.audio ? trackBuffers.get(selectedSong.audio) : null;
-    if (trackBuffer) {
-      stopTrack();
-      trackSource = audioContext.createBufferSource();
-      trackSource.buffer = trackBuffer;
-      trackSource.connect(masterGain);
-      trackSource.start(startAudioTime);
-    } else {
-      playStartCue(audioContext.currentTime + 0.01);
-      playKick(audioContext.currentTime + 0.03);
-      startBackingTrack();
-    }
+    // 시작 큐만 한 번 울리고, 이후 소리는 플레이어의 노트 입력으로만.
+    playStartCue(audioContext.currentTime + 0.01);
   };
 
   resumePromise
     .then(async () => {
-      if (selectedSong.audio) {
-        try {
-          await ensureTrackLoaded(selectedSong.audio);
-        } catch {
-          /* 디코드 실패는 무시하고 합성 반주로 진행 */
-        }
-      }
       begin(true);
     })
     .catch(() => {
@@ -799,8 +739,7 @@ function judgeLane(lane) {
 
   candidate.note.hit = true;
   spawnHit(lane);
-  if (selectedSong.audio) playClick(audioContext.currentTime);
-  else playPiano(candidate.note.pitch, audioContext.currentTime, 1);
+  playPiano(candidate.note.pitch, audioContext.currentTime, 1);
 
   if (candidate.delta <= perfectWindow) {
     registerJudgment(lane, "PERFECT", 1000, 1);
@@ -939,55 +878,30 @@ function commitBest() {
   }
 }
 
-// ===== UI (캐러셀 / 곡 선택) =====
+// ===== UI (주크박스 곡 선택) =====
 function syncSelectedSongUi() {
   bpm = selectedSong.bpm;
   if (selectedSongTitle) selectedSongTitle.textContent = selectedSong.title;
-  if (selectedSongMeta) selectedSongMeta.textContent = `${selectedSong.difficulty} // ${selectedSong.lesson}`;
+  if (selectedSongComposer) selectedSongComposer.textContent = selectedSong.composer || "";
+  if (selectedSongMeta) selectedSongMeta.textContent = `${selectedSong.difficulty} · ${selectedSong.lesson || ""}`;
+  if (songIndexEl) songIndexEl.textContent = String(selectedSongIndex + 1).padStart(2, "0");
   if (hudTrackName) hudTrackName.textContent = selectedSong.title;
   if (hudBpm) hudBpm.textContent = String(selectedSong.bpm);
   if (hudDifficulty) hudDifficulty.textContent = selectedSong.difficulty;
-  if (audioStatus) audioStatus.textContent = `${selectedSong.title} // 피아노 리듬 연습`;
+  if (audioStatus) audioStatus.textContent = `${selectedSong.title} — 누르면 그 음이 울려요`;
   updateHud(0);
 }
 
 function selectSong(index) {
-  selectedSongIndex = (index + nurserySongs.length) % nurserySongs.length;
-  selectedSong = nurserySongs[selectedSongIndex];
-  document.querySelectorAll(".song-card").forEach((card, cardIndex) => {
-    card.classList.toggle("selected", cardIndex === selectedSongIndex);
-  });
+  selectedSongIndex = (index + songs.length) % songs.length;
+  selectedSong = songs[selectedSongIndex];
   bpm = selectedSong.bpm;
   notes = buildChart();
   syncSelectedSongUi();
-  const selectedCard = document.querySelector(`.song-card[data-index="${selectedSongIndex}"]`);
-  selectedCard?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
 }
 
-function renderSongCarousel() {
-  if (!songCarousel) return;
-  songCarousel.innerHTML = nurserySongs
-    .map(
-      (song, index) => `
-        <article class="song-card${index === selectedSongIndex ? " selected" : ""}" data-index="${index}">
-          <img src="${song.image}" alt="${song.title} 이미지" />
-          <div class="song-card-body">
-            <h2>${song.title}</h2>
-            <span class="difficulty">${song.difficulty}</span>
-            <p>${song.lesson}</p>
-          </div>
-        </article>
-      `,
-    )
-    .join("");
-
-  songCarousel.querySelectorAll(".song-card").forEach((card) => {
-    card.addEventListener("click", () => selectSong(Number(card.dataset.index)));
-    card.addEventListener("dblclick", () => {
-      selectSong(Number(card.dataset.index));
-      startGame();
-    });
-  });
+function renderJukebox() {
+  if (songCountEl) songCountEl.textContent = String(songs.length).padStart(2, "0");
   carouselPrev?.addEventListener("click", () => selectSong(selectedSongIndex - 1));
   carouselNext?.addEventListener("click", () => selectSong(selectedSongIndex + 1));
 }
@@ -1206,6 +1120,16 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     startGame();
   }
+  if (!started) {
+    if (event.code === "ArrowLeft") {
+      event.preventDefault();
+      selectSong(selectedSongIndex - 1);
+    }
+    if (event.code === "ArrowRight") {
+      event.preventDefault();
+      selectSong(selectedSongIndex + 1);
+    }
+  }
 });
 
 keyButtons.forEach((button) => {
@@ -1220,7 +1144,7 @@ try {
   resize();
   loadAssets();
   loadBest();
-  renderSongCarousel();
+  renderJukebox();
   bpm = selectedSong.bpm;
   notes = buildChart();
   syncSelectedSongUi();

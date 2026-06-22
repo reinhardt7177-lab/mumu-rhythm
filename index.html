@@ -10,7 +10,7 @@
       media="print"
       onload="this.media='all'"
     />
-    <link rel="stylesheet" href="./styles.css?v=21" />
+    <link rel="stylesheet" href="./styles.css?v=22" />
   </head>
   <body>
     <main id="game">
@@ -65,29 +65,28 @@
       <section id="startOverlay" class="start-overlay">
         <header class="song-select-header">
           <div>
-            <h1>MUMU 동요 리듬 피아노</h1>
-            <p id="audioStatus">동요를 고르고 A S D J K로 피아노 멜로디를 연주해요</p>
+            <h1>MUMU CLASSICAL PIANO</h1>
+            <p id="audioStatus">곡을 고르고 A S D J K로 직접 연주하세요</p>
           </div>
-          <button id="startButton" type="button">선택한 동요 시작</button>
+          <button id="startButton" type="button">선택한 곡 시작</button>
         </header>
 
-        <section class="song-carousel-wrap" aria-label="동요 선택">
-          <button class="carousel-nav prev" type="button" aria-label="이전 동요">‹</button>
-          <div id="songCarousel" class="song-carousel"></div>
-          <button class="carousel-nav next" type="button" aria-label="다음 동요">›</button>
-        </section>
-
-        <section class="selected-song-panel">
-          <span class="label">오늘의 연습</span>
-          <strong id="selectedSongTitle">반짝반짝 작은 별</strong>
-          <p id="selectedSongMeta">쉬움 // 계이름 반복과 4박 감각</p>
-          <button id="quickStartButton" class="quick-start-button" type="button">이 동요로 시작</button>
+        <section class="jukebox" aria-label="곡 선택">
+          <button class="carousel-nav prev" type="button" aria-label="이전 곡">‹</button>
+          <div class="jukebox-display">
+            <span class="jukebox-index"><span id="songIndex">01</span> / <span id="songCount">10</span></span>
+            <strong id="selectedSongTitle" class="jukebox-title">Für Elise</strong>
+            <span id="selectedSongComposer" class="jukebox-composer">L. v. Beethoven</span>
+            <span id="selectedSongMeta" class="jukebox-difficulty">NORMAL</span>
+            <button id="quickStartButton" class="quick-start-button" type="button">이 곡으로 시작 ▶</button>
+          </div>
+          <button class="carousel-nav next" type="button" aria-label="다음 곡">›</button>
         </section>
       </section>
 
       <div id="toast" class="toast">PERFECT</div>
     </main>
 
-    <script type="module" src="./game.js?v=21"></script>
+    <script type="module" src="./game.js?v=22"></script>
   </body>
 </html>
