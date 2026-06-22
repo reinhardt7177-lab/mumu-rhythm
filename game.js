@@ -275,25 +275,35 @@ function buildChart() {
     notesOut.push({ time: Number(t.toFixed(4)), lane, pitch, hit: false, missed: false });
   };
 
-  let time = 2; // 2초 리드인
+  // 멜로디를 ~60초가 될 때까지 반복 재생(루프 사이 2박 숨고르기), 목표 도달 시 중단.
+  const TARGET_SEC = 58;
+  const leadIn = 2;
+  const gapBeats = 2;
+  let time = leadIn;
   let prevLane = -1;
-  mel.forEach((e) => {
-    if (e.n === "rest") {
+  let pass = 0;
+  outer: while (pass < 20) {
+    if (pass > 0) time += gapBeats * beat;
+    for (const e of mel) {
+      if (time - leadIn >= TARGET_SEC) break outer;
+      if (e.n === "rest") {
+        time += e.b * beat;
+        continue;
+      }
+      const midi = fold(noteToMidi(e.n));
+      let lane = Math.round(((midi - foldedLo) / span) * (LANES - 1));
+      if (lane === prevLane) lane = lane >= LANES - 1 ? lane - 1 : lane + 1;
+      prevLane = lane;
+
+      pushNote(lane, e.n, time);
+      if (profile.doubleAccent && e.b >= 1.5) {
+        pushNote((lane + 2) % LANES, e.n, time);
+      }
+
       time += e.b * beat;
-      return;
     }
-    const midi = fold(noteToMidi(e.n));
-    let lane = Math.round(((midi - foldedLo) / span) * (LANES - 1));
-    if (lane === prevLane) lane = lane >= LANES - 1 ? lane - 1 : lane + 1;
-    prevLane = lane;
-
-    pushNote(lane, e.n, time);
-    if (profile.doubleAccent && e.b >= 1.5) {
-      pushNote((lane + 2) % LANES, e.n, time);
-    }
-
-    time += e.b * beat;
-  });
+    pass += 1;
+  }
 
   songLength = Math.ceil(time + 2);
 
