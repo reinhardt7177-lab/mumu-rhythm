@@ -3,20 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUMU Rhythm Prototype</title>
-    <link rel="stylesheet" href="./styles.css?v=20" />
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://unpkg.com/three@0.164.1/build/three.module.js"
-        }
-      }
-    </script>
+    <title>MUMU Rhythm Arcade</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <link rel="stylesheet" href="./styles.css?v=21" />
   </head>
   <body>
     <main id="game">
-      <canvas id="stage" aria-label="3D rhythm game stage"></canvas>
-      <img class="pad-art" src="./assets/judgment-pads-5.png" alt="" aria-hidden="true" />
+      <canvas id="stage" aria-label="rhythm game stage"></canvas>
 
       <section class="hud hud-left" aria-label="score panel">
         <div class="panel score-panel">
@@ -90,6 +88,6 @@
       <div id="toast" class="toast">PERFECT</div>
     </main>
 
-    <script type="module" src="./game.js?v=20"></script>
+    <script type="module" src="./game.js?v=21"></script>
   </body>
 </html>

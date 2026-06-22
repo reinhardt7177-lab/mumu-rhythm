@@ -56,22 +56,6 @@ button {
     #05060b;
 }
 
-.pad-art {
-  position: absolute;
-  z-index: 3;
-  left: 50%;
-  bottom: -16px;
-  width: min(900px, 66vw);
-  max-height: 154px;
-  object-fit: contain;
-  opacity: 0.82;
-  transform: translateX(-50%);
-  filter:
-    drop-shadow(0 0 18px rgba(54, 230, 255, 0.36))
-    drop-shadow(0 0 24px rgba(255, 63, 212, 0.22));
-  pointer-events: none;
-}
-
 .hud {
   position: absolute;
   z-index: 3;
@@ -556,12 +540,6 @@ button {
     height: 58px;
   }
 
-  .pad-art {
-    bottom: -8px;
-    width: min(660px, 132vw);
-    opacity: 0.68;
-  }
-
   .start-overlay {
     padding: 14px 12px;
   }
@@ -587,4 +565,67 @@ button {
   .song-card {
     flex-basis: 82vw;
   }
+}
+
+/* ===== 픽셀 아케이드 폰트/룩 (한글 글리프는 자동으로 sans 폴백) ===== */
+.label,
+.score-panel strong,
+.combo-panel strong,
+.hp-panel strong,
+.compact strong,
+.progress-panel strong,
+#score,
+#best,
+#combo,
+#sync,
+#time,
+#hudBpm,
+.keybar span,
+.keybar em,
+.toast {
+  font-family: "Press Start 2P", ui-monospace, monospace;
+  letter-spacing: 0;
+}
+
+.label {
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.score-panel strong,
+.combo-panel strong {
+  font-size: clamp(20px, 3.6vw, 36px);
+}
+
+.sub,
+#best {
+  font-size: 11px;
+}
+
+.keybar span {
+  font-size: 18px;
+}
+
+.keybar em {
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.toast {
+  font-size: clamp(28px, 6vw, 60px);
+  text-shadow:
+    0 0 18px rgba(54, 230, 255, 0.85),
+    0 0 36px rgba(255, 63, 212, 0.7);
+}
+
+.start-overlay {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(54, 230, 255, 0.08), rgba(5, 6, 11, 0.5) 40%, rgba(5, 6, 11, 0.92) 84%),
+    linear-gradient(180deg, rgba(5, 6, 11, 0.1), rgba(5, 6, 11, 0.6) 46%, rgba(5, 6, 11, 0.95)),
+    url("./assets/pixel/hero.png") center / cover no-repeat;
+  image-rendering: pixelated;
+}
+
+#stage {
+  image-rendering: pixelated;
 }

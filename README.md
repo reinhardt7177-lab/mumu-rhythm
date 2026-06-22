@@ -1,6 +1,6 @@
 # MUMU Rhythm Prototype
 
-Three.js와 Web Audio API로 만든 5레인 동요 피아노 리듬 액션 프로토타입입니다.
+Canvas 2D와 Web Audio API로 만든 16비트 픽셀 네온 아케이드 5레인 동요 피아노 리듬게임입니다.
 
 ## 실행
 
@@ -29,17 +29,19 @@ http://127.0.0.1:8080/index.html
 - 곡별 생성 이미지 카드, 제목, 난이도, 교육 포인트
 - 선택한 동요 멜로디 기반 30초 이상 피아노 리듬액션
 - 5레인 키보드/터치 입력
-- Three.js 기반 3D 레인, 노트, 콘서트 조명, 이퀄라이저 오브젝트
-- 생성 이미지 기반 무대 배경, 노트/히트 이펙트 아틀라스, 하단 판정 패드
+- Canvas 2D 유사 원근 5레인 하이웨이, 픽셀 노트/리셉터, 곡 클럭 기반 비트 펄스
+- 곡별 픽셀 네온 스테이지 배경(시티·아레나·학교·선셋·은하수), 무대 아이돌 마스코트(포즈 전환), 풀링 파티클·퍼펙트 링
 - Web Audio API 기반 피아노 키음형 노트 사운드
 - 데스크톱/모바일 반응형 HUD
 
 ## 에셋
 
-- `assets/stage-backdrop.png`: 생성 이미지 무대 배경
-- `assets/note-effects.png`: 투명 노트/히트 이펙트 아틀라스
-- `assets/judgment-pads.png`: 투명 하단 판정 패드
-- `assets/songs/*.png`: 동요 선택 카드 이미지 10종
+- `assets/pixel/bg-*.png`: 픽셀 네온 스테이지 배경 5종(city·arena·school·sunset·galaxy)
+- `assets/pixel/mascot-*.png`, `idol-*.png`: 아이돌 마스코트 포즈 + 추가 퍼포머
+- `assets/pixel/note-gem.png`, `star-note.png`, `receptor.png`, `hit-burst.png`, `ring.png`: 노트·이펙트(코드에서 5색 틴팅)
+- `assets/pixel/hero.png`, `fever-aura.png`, `bg-crowd.png`: 타이틀/연출용
+- `assets/songs/*.png`: 동요 선택 카드 이미지
+- 픽셀 에셋은 힉스필드(nano_banana_pro)로 생성 후 `tools/process_assets.py`로 크로마키·크롭·리사이즈. `*-raw.*` 원본은 git 제외
 
 ## QA 보기
 

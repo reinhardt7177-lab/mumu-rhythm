@@ -15,4 +15,8 @@ node_modules/
 Thumbs.db
 *.log
 
+# 힉스필드 생성 원본 / 미리보기 산출물 (대용량, tools/process_assets.py로 재생성 가능)
+assets/pixel/*-raw.*
+assets/pixel/_*
+
 .vercel
