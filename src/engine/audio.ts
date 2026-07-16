@@ -1,7 +1,7 @@
 import type { MelodyNote, Song, SoundWorld } from "../types";
 
 type AudioNodeWithStop = AudioBufferSourceNode | OscillatorNode;
-type InstrumentName = "piano" | "celesta" | "flute";
+type InstrumentName = "piano" | "celesta" | "flute" | "strings" | "glockenspiel";
 
 interface SampleDefinition {
   midi: number;
@@ -42,12 +42,28 @@ const SAMPLE_MANIFEST: Record<InstrumentName, SampleDefinition[]> = {
     { midi: 71, path: `${SAMPLE_ROOT}/flute/B4.mp3` },
     { midi: 72, path: `${SAMPLE_ROOT}/flute/C5.mp3` },
   ],
+  strings: [
+    { midi: 48, path: `${SAMPLE_ROOT}/strings/C3.mp3` },
+    { midi: 55, path: `${SAMPLE_ROOT}/strings/G3.mp3` },
+    { midi: 60, path: `${SAMPLE_ROOT}/strings/C4.mp3` },
+    { midi: 67, path: `${SAMPLE_ROOT}/strings/G4.mp3` },
+    { midi: 72, path: `${SAMPLE_ROOT}/strings/C5.mp3` },
+  ],
+  glockenspiel: [
+    { midi: 60, path: `${SAMPLE_ROOT}/glockenspiel/C4.mp3` },
+    { midi: 64, path: `${SAMPLE_ROOT}/glockenspiel/E4.mp3` },
+    { midi: 67, path: `${SAMPLE_ROOT}/glockenspiel/G4.mp3` },
+    { midi: 72, path: `${SAMPLE_ROOT}/glockenspiel/C5.mp3` },
+    { midi: 76, path: `${SAMPLE_ROOT}/glockenspiel/E5.mp3` },
+  ],
 };
 
 const INSTRUMENT_LEVEL: Record<InstrumentName, number> = {
   piano: 0.78,
   celesta: 0.62,
   flute: 0.54,
+  strings: 0.42,
+  glockenspiel: 0.5,
 };
 
 const midiToFrequency = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
@@ -201,9 +217,10 @@ export class AudioEngine {
     const durationBeats = Math.min(16, song.beatsPerBar * 4);
 
     this.scheduleHarmony(song, startAt, previewStartBeat, previewStartBeat + durationBeats, previewStartBeat);
+    this.scheduleOrchestration(song, startAt, previewStartBeat, previewStartBeat + durationBeats, previewStartBeat);
     notes.forEach((note) => {
       const when = startAt + (note.beat - previewStartBeat) * secondsPerBeat;
-      this.scheduleLead(note, when, secondsPerBeat, song.soundWorld, 0.46, this.backingBus!);
+      this.scheduleLead(note, when, secondsPerBeat, song.soundWorld, 0.4, this.backingBus!);
     });
 
     window.setTimeout(() => {
@@ -229,10 +246,11 @@ export class AudioEngine {
 
     this.scheduleCountIn(song, startAt);
     this.scheduleHarmony(song, startAt, 0, song.totalBeats, 0);
+    this.scheduleOrchestration(song, startAt, 0, song.totalBeats, 0);
     const secondsPerBeat = 60 / song.bpm;
     song.melody.forEach((note) => {
       const when = startAt + note.beat * secondsPerBeat;
-      this.scheduleLead(note, when, secondsPerBeat, song.soundWorld, 0.12, this.backingBus!);
+      this.scheduleLead(note, when, secondsPerBeat, song.soundWorld, 0.16, this.backingBus!);
     });
     return startAt;
   }
@@ -319,16 +337,75 @@ export class AudioEngine {
     }
   }
 
+  private scheduleOrchestration(
+    song: Song,
+    startAt: number,
+    fromBeat: number,
+    toBeat: number,
+    timelineOriginBeat: number,
+  ): void {
+    const beatSeconds = 60 / song.bpm;
+    const beatsPerBar = song.beatsPerBar;
+    const firstBar = Math.floor(fromBeat / beatsPerBar);
+    const lastBar = Math.ceil(toBeat / beatsPerBar);
+    const timeForBeat = (beat: number): number => startAt + (beat - timelineOriginBeat) * beatSeconds;
+
+    for (let bar = firstBar; bar < lastBar; bar += 1) {
+      const barBeat = bar * beatsPerBar;
+      if (barBeat + beatsPerBar <= fromBeat || barBeat >= toBeat) continue;
+      const chord = song.harmony[bar % song.harmony.length];
+      const section = song.sections.find((item) => barBeat >= item.startBeat && barBeat < item.endBeat);
+      const listenSection = section?.mode === "listen";
+      const phraseLift = 0.9 + Math.min(0.16, bar / Math.max(1, lastBar) * 0.16);
+      const stringLevel = (song.soundWorld === "sunrise" ? 0.12 : 0.095) * phraseLift * (listenSection ? 0.86 : 1);
+
+      if (barBeat >= fromBeat) {
+        this.scheduleChord(
+          chord,
+          timeForBeat(barBeat),
+          beatSeconds * beatsPerBar * 0.94,
+          stringLevel,
+          this.backingBus!,
+          "strings",
+        );
+      }
+
+      const sparkleBeats = song.soundWorld === "starlight"
+        ? (beatsPerBar === 4 ? [0.5, 1.5, 2.5, 3.5] : [0.5, 1.5, 2.5])
+        : song.soundWorld === "moonlight"
+          ? [0, beatsPerBar - 0.5]
+          : [0, 2];
+      sparkleBeats.forEach((beatOffset, index) => {
+        const beat = barBeat + beatOffset;
+        if (beat < fromBeat || beat >= toBeat || beatOffset >= beatsPerBar) return;
+        const chordTone = chord[(bar + index * 2) % chord.length] + 24;
+        const level = song.soundWorld === "starlight" ? 0.085 : listenSection ? 0.035 : 0.052;
+        this.scheduleSample(
+          "glockenspiel",
+          chordTone,
+          timeForBeat(beat),
+          beatSeconds * 0.48,
+          level * phraseLift,
+          this.backingBus!,
+          index % 2 === 0 ? -0.18 : 0.18,
+        );
+      });
+    }
+  }
+
   private scheduleChord(
     chord: number[],
     when: number,
     duration: number,
     velocity: number,
     destination: AudioNode,
+    instrument: InstrumentName = "piano",
   ): void {
     chord.forEach((midi, index) => {
-      const pan = chord.length <= 1 ? 0 : -0.12 + (index / (chord.length - 1)) * 0.24;
-      this.scheduleSample("piano", midi, when + index * 0.014, duration, velocity, destination, pan);
+      const spread = instrument === "strings" ? 0.42 : 0.24;
+      const pan = chord.length <= 1 ? 0 : -spread / 2 + (index / (chord.length - 1)) * spread;
+      const stagger = instrument === "strings" ? index * 0.024 : index * 0.014;
+      this.scheduleSample(instrument, midi, when + stagger, duration, velocity, destination, pan);
     });
   }
 
@@ -362,8 +439,8 @@ export class AudioEngine {
     const source = this.track(this.context.createBufferSource());
     const gain = this.context.createGain();
     const panner = this.context.createStereoPanner();
-    const attack = instrument === "flute" ? 0.045 : 0.006;
-    const release = instrument === "flute" ? 0.16 : 0.32;
+    const attack = instrument === "strings" ? 0.095 : instrument === "flute" ? 0.045 : 0.006;
+    const release = instrument === "strings" ? 0.42 : instrument === "flute" ? 0.16 : 0.32;
     const naturalDuration = sample.buffer.duration / playbackRate;
     const stopAfter = Math.max(0.14, Math.min(naturalDuration, duration + release));
     const releaseAt = Math.max(when + attack + 0.04, when + Math.min(duration * 0.88, stopAfter - 0.07));

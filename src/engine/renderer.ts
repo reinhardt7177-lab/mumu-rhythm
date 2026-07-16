@@ -7,7 +7,17 @@ interface Particle {
   vy: number;
   life: number;
   size: number;
+  rotation: number;
+  spin: number;
   color: string;
+  glyph: "spark" | "note";
+}
+
+interface LaneMetric {
+  left: number;
+  right: number;
+  center: number;
+  width: number;
 }
 
 export interface RenderState {
@@ -20,9 +30,9 @@ export interface RenderState {
   focusHint: boolean;
 }
 
-const laneColors = ["#62d8d2", "#ef739a", "#f5c75b", "#7dcf72", "#8aa8ff"];
+const laneColors = ["#58d7d0", "#f177a2", "#f5c95e", "#82d477", "#89aaff"];
+const approachSeconds = 3.7;
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
-const lerp = (from: number, to: number, amount: number): number => from + (to - from) * amount;
 
 export class StageRenderer {
   private context: CanvasRenderingContext2D;
@@ -32,6 +42,9 @@ export class StageRenderer {
   private song: Song;
   private background = new Image();
   private particles: Particle[] = [];
+  private laneMetrics: LaneMetric[] = [];
+  private stageTop = 82;
+  private judgeLine = 520;
   private lastFrame = performance.now();
   private reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -52,6 +65,22 @@ export class StageRenderer {
     this.canvas.width = Math.floor(this.width * this.density);
     this.canvas.height = Math.floor(this.height * this.density);
     this.context.setTransform(this.density, 0, 0, this.density, 0, 0);
+    this.makeFallbackMetrics();
+  }
+
+  setInputLayout(buttons: readonly HTMLElement[], keybar: HTMLElement, hud: HTMLElement): void {
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const keybarRect = keybar.getBoundingClientRect();
+    const hudRect = hud.getBoundingClientRect();
+    this.stageTop = clamp(hudRect.bottom - canvasRect.top + 6, 54, this.height * 0.24);
+    this.judgeLine = clamp(keybarRect.top - canvasRect.top - 9, this.stageTop + 180, this.height - 68);
+    const measured = buttons.map((button) => {
+      const rect = button.getBoundingClientRect();
+      const left = rect.left - canvasRect.left;
+      const right = rect.right - canvasRect.left;
+      return { left, right, center: (left + right) / 2, width: right - left };
+    });
+    if (measured.length === 5 && measured.every((lane) => lane.width > 0)) this.laneMetrics = measured;
   }
 
   setSong(song: Song): void {
@@ -62,20 +91,23 @@ export class StageRenderer {
   }
 
   hit(lane: number, strength: number): void {
-    const x = this.laneX(lane, 1);
-    const y = this.judgeY();
-    const count = this.reducedMotion ? 5 : Math.round(8 + strength * 8);
+    const metric = this.laneMetrics[lane];
+    if (!metric) return;
+    const count = this.reducedMotion ? 6 : Math.round(12 + strength * 12);
     for (let index = 0; index < count; index += 1) {
-      const angle = Math.PI * (1.12 + Math.random() * 0.76);
-      const speed = 55 + Math.random() * 135;
+      const angle = Math.PI * (1.08 + Math.random() * 0.84);
+      const speed = 75 + Math.random() * 190;
       this.particles.push({
-        x,
-        y,
+        x: metric.center + (Math.random() - 0.5) * metric.width * 0.34,
+        y: this.judgeLine - 6,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        life: 0.45 + Math.random() * 0.35,
-        size: 2 + Math.random() * 5,
+        life: 0.55 + Math.random() * 0.4,
+        size: 3 + Math.random() * 6,
+        rotation: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 8,
         color: laneColors[lane],
+        glyph: index % 7 === 0 ? "note" : "spark",
       });
     }
   }
@@ -89,10 +121,21 @@ export class StageRenderer {
     const delta = Math.min(0.033, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
     this.drawBackdrop(state);
-    this.drawStage(state);
+    this.drawBoard(state);
     this.drawNotes(state);
     this.drawParticles(delta);
     if (state.paused) this.drawPause();
+  }
+
+  private makeFallbackMetrics(): void {
+    const gutter = clamp(this.width * 0.018, 10, 24);
+    const gap = clamp(this.width * 0.004, 4, 8);
+    const laneWidth = (this.width - gutter * 2 - gap * 4) / 5;
+    this.laneMetrics = Array.from({ length: 5 }, (_, lane) => {
+      const left = gutter + lane * (laneWidth + gap);
+      return { left, right: left + laneWidth, center: left + laneWidth / 2, width: laneWidth };
+    });
+    this.judgeLine = this.height - clamp(this.height * 0.16, 88, 126);
   }
 
   private drawBackdrop(state: RenderState): void {
@@ -105,212 +148,193 @@ export class StageRenderer {
       const scale = Math.max(this.width / this.background.naturalWidth, this.height / this.background.naturalHeight);
       const drawWidth = this.background.naturalWidth * scale;
       const drawHeight = this.background.naturalHeight * scale;
-      const drift = this.reducedMotion ? 0 : Math.sin(state.songTime * 0.16) * this.width * 0.008;
+      const drift = this.reducedMotion ? 0 : Math.sin(state.songTime * 0.12) * this.width * 0.006;
       ctx.drawImage(this.background, (this.width - drawWidth) / 2 + drift, (this.height - drawHeight) / 2, drawWidth, drawHeight);
     } else {
-      const sky = ctx.createLinearGradient(0, 0, 0, this.height);
-      sky.addColorStop(0, palette.deep);
-      sky.addColorStop(0.65, palette.ink);
-      sky.addColorStop(1, "#091619");
-      ctx.fillStyle = sky;
+      ctx.fillStyle = palette.deep;
       ctx.fillRect(0, 0, this.width, this.height);
-      this.drawFallbackScene(state.songTime);
     }
 
-    const veil = ctx.createLinearGradient(0, 0, 0, this.height);
-    veil.addColorStop(0, "rgba(5, 20, 24, .1)");
-    veil.addColorStop(0.5, "rgba(5, 20, 24, .28)");
-    veil.addColorStop(1, "rgba(4, 13, 16, .78)");
-    ctx.fillStyle = veil;
+    const wash = ctx.createLinearGradient(0, 0, 0, this.height);
+    wash.addColorStop(0, "rgba(4, 15, 20, .18)");
+    wash.addColorStop(0.58, "rgba(4, 15, 20, .34)");
+    wash.addColorStop(1, "rgba(3, 11, 15, .76)");
+    ctx.fillStyle = wash;
     ctx.fillRect(0, 0, this.width, this.height);
-  }
 
-  private drawFallbackScene(time: number): void {
-    const ctx = this.context;
-    const pulse = 0.45 + Math.sin(time * 1.4) * 0.08;
     ctx.save();
-    ctx.globalAlpha = pulse;
-    ctx.fillStyle = this.song.palette.accent;
-    for (let index = 0; index < 28; index += 1) {
-      const x = ((index * 127) % 997) / 997 * this.width;
-      const y = 35 + (((index * 83) % 431) / 431) * this.height * 0.48;
-      const size = index % 5 === 0 ? 2.5 : 1.2;
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = palette.accent;
+    const beat = state.songTime * this.song.bpm / 60;
+    for (let index = 0; index < 24; index += 1) {
+      const x = ((index * 149) % 997) / 997 * this.width;
+      const y = 30 + (((index * 83) % 431) / 431) * Math.max(40, this.judgeLine - 80);
+      const twinkle = 0.35 + Math.sin(beat * 1.6 + index * 1.7) * 0.3;
+      ctx.globalAlpha = Math.max(0.06, twinkle);
+      ctx.fillRect(x, y, index % 5 === 0 ? 3 : 1.5, index % 5 === 0 ? 3 : 1.5);
     }
     ctx.restore();
   }
 
-  private drawStage(state: RenderState): void {
+  private drawBoard(state: RenderState): void {
     const ctx = this.context;
-    const horizon = this.horizonY();
-    const judge = this.judgeY();
-    const center = this.width / 2;
-    const topHalf = Math.min(this.width * 0.17, 210);
-    const bottomHalf = Math.min(this.width * 0.49, 610);
+    const top = this.stageTop;
+    const bottom = this.judgeLine;
+    const left = this.laneMetrics[0]?.left ?? 12;
+    const right = this.laneMetrics[4]?.right ?? this.width - 12;
 
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(center - topHalf, horizon);
-    ctx.lineTo(center + topHalf, horizon);
-    ctx.lineTo(center + bottomHalf, this.height + 4);
-    ctx.lineTo(center - bottomHalf, this.height + 4);
-    ctx.closePath();
-    const road = ctx.createLinearGradient(0, horizon, 0, this.height);
-    road.addColorStop(0, "rgba(8, 30, 35, .48)");
-    road.addColorStop(1, "rgba(3, 12, 14, .94)");
-    ctx.fillStyle = road;
-    ctx.fill();
+    ctx.fillStyle = "rgba(3, 16, 21, .7)";
+    ctx.fillRect(left, top, right - left, bottom - top);
 
-    for (let edge = 0; edge <= 5; edge += 1) {
-      const ratio = edge / 5;
-      const topX = lerp(center - topHalf, center + topHalf, ratio);
-      const bottomX = lerp(center - bottomHalf, center + bottomHalf, ratio);
-      ctx.strokeStyle = edge === 0 || edge === 5 ? "rgba(255,255,255,.42)" : "rgba(255,255,255,.19)";
-      ctx.lineWidth = edge === 0 || edge === 5 ? 2 : 1;
-      ctx.beginPath();
-      ctx.moveTo(topX, horizon);
-      ctx.lineTo(bottomX, this.height);
-      ctx.stroke();
-    }
+    this.laneMetrics.forEach((lane, index) => {
+      const pulse = state.lanePulse[index] ?? 0;
+      ctx.fillStyle = this.alpha(laneColors[index], 0.035 + pulse * 0.17);
+      ctx.fillRect(lane.left, top, lane.width, bottom - top);
+      ctx.strokeStyle = this.alpha(laneColors[index], 0.22 + pulse * 0.4);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(lane.left + 0.5, top + 0.5, lane.width - 1, bottom - top - 1);
+
+      const centerGlow = ctx.createLinearGradient(lane.left, 0, lane.right, 0);
+      centerGlow.addColorStop(0, "rgba(255,255,255,0)");
+      centerGlow.addColorStop(0.5, this.alpha(laneColors[index], 0.04 + pulse * 0.11));
+      centerGlow.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = centerGlow;
+      ctx.fillRect(lane.left, top, lane.width, bottom - top);
+    });
 
     const secondsPerBeat = 60 / this.song.bpm;
-    const beat = state.songTime / secondsPerBeat;
-    for (let line = 0; line < 10; line += 1) {
-      const phase = ((line / 10 + beat / 10) % 1 + 1) % 1;
-      const shaped = phase ** 1.8;
-      const y = lerp(horizon, this.height, shaped);
-      const halfWidth = lerp(topHalf, bottomHalf, shaped);
-      ctx.strokeStyle = line % this.song.beatsPerBar === 0 ? "rgba(255,255,255,.28)" : "rgba(255,255,255,.09)";
-      ctx.lineWidth = line % this.song.beatsPerBar === 0 ? 1.5 : 1;
+    const currentBeat = state.songTime / secondsPerBeat;
+    const visibleBeats = approachSeconds / secondsPerBeat;
+    const firstBeat = Math.floor(currentBeat) - 1;
+    const lastBeat = Math.ceil(currentBeat + visibleBeats) + 1;
+    for (let beat = firstBeat; beat <= lastBeat; beat += 1) {
+      const until = beat * secondsPerBeat - state.songTime;
+      const y = bottom - (until / approachSeconds) * (bottom - top);
+      if (y < top || y > bottom) continue;
+      const isBar = ((beat % this.song.beatsPerBar) + this.song.beatsPerBar) % this.song.beatsPerBar === 0;
+      ctx.strokeStyle = isBar ? "rgba(255,255,255,.36)" : "rgba(255,255,255,.105)";
+      ctx.lineWidth = isBar ? 1.5 : 1;
       ctx.beginPath();
-      ctx.moveTo(center - halfWidth, y);
-      ctx.lineTo(center + halfWidth, y);
+      ctx.moveTo(left, Math.round(y) + 0.5);
+      ctx.lineTo(right, Math.round(y) + 0.5);
       ctx.stroke();
+      if (isBar && y > top + 18 && y < bottom - 20) {
+        ctx.fillStyle = "rgba(255,255,255,.46)";
+        ctx.font = "700 10px system-ui, sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(String(Math.max(1, Math.floor(beat / this.song.beatsPerBar) + 1)).padStart(2, "0"), left + 8, y - 5);
+      }
     }
 
-    const judgeGradient = ctx.createLinearGradient(center - bottomHalf, 0, center + bottomHalf, 0);
-    laneColors.forEach((color, index) => judgeGradient.addColorStop(index / 4, color));
-    ctx.shadowBlur = 18;
+    this.laneMetrics.forEach((lane, index) => {
+      const targetWidth = Math.min(lane.width - 16, clamp(lane.width * 0.68, 50, 184));
+      const targetHeight = clamp(this.height * 0.032, 17, 27);
+      const pulse = state.lanePulse[index] ?? 0;
+      ctx.save();
+      ctx.shadowBlur = 12 + pulse * 20;
+      ctx.shadowColor = laneColors[index];
+      ctx.fillStyle = "rgba(4, 16, 20, .9)";
+      ctx.strokeStyle = this.alpha(laneColors[index], 0.72 + pulse * 0.26);
+      ctx.lineWidth = 2 + pulse * 2;
+      this.roundRect(ctx, lane.center - targetWidth / 2, bottom - targetHeight / 2, targetWidth, targetHeight, 6);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    const line = ctx.createLinearGradient(left, 0, right, 0);
+    laneColors.forEach((color, index) => line.addColorStop(index / 4, color));
+    ctx.shadowBlur = 15;
     ctx.shadowColor = this.song.palette.accent;
-    ctx.strokeStyle = judgeGradient;
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(center - bottomHalf * 0.82, judge);
-    ctx.lineTo(center + bottomHalf * 0.82, judge);
+    ctx.moveTo(left, bottom + 0.5);
+    ctx.lineTo(right, bottom + 0.5);
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    state.lanePulse.forEach((amount, lane) => {
-      if (amount <= 0.01) return;
-      const x = this.laneX(lane, 1);
-      const laneWidth = (bottomHalf * 2) / 5;
-      ctx.fillStyle = this.alpha(laneColors[lane], amount * 0.2);
-      ctx.fillRect(x - laneWidth * 0.42, judge - 18, laneWidth * 0.84, this.height - judge + 18);
-    });
-
     if (state.section.mode === "listen") {
-      const glow = ctx.createRadialGradient(center, horizon + 30, 0, center, horizon + 30, this.width * 0.38);
-      glow.addColorStop(0, this.alpha(this.song.palette.accent, state.focusHint ? 0.24 : 0.13));
-      glow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, this.width, this.height * 0.7);
+      ctx.fillStyle = this.alpha(this.song.palette.accent, state.focusHint ? 0.075 : 0.04);
+      ctx.fillRect(left, top, right - left, bottom - top);
     }
     ctx.restore();
   }
 
   private drawNotes(state: RenderState): void {
-    const ctx = this.context;
-    const approachSeconds = 3.35;
     const secondsPerBeat = 60 / this.song.bpm;
-
+    const travel = this.judgeLine - this.stageTop;
     state.notes.forEach((note) => {
       if (note.missed || (note.hit && note.completed)) return;
+      const metric = this.laneMetrics[note.lane];
+      if (!metric) return;
       const noteTime = note.beat * secondsPerBeat;
       const until = noteTime - state.songTime;
-      const progress = 1 - until / approachSeconds;
-      if (progress < -0.04 || progress > 1.14) return;
-      const shaped = clamp(progress, 0, 1) ** 1.55;
-      const x = this.laneX(note.lane, shaped);
-      const y = lerp(this.horizonY(), this.judgeY(), shaped);
-      const laneWidth = this.laneWidth(shaped);
-      const barWidth = laneWidth * 0.8;
-      const durationWeight = clamp(note.durationBeats, 0.5, 1.5);
-      const barHeight = clamp(laneWidth * 0.14 * (0.78 + durationWeight * 0.16), 5, 22);
+      if (until > approachSeconds + 0.08 || until < -0.3) return;
+
+      const headY = note.holding
+        ? this.judgeLine
+        : this.judgeLine - (until / approachSeconds) * travel;
+      const width = Math.min(metric.width - 14, clamp(metric.width * 0.66, 52, 178));
+      const height = clamp(metric.width * 0.09, 15, 24);
+      const opacity = clamp((approachSeconds - until) / 0.35, 0.18, 1);
       const isHold = note.durationBeats >= 1.75;
 
       if (isHold) {
         const endTime = noteTime + note.durationBeats * secondsPerBeat;
-        const endProgress = 1 - (endTime - state.songTime) / approachSeconds;
-        const endShaped = clamp(endProgress, 0, 1) ** 1.55;
-        const tailX = this.laneX(note.lane, endShaped);
-        const tailY = lerp(this.horizonY(), this.judgeY(), endShaped);
-        const headBodyWidth = laneWidth * 0.58;
-        const tailBodyWidth = this.laneWidth(endShaped) * 0.58;
-        const ribbon = ctx.createLinearGradient(tailX, tailY, x, y);
-        ribbon.addColorStop(0, this.alpha(laneColors[note.lane], 0.24));
-        ribbon.addColorStop(1, this.alpha(laneColors[note.lane], note.holding ? 0.76 : 0.56));
-
-        ctx.save();
-        ctx.shadowBlur = note.holding ? 18 : 10;
-        ctx.shadowColor = laneColors[note.lane];
-        ctx.fillStyle = ribbon;
-        ctx.strokeStyle = this.alpha(laneColors[note.lane], 0.78);
-        ctx.lineWidth = clamp(headBodyWidth * 0.035, 1, 3);
-        ctx.beginPath();
-        ctx.moveTo(tailX - tailBodyWidth / 2, tailY);
-        ctx.lineTo(tailX + tailBodyWidth / 2, tailY);
-        ctx.lineTo(x + headBodyWidth / 2, y);
-        ctx.lineTo(x - headBodyWidth / 2, y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-
-        this.drawNoteBar(tailX, tailY, tailBodyWidth * 1.08, Math.max(4, barHeight * 0.56), note.lane, false, 0.68);
+        const endUntil = endTime - state.songTime;
+        const endY = clamp(this.judgeLine - (endUntil / approachSeconds) * travel, this.stageTop, this.judgeLine);
+        this.drawHoldRibbon(metric.center, endY, headY, width * 0.55, note.lane, note.holding, opacity);
+        this.drawNoteBar(metric.center, endY, width * 0.86, Math.max(10, height * 0.68), note.lane, false, opacity * 0.72);
       }
 
-      this.drawNoteBar(x, y, barWidth, barHeight, note.lane, Boolean(note.accent), note.holding ? 1 : 0.88);
+      this.drawNoteBar(metric.center, headY, width, height, note.lane, Boolean(note.accent), opacity);
     });
   }
 
-  private drawNoteBar(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    lane: number,
-    accent: boolean,
-    opacity: number,
-  ): void {
+  private drawHoldRibbon(x: number, top: number, bottom: number, width: number, lane: number, holding: boolean, opacity: number): void {
     const ctx = this.context;
-    const color = laneColors[lane];
-    const radius = Math.min(5, height * 0.28);
-    const face = ctx.createLinearGradient(0, -height / 2, 0, height / 2);
-    face.addColorStop(0, this.alpha("#ffffff", opacity * 0.94));
-    face.addColorStop(0.28, this.alpha(color, opacity));
-    face.addColorStop(1, this.alpha(color, opacity * 0.72));
-
+    if (bottom - top < 3) return;
+    const ribbon = ctx.createLinearGradient(0, top, 0, bottom);
+    ribbon.addColorStop(0, this.alpha(laneColors[lane], 0.16 * opacity));
+    ribbon.addColorStop(1, this.alpha(laneColors[lane], (holding ? 0.7 : 0.48) * opacity));
     ctx.save();
-    ctx.translate(x, y);
-    ctx.shadowBlur = 13;
-    ctx.shadowColor = color;
-    ctx.fillStyle = face;
-    ctx.strokeStyle = "rgba(255,255,255,.92)";
-    ctx.lineWidth = clamp(height * 0.1, 1, 2.5);
-    this.roundRect(ctx, -width / 2, -height / 2, width, height, radius);
+    ctx.shadowBlur = holding ? 18 : 8;
+    ctx.shadowColor = laneColors[lane];
+    ctx.fillStyle = ribbon;
+    ctx.strokeStyle = this.alpha(laneColors[lane], 0.72 * opacity);
+    ctx.lineWidth = 1.5;
+    this.roundRect(ctx, x - width / 2, top, width, bottom - top, Math.min(7, width * 0.08));
     ctx.fill();
     ctx.stroke();
+    ctx.restore();
+  }
 
-    ctx.fillStyle = "rgba(255,255,255,.5)";
-    this.roundRect(ctx, -width * 0.39, -height * 0.24, width * 0.78, Math.max(1, height * 0.16), radius * 0.45);
+  private drawNoteBar(x: number, y: number, width: number, height: number, lane: number, accent: boolean, opacity: number): void {
+    const ctx = this.context;
+    const color = laneColors[lane];
+    const radius = Math.min(7, height * 0.34);
+    const face = ctx.createLinearGradient(0, y - height / 2, 0, y + height / 2);
+    face.addColorStop(0, this.alpha("#ffffff", opacity * 0.96));
+    face.addColorStop(0.24, this.alpha(color, opacity));
+    face.addColorStop(1, this.alpha(color, opacity * 0.75));
+    ctx.save();
+    ctx.shadowBlur = accent ? 20 : 13;
+    ctx.shadowColor = color;
+    ctx.fillStyle = face;
+    ctx.strokeStyle = this.alpha("#ffffff", opacity * 0.92);
+    ctx.lineWidth = accent ? 2.5 : 1.7;
+    this.roundRect(ctx, x - width / 2, y - height / 2, width, height, radius);
     ctx.fill();
-
+    ctx.stroke();
+    ctx.fillStyle = this.alpha("#ffffff", opacity * 0.48);
+    this.roundRect(ctx, x - width * 0.39, y - height * 0.27, width * 0.78, Math.max(2, height * 0.15), radius * 0.5);
+    ctx.fill();
     if (accent) {
-      const accentWidth = Math.max(3, width * 0.08);
       ctx.fillStyle = this.song.palette.accent;
-      this.roundRect(ctx, -accentWidth / 2, -height * 0.36, accentWidth, height * 0.72, 1.5);
+      this.roundRect(ctx, x - 3, y - height * 0.34, 6, height * 0.68, 2);
       ctx.fill();
     }
     ctx.restore();
@@ -323,20 +347,41 @@ export class StageRenderer {
       if (particle.life <= 0) return false;
       particle.x += particle.vx * delta;
       particle.y += particle.vy * delta;
-      particle.vy += 210 * delta;
-      ctx.globalAlpha = clamp(particle.life * 2, 0, 1);
+      particle.vy += 180 * delta;
+      particle.rotation += particle.spin * delta;
+      const alpha = clamp(particle.life * 1.8, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(particle.x, particle.y);
+      ctx.rotate(particle.rotation);
       ctx.fillStyle = particle.color;
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size * clamp(particle.life * 1.8, 0.2, 1), 0, Math.PI * 2);
-      ctx.fill();
+      if (particle.glyph === "note") {
+        ctx.font = `800 ${Math.round(particle.size * 3)}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("♪", 0, 0);
+      } else {
+        const size = particle.size * clamp(particle.life * 1.7, 0.3, 1);
+        ctx.beginPath();
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size * 0.3, -size * 0.3);
+        ctx.lineTo(size, 0);
+        ctx.lineTo(size * 0.3, size * 0.3);
+        ctx.lineTo(0, size);
+        ctx.lineTo(-size * 0.3, size * 0.3);
+        ctx.lineTo(-size, 0);
+        ctx.lineTo(-size * 0.3, -size * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
       return true;
     });
-    ctx.globalAlpha = 1;
   }
 
   private drawPause(): void {
     const ctx = this.context;
-    ctx.fillStyle = "rgba(4, 14, 17, .62)";
+    ctx.fillStyle = "rgba(4, 14, 17, .72)";
     ctx.fillRect(0, 0, this.width, this.height);
     ctx.fillStyle = "#ffffff";
     ctx.font = `800 ${clamp(this.width * 0.032, 24, 46)}px system-ui, sans-serif`;
@@ -348,29 +393,6 @@ export class StageRenderer {
     ctx.fillText("계속하려면 ESC를 눌러요", this.width / 2, this.height / 2 + 30);
   }
 
-  private laneX(lane: number, progress: number): number {
-    const center = this.width / 2;
-    const topHalf = Math.min(this.width * 0.17, 210);
-    const bottomHalf = Math.min(this.width * 0.49, 610);
-    const halfWidth = lerp(topHalf, bottomHalf, progress);
-    const laneRatio = (lane + 0.5) / 5;
-    return lerp(center - halfWidth, center + halfWidth, laneRatio);
-  }
-
-  private laneWidth(progress: number): number {
-    const topHalf = Math.min(this.width * 0.17, 210);
-    const bottomHalf = Math.min(this.width * 0.49, 610);
-    return (lerp(topHalf, bottomHalf, progress) * 2) / 5;
-  }
-
-  private horizonY(): number {
-    return this.height * 0.2;
-  }
-
-  private judgeY(): number {
-    return this.height * 0.78;
-  }
-
   private alpha(hex: string, alpha: number): string {
     const value = hex.replace("#", "");
     const red = Number.parseInt(value.slice(0, 2), 16);
@@ -379,14 +401,7 @@ export class StageRenderer {
     return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
   }
 
-  private roundRect(
-    context: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    radius: number,
-  ): void {
+  private roundRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
     const r = Math.min(radius, width / 2, height / 2);
     context.beginPath();
     context.moveTo(x + r, y);

@@ -192,6 +192,8 @@ const gameProgress = select<HTMLElement>("#gameProgress");
 const sectionCallout = select<HTMLElement>("#sectionCallout");
 const judgeText = select<HTMLElement>("#judgeText");
 const pauseButton = select<HTMLButtonElement>("#pauseButton");
+const keybar = select<HTMLElement>("#keybar");
+const gameHud = select<HTMLElement>(".game-hud");
 const keyButtons = [...document.querySelectorAll<HTMLButtonElement>("#keybar button")];
 
 const screenElements: Record<ScreenName, HTMLElement> = {
@@ -219,6 +221,11 @@ const game = new RhythmGame(audio, {
   onSection: handleSection,
   onComplete: handleComplete,
 });
+
+function syncStageLayout(): void {
+  renderer.resize();
+  renderer.setInputLayout(keyButtons, keybar, gameHud);
+}
 
 function formatTime(seconds: number): string {
   const rounded = Math.round(seconds);
@@ -331,7 +338,8 @@ async function startSelectedSong(): Promise<void> {
   gameProgress.style.width = "0%";
   judgeText.textContent = "";
   showScreen("game");
-  renderer.resize();
+  syncStageLayout();
+  requestAnimationFrame(syncStageLayout);
   try {
     await game.start(selectedSong);
   } catch {
@@ -558,7 +566,10 @@ document.querySelectorAll<HTMLAnchorElement>(".brand").forEach((brand) => {
   });
 });
 
-window.addEventListener("resize", () => renderer.resize());
+window.addEventListener("resize", syncStageLayout);
+new ResizeObserver(() => {
+  if (screen === "game") syncStageLayout();
+}).observe(keybar);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && screen === "game" && lastSnapshot && !lastSnapshot.paused) void togglePause();
 });

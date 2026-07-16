@@ -7,6 +7,8 @@ This project includes a small, pitch-shifted subset of pre-rendered FluidR3 GM s
 - Acoustic Grand Piano
 - Celesta
 - Flute
+- String Ensemble 1
+- Glockenspiel
 
 Source: [gleitz/midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts)
 
