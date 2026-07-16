@@ -2,92 +2,16 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MUMU Rhythm Arcade</title>
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
-      media="print"
-      onload="this.media='all'"
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#142b31" />
+    <meta
+      name="description"
+      content="박과 가락, 악기 음색을 들으며 연주하는 초등학생용 리듬 감상 활동"
     />
-    <link rel="stylesheet" href="./styles.css?v=21" />
+    <title>MUMU 음악 탐험대</title>
   </head>
   <body>
-    <main id="game">
-      <canvas id="stage" aria-label="rhythm game stage"></canvas>
-
-      <section class="hud hud-left" aria-label="score panel">
-        <div class="panel score-panel">
-          <span class="label">SCORE</span>
-          <strong id="score">0000000</strong>
-          <span class="sub" id="best">BEST 0000000</span>
-        </div>
-        <div class="panel combo-panel">
-          <span class="label hot">COMBO</span>
-          <strong id="combo">0</strong>
-          <div class="meter"><span id="comboMeter"></span></div>
-        </div>
-        <div class="panel hp-panel">
-          <span class="label">SYNC</span>
-          <strong id="sync">100%</strong>
-          <div class="ticks" aria-hidden="true"></div>
-        </div>
-      </section>
-
-      <section class="hud hud-right" aria-label="track panel">
-        <div class="panel compact track-name">
-          <span class="label">TRACK</span>
-          <strong id="hudTrackName">반짝반짝 작은 별</strong>
-        </div>
-        <div class="panel progress-panel">
-          <span class="label">TRACK PROGRESS</span>
-          <div class="progress"><span id="progress"></span></div>
-          <strong id="time">0:00 / 1:16</strong>
-        </div>
-        <div class="panel compact">
-          <span class="label">BPM</span>
-          <strong id="hudBpm">96</strong>
-        </div>
-        <div class="panel compact">
-          <span class="label">DIFFICULTY</span>
-          <strong id="hudDifficulty">쉬움</strong>
-        </div>
-      </section>
-
-      <section class="keybar" aria-label="input lanes">
-        <button data-lane="0"><span>A</span><em id="judge0">READY</em></button>
-        <button data-lane="1"><span>S</span><em id="judge1">READY</em></button>
-        <button data-lane="2"><span>D</span><em id="judge2">READY</em></button>
-        <button data-lane="3"><span>J</span><em id="judge3">READY</em></button>
-        <button data-lane="4"><span>K</span><em id="judge4">READY</em></button>
-      </section>
-
-      <section id="startOverlay" class="start-overlay">
-        <header class="song-select-header">
-          <div>
-            <h1>MUMU 동요 리듬 피아노</h1>
-            <p id="audioStatus">동요를 고르고 A S D J K로 피아노 멜로디를 연주해요</p>
-          </div>
-          <button id="startButton" type="button">선택한 동요 시작</button>
-        </header>
-
-        <section class="song-carousel-wrap" aria-label="동요 선택">
-          <button class="carousel-nav prev" type="button" aria-label="이전 동요">‹</button>
-          <div id="songCarousel" class="song-carousel"></div>
-          <button class="carousel-nav next" type="button" aria-label="다음 동요">›</button>
-        </section>
-
-        <section class="selected-song-panel">
-          <span class="label">오늘의 연습</span>
-          <strong id="selectedSongTitle">반짝반짝 작은 별</strong>
-          <p id="selectedSongMeta">쉬움 // 계이름 반복과 4박 감각</p>
-          <button id="quickStartButton" class="quick-start-button" type="button">이 동요로 시작</button>
-        </section>
-      </section>
-
-      <div id="toast" class="toast">PERFECT</div>
-    </main>
-
-    <script type="module" src="./game.js?v=21"></script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

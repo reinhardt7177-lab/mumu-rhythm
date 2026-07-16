@@ -1,22 +1,8 @@
-# 브라우저 디버그 캐시 (대용량 잡동사니)
-.edge-debug*/
-
-# Claude 로컬 개인 설정
-.claude/settings.local.json
-
-# Vercel
-.vercel/
-
-# 의존성 / 빌드 산출물
 node_modules/
-
-# OS / 에디터
-.DS_Store
-Thumbs.db
+dist/
+.vite/
+.vercel/
+playwright-report/
+test-results/
 *.log
-
-# 힉스필드 생성 원본 / 미리보기 산출물 (대용량, tools/process_assets.py로 재생성 가능)
-assets/pixel/*-raw.*
-assets/pixel/_*
-
-.vercel
+.DS_Store

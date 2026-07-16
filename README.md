@@ -1,52 +1,40 @@
-# MUMU Rhythm Prototype
+# MUMU 음악 탐험대
 
-Canvas 2D와 Web Audio API로 만든 16비트 픽셀 네온 아케이드 5레인 동요 피아노 리듬게임입니다.
+박, 가락의 높낮이, 프레이즈와 음색을 들으며 연주하는 초등학생용 감상 활동 리듬게임입니다.
 
 ## 실행
 
 ```powershell
-python -m http.server 8080 --bind 127.0.0.1
+npm install
+npm run dev
 ```
 
-브라우저에서 열기:
+기본 주소는 `http://127.0.0.1:5173`입니다.
 
-```text
-http://127.0.0.1:8080/index.html
+## 빌드
+
+```powershell
+npm run build
 ```
 
 ## 조작
 
-- 시작: `선택한 동요 시작` 버튼 또는 `Space`
-- 키보드 입력: `A`, `S`, `D`, `J`, `K`
-- 태블릿/모바일 입력: 하단 5개 패드 터치
+- 키보드: `A`, `S`, `D`, `J`, `K`
+- 태블릿: 하단 5개 패드 터치
+- 일시정지: `Escape`
 
-## 현재 구현
+## 설계 원칙
 
-- 오디오 시간 기준 노트 이동 및 판정
-- Perfect / Great / Good / Bad / Miss
-- 점수, 콤보, 싱크 게이지
-- 10곡 동요 선택 캐러셀
-- 곡별 생성 이미지 카드, 제목, 난이도, 교육 포인트
-- 선택한 동요 멜로디 기반 30초 이상 피아노 리듬액션
-- 5레인 키보드/터치 입력
-- Canvas 2D 유사 원근 5레인 하이웨이, 픽셀 노트/리셉터, 곡 클럭 기반 비트 펄스
-- 곡별 픽셀 네온 스테이지 배경(시티·아레나·학교·선셋·은하수), 무대 아이돌 마스코트(포즈 전환), 풀링 파티클·퍼펙트 링
-- Web Audio API 기반 피아노 키음형 노트 사운드
-- 데스크톱/모바일 반응형 HUD
+- 낮은음에서 높은음이 왼쪽에서 오른쪽으로 이동합니다.
+- 실제 가락 데이터로 채보하며 무작위 레인 이동을 사용하지 않습니다.
+- 실수해도 곡은 끝까지 이어집니다.
+- 리듬 점수와 감상 이해를 분리해서 보여 줍니다.
 
-## 에셋
+## 악기 음원
 
-- `assets/pixel/bg-*.png`: 픽셀 네온 스테이지 배경 5종(city·arena·school·sunset·galaxy)
-- `assets/pixel/mascot-*.png`, `idol-*.png`: 아이돌 마스코트 포즈 + 추가 퍼포머
-- `assets/pixel/note-gem.png`, `star-note.png`, `receptor.png`, `hit-burst.png`, `ring.png`: 노트·이펙트(코드에서 5색 틴팅)
-- `assets/pixel/hero.png`, `fever-aura.png`, `bg-crowd.png`: 타이틀/연출용
-- `assets/songs/*.png`: 동요 선택 카드 이미지
-- 픽셀 에셋은 힉스필드(nano_banana_pro)로 생성 후 `tools/process_assets.py`로 크로마키·크롭·리사이즈. `*-raw.*` 원본은 git 제외
+- 반짝반짝 작은 별: 첼레스타 멜로디 + 피아노 반주
+- 환희의 노래: 그랜드 피아노 멜로디 + 피아노 반주
+- 달빛 숲의 왈츠: 플루트 멜로디 + 피아노 반주
+- 필요한 음역의 실제 악기 샘플만 포함해 전체 음원 용량을 약 500KB로 유지합니다.
 
-## QA 보기
-
-비주얼 캡처용 자동 데모:
-
-```text
-http://127.0.0.1:8080/index.html?demo=1&demoTime=1.35
-```
+서드파티 음원 출처와 라이선스는 `THIRD_PARTY_ASSETS.md`에 정리되어 있습니다.
