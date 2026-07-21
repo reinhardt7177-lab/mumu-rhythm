@@ -25,11 +25,11 @@ app.innerHTML = `
         <p>한 곡을 골라 가락 속에 숨은 음악 표지를 찾아보세요.</p>
       </div>
 
-      <div id="songGrid" class="song-grid" aria-label="곡 선택"></div>
+      <div id="songGrid" class="song-library" aria-label="곡 선택"></div>
 
       <footer class="library-footer">
-        <span>3곡</span>
-        <span>약 3분</span>
+        <span>7곡</span>
+        <span>약 7분</span>
         <span>키보드 · 터치</span>
       </footer>
     </section>
@@ -250,22 +250,40 @@ function showScreen(next: ScreenName): void {
 }
 
 function renderLibrary(): void {
-  songGrid.innerHTML = songs.map((song, index) => {
-    const duration = formatTime(songDurationSeconds(song));
+  const collections = [
+    { id: "foundation", eyebrow: "감상 클래식", title: "가락과 박을 천천히 발견해요" },
+    { id: "speed", eyebrow: "스피드 클래식", title: "빠른 오케스트라 속 음악 표지를 잡아요" },
+  ] as const;
+  songGrid.innerHTML = collections.map((collection) => {
+    const collectionSongs = songs.filter((song) => song.collection === collection.id);
+    const cards = collectionSongs.map((song) => {
+      const index = songs.indexOf(song);
+      const duration = formatTime(songDurationSeconds(song));
+      return `
+        <button class="song-card" type="button" data-song-index="${index}" style="--song-accent:${song.palette.accent}; --song-deep:${song.palette.deep}">
+          <span class="song-art-wrap">
+            <img src="${song.artwork}" alt="" loading="${index === 0 ? "eager" : "lazy"}" />
+            <span class="song-number">${String(index + 1).padStart(2, "0")}</span>
+            <span class="play-mark" aria-hidden="true">▶</span>
+          </span>
+          <span class="song-card-copy">
+            <small>${song.mission.eyebrow}</small>
+            <strong>${song.title}</strong>
+            <span>${song.subtitle}</span>
+            <em><span>${song.difficulty}</span><span>${song.beatsPerBar}박</span><span>${duration}</span></em>
+          </span>
+        </button>
+      `;
+    }).join("");
     return `
-      <button class="song-card" type="button" data-song-index="${index}" style="--song-accent:${song.palette.accent}; --song-deep:${song.palette.deep}">
-        <span class="song-art-wrap">
-          <img src="${song.artwork}" alt="" loading="${index === 0 ? "eager" : "lazy"}" />
-          <span class="song-number">0${index + 1}</span>
-          <span class="play-mark" aria-hidden="true">▶</span>
-        </span>
-        <span class="song-card-copy">
-          <small>${song.mission.eyebrow}</small>
-          <strong>${song.title}</strong>
-          <span>${song.subtitle}</span>
-          <em><span>${song.difficulty}</span><span>${song.beatsPerBar}박</span><span>${duration}</span></em>
-        </span>
-      </button>
+      <section class="song-collection" data-collection="${collection.id}" aria-labelledby="collection-${collection.id}">
+        <header class="song-collection-heading">
+          <span>${collection.eyebrow}</span>
+          <h2 id="collection-${collection.id}">${collection.title}</h2>
+          <em>${collectionSongs.length}곡</em>
+        </header>
+        <div class="song-grid">${cards}</div>
+      </section>
     `;
   }).join("");
 

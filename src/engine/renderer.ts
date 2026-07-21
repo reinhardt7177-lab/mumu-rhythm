@@ -31,7 +31,6 @@ export interface RenderState {
 }
 
 const laneColors = ["#58d7d0", "#f177a2", "#f5c95e", "#82d477", "#89aaff"];
-const approachSeconds = 3.7;
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 export class StageRenderer {
@@ -204,6 +203,7 @@ export class StageRenderer {
     });
 
     const secondsPerBeat = 60 / this.song.bpm;
+    const approachSeconds = this.song.approachSeconds ?? 3.7;
     const currentBeat = state.songTime / secondsPerBeat;
     const visibleBeats = approachSeconds / secondsPerBeat;
     const firstBeat = Math.floor(currentBeat) - 1;
@@ -265,6 +265,7 @@ export class StageRenderer {
 
   private drawNotes(state: RenderState): void {
     const secondsPerBeat = 60 / this.song.bpm;
+    const approachSeconds = this.song.approachSeconds ?? 3.7;
     const travel = this.judgeLine - this.stageTop;
     state.notes.forEach((note) => {
       if (note.missed || (note.hit && note.completed)) return;

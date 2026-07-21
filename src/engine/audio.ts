@@ -1,7 +1,15 @@
 import type { MelodyNote, Song, SoundWorld } from "../types";
 
 type AudioNodeWithStop = AudioBufferSourceNode | OscillatorNode;
-type InstrumentName = "piano" | "celesta" | "flute" | "strings" | "glockenspiel";
+type InstrumentName =
+  | "piano"
+  | "celesta"
+  | "flute"
+  | "strings"
+  | "glockenspiel"
+  | "violin"
+  | "trumpet"
+  | "timpani";
 
 interface SampleDefinition {
   midi: number;
@@ -56,6 +64,27 @@ const SAMPLE_MANIFEST: Record<InstrumentName, SampleDefinition[]> = {
     { midi: 72, path: `${SAMPLE_ROOT}/glockenspiel/C5.mp3` },
     { midi: 76, path: `${SAMPLE_ROOT}/glockenspiel/E5.mp3` },
   ],
+  violin: [
+    { midi: 48, path: `${SAMPLE_ROOT}/violin/C3.mp3` },
+    { midi: 55, path: `${SAMPLE_ROOT}/violin/G3.mp3` },
+    { midi: 60, path: `${SAMPLE_ROOT}/violin/C4.mp3` },
+    { midi: 67, path: `${SAMPLE_ROOT}/violin/G4.mp3` },
+    { midi: 72, path: `${SAMPLE_ROOT}/violin/C5.mp3` },
+  ],
+  trumpet: [
+    { midi: 48, path: `${SAMPLE_ROOT}/trumpet/C3.mp3` },
+    { midi: 55, path: `${SAMPLE_ROOT}/trumpet/G3.mp3` },
+    { midi: 60, path: `${SAMPLE_ROOT}/trumpet/C4.mp3` },
+    { midi: 67, path: `${SAMPLE_ROOT}/trumpet/G4.mp3` },
+    { midi: 72, path: `${SAMPLE_ROOT}/trumpet/C5.mp3` },
+  ],
+  timpani: [
+    { midi: 36, path: `${SAMPLE_ROOT}/timpani/C2.mp3` },
+    { midi: 43, path: `${SAMPLE_ROOT}/timpani/G2.mp3` },
+    { midi: 48, path: `${SAMPLE_ROOT}/timpani/C3.mp3` },
+    { midi: 55, path: `${SAMPLE_ROOT}/timpani/G3.mp3` },
+    { midi: 60, path: `${SAMPLE_ROOT}/timpani/C4.mp3` },
+  ],
 };
 
 const INSTRUMENT_LEVEL: Record<InstrumentName, number> = {
@@ -64,6 +93,9 @@ const INSTRUMENT_LEVEL: Record<InstrumentName, number> = {
   flute: 0.54,
   strings: 0.42,
   glockenspiel: 0.5,
+  violin: 0.48,
+  trumpet: 0.42,
+  timpani: 0.46,
 };
 
 const midiToFrequency = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
@@ -71,6 +103,8 @@ const midiToFrequency = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
 function leadInstrument(world: SoundWorld): InstrumentName {
   if (world === "starlight") return "celesta";
   if (world === "moonlight") return "flute";
+  if (world === "cancan" || world === "hungarian") return "violin";
+  if (world === "gallop") return "trumpet";
   return "piano";
 }
 
@@ -84,6 +118,8 @@ export class AudioEngine {
   private reverbReturn: GainNode | null = null;
   private sampleBanks = new Map<InstrumentName, LoadedSample[]>();
   private sampleLoadPromise: Promise<void> | null = null;
+  private backingBuffers = new Map<string, AudioBuffer>();
+  private backingLoadPromises = new Map<string, Promise<AudioBuffer>>();
   private scheduledNodes = new Set<AudioNodeWithStop>();
   private activePreview = false;
   private songStartTime = 0;
@@ -164,6 +200,27 @@ export class AudioEngine {
     return this.sampleLoadPromise;
   }
 
+  private async loadBacking(song: Song): Promise<AudioBuffer | null> {
+    if (!song.backingTrack) return null;
+    const cached = this.backingBuffers.get(song.backingTrack);
+    if (cached) return cached;
+    const pending = this.backingLoadPromises.get(song.backingTrack);
+    if (pending) return pending;
+    const context = this.context!;
+    const promise = fetch(song.backingTrack).then(async (response) => {
+      if (!response.ok) throw new Error(`반주를 불러오지 못했습니다: ${song.backingTrack}`);
+      const buffer = await context.decodeAudioData(await response.arrayBuffer());
+      this.backingBuffers.set(song.backingTrack!, buffer);
+      return buffer;
+    });
+    this.backingLoadPromises.set(song.backingTrack, promise);
+    try {
+      return await promise;
+    } finally {
+      this.backingLoadPromises.delete(song.backingTrack);
+    }
+  }
+
   private makeImpulse(seconds: number, decay: number): AudioBuffer {
     const context = this.context!;
     const length = Math.floor(context.sampleRate * seconds);
@@ -208,6 +265,7 @@ export class AudioEngine {
     const audible = await this.ensureReady();
     if (!audible) throw new Error("오디오 재생이 아직 허용되지 않았습니다.");
     await this.loadSamples();
+    const backing = await this.loadBacking(song);
     this.stop();
     this.activePreview = true;
     const startAt = this.now + 0.1;
@@ -215,6 +273,19 @@ export class AudioEngine {
     const notes = song.melody.slice(0, 12);
     const previewStartBeat = notes[0]?.beat ?? song.leadInBeats;
     const durationBeats = Math.min(16, song.beatsPerBar * 4);
+
+    if (backing && this.context && this.backingBus) {
+      const offsetSeconds = Math.min(backing.duration - 0.2, previewStartBeat * secondsPerBeat);
+      const durationSeconds = Math.min(11, backing.duration - offsetSeconds);
+      const source = this.track(this.context.createBufferSource());
+      source.buffer = backing;
+      source.connect(this.backingBus);
+      source.start(startAt, Math.max(0, offsetSeconds), durationSeconds);
+      window.setTimeout(() => {
+        if (this.activePreview) this.stop();
+      }, durationSeconds * 1000 + 300);
+      return;
+    }
 
     this.scheduleHarmony(song, startAt, previewStartBeat, previewStartBeat + durationBeats, previewStartBeat);
     this.scheduleOrchestration(song, startAt, previewStartBeat, previewStartBeat + durationBeats, previewStartBeat);
@@ -231,11 +302,19 @@ export class AudioEngine {
   async start(song: Song): Promise<number> {
     this.stop();
     let audible = await this.ensureReady();
+    let backing: AudioBuffer | null = null;
     if (audible) {
       try {
         await this.loadSamples();
       } catch {
         audible = false;
+      }
+    }
+    if (audible && song.backingTrack) {
+      try {
+        backing = await this.loadBacking(song);
+      } catch (error) {
+        console.error("완성 반주를 불러오지 못해 실시간 반주로 전환합니다.", error);
       }
     }
 
@@ -245,6 +324,13 @@ export class AudioEngine {
     if (!audible) return startAt;
 
     this.scheduleCountIn(song, startAt);
+    if (backing && this.context && this.backingBus) {
+      const source = this.track(this.context.createBufferSource());
+      source.buffer = backing;
+      source.connect(this.backingBus);
+      source.start(startAt);
+      return startAt;
+    }
     this.scheduleHarmony(song, startAt, 0, song.totalBeats, 0);
     this.scheduleOrchestration(song, startAt, 0, song.totalBeats, 0);
     const secondsPerBeat = 60 / song.bpm;
@@ -439,8 +525,9 @@ export class AudioEngine {
     const source = this.track(this.context.createBufferSource());
     const gain = this.context.createGain();
     const panner = this.context.createStereoPanner();
-    const attack = instrument === "strings" ? 0.095 : instrument === "flute" ? 0.045 : 0.006;
-    const release = instrument === "strings" ? 0.42 : instrument === "flute" ? 0.16 : 0.32;
+    const sustained = instrument === "strings" || instrument === "violin" || instrument === "trumpet";
+    const attack = sustained ? 0.065 : instrument === "flute" ? 0.045 : 0.006;
+    const release = sustained ? 0.3 : instrument === "flute" ? 0.16 : 0.32;
     const naturalDuration = sample.buffer.duration / playbackRate;
     const stopAfter = Math.max(0.14, Math.min(naturalDuration, duration + release));
     const releaseAt = Math.max(when + attack + 0.04, when + Math.min(duration * 0.88, stopAfter - 0.07));

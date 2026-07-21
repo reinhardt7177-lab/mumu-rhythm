@@ -1,6 +1,13 @@
 export type ScreenName = "library" | "mission" | "game" | "result";
 
-export type SoundWorld = "starlight" | "sunrise" | "moonlight";
+export type SoundWorld =
+  | "starlight"
+  | "sunrise"
+  | "moonlight"
+  | "turkish"
+  | "cancan"
+  | "gallop"
+  | "hungarian";
 
 export interface MelodyNote {
   id: string;
@@ -41,16 +48,19 @@ export interface SongPalette {
 
 export interface Song {
   id: string;
+  collection: "foundation" | "speed";
   title: string;
   subtitle: string;
   origin: string;
   grade: string;
   difficulty: "처음" | "차근차근" | "도전";
   bpm: number;
-  beatsPerBar: 3 | 4;
+  beatsPerBar: 2 | 3 | 4;
   leadInBeats: number;
   totalBeats: number;
   soundWorld: SoundWorld;
+  approachSeconds?: number;
+  backingTrack?: string;
   artwork: string;
   palette: SongPalette;
   mission: ListeningMission;
@@ -80,4 +90,3 @@ export interface GameResult {
   miss: number;
   stars: number;
 }
-

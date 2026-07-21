@@ -4,5 +4,6 @@ dist/
 .vercel/
 playwright-report/
 test-results/
+tmp/
 *.log
 .DS_Store
