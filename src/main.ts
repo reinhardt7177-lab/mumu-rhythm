@@ -42,7 +42,7 @@ app.innerHTML = `
         <section class="library-intro">
           <p class="eyebrow">초등 음악 감상 활동</p>
           <h1 id="libraryTitle">음악을 듣고<br />바를 터뜨려요</h1>
-          <p>실제 악기 샘플로 편곡한 네 곡을 들으며 떨어지는 노트 바 속 가락, 반복, 강박, 대비를 발견합니다.</p>
+          <p>피아니스트와 관현악단의 실제 연주를 들으며 떨어지는 노트 바 속 가락, 반복, 강박, 대비를 발견합니다.</p>
           <dl class="program-facts">
             <div><dt>4</dt><dd>클래식 명곡</dd></div>
             <div><dt>5</dt><dd>음높이 레인</dd></div>
@@ -334,7 +334,7 @@ function openMission(song: Song): void {
   showScreen("mission");
   void audio.preload(song).then(() => {
     if (selectedSong.id !== song.id || screen !== "mission") return;
-    missionAudioStatus.textContent = "고품질 반주 준비 완료";
+    missionAudioStatus.textContent = "실제 연주 음원 준비 완료";
     previewButton.disabled = false;
     startButton.disabled = false;
   }).catch((error) => {
@@ -361,7 +361,7 @@ async function previewSong(): Promise<void> {
       if (!previewing || screen !== "mission") return;
       previewing = false;
       previewButton.innerHTML = `<i data-lucide="volume-2"></i><span>다시 미리 듣기</span>`;
-      missionAudioStatus.textContent = "고품질 반주 준비 완료";
+      missionAudioStatus.textContent = "실제 연주 음원 준비 완료";
       refreshIcons();
     }, 12200);
   } catch (error) {

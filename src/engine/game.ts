@@ -102,7 +102,7 @@ export class RhythmGame {
     const lengthBonus = Math.min(240, Math.round(note.durationBeats * 70));
     const accentBonus = note.accent ? 180 : 0;
     this.score += 600 + lengthBonus + accentBonus + Math.min(500, this.combo * 7);
-    this.audio.playHit(note.midi, this.song.hitBank, note.accent ? 1.05 : 0.9);
+    this.audio.playPop(note.lane, Boolean(note.accent));
     this.callbacks.onJudge({
       judge: "POP",
       noteId: note.id,

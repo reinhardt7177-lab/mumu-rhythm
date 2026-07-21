@@ -1,42 +1,21 @@
-import type { HitBank, Song } from "../types";
+import type { Song } from "../types";
 
 type TrackedSource = AudioBufferSourceNode | OscillatorNode;
-
-interface HitSpriteDefinition {
-  path: string;
-  firstMidi: number;
-  lastMidi: number;
-  firstOffset: number;
-  slotSeconds: number;
-}
-
-const HIT_SPRITES: Record<HitBank, HitSpriteDefinition> = {
-  piano: { path: "/assets/audio/v3/hits/piano.ogg", firstMidi: 48, lastMidi: 84, firstOffset: 0.25, slotSeconds: 1.25 },
-  violin: { path: "/assets/audio/v3/hits/violin.ogg", firstMidi: 48, lastMidi: 84, firstOffset: 0.25, slotSeconds: 1.25 },
-  trumpet: { path: "/assets/audio/v3/hits/trumpet.ogg", firstMidi: 48, lastMidi: 84, firstOffset: 0.25, slotSeconds: 1.25 },
-};
 
 export class AudioEngine {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private backingBus: GainNode | null = null;
-  private playerBus: GainNode | null = null;
   private effectsBus: GainNode | null = null;
-  private hitReverb: ConvolverNode | null = null;
-  private hitReverbReturn: GainNode | null = null;
+  private popNoise: AudioBuffer | null = null;
   private buffers = new Map<string, AudioBuffer>();
   private pendingBuffers = new Map<string, Promise<AudioBuffer>>();
   private scheduled = new Set<TrackedSource>();
-  private songStartTime = 0;
   private useAudioClock = true;
   private masterLevel = 0.88;
 
   get ready(): boolean {
     return this.context !== null && this.context.state === "running";
-  }
-
-  get now(): number {
-    return this.context?.currentTime ?? 0;
   }
 
   get gameNow(): number {
@@ -61,10 +40,7 @@ export class AudioEngine {
   async preload(song: Song): Promise<void> {
     const audible = await this.ensureReady();
     if (!audible) throw new Error("브라우저가 소리 재생을 허용하지 않았습니다.");
-    await Promise.all([
-      this.loadBuffer(song.backingTrack),
-      this.loadBuffer(HIT_SPRITES[song.hitBank].path),
-    ]);
+    await this.loadBuffer(song.backingTrack);
   }
 
   async preview(song: Song): Promise<void> {
@@ -86,35 +62,33 @@ export class AudioEngine {
     await this.preload(song);
     const context = this.context!;
     this.useAudioClock = true;
-    this.songStartTime = context.currentTime + 0.2;
+    const songStartTime = context.currentTime + 0.2;
     const source = this.track(context.createBufferSource());
     source.buffer = this.buffers.get(song.backingTrack)!;
     source.connect(this.backingBus!);
-    source.start(this.songStartTime);
-    this.scheduleCountIn(song, this.songStartTime);
-    return this.songStartTime;
+    source.start(songStartTime);
+    this.scheduleCountIn(song, songStartTime);
+    return songStartTime;
   }
 
-  playHit(midi: number, bank: HitBank, velocity = 1): void {
-    if (!this.ready || !this.playerBus || !this.context) return;
-    const definition = HIT_SPRITES[bank];
-    const buffer = this.buffers.get(definition.path);
-    if (!buffer) return;
-    const pitch = Math.max(definition.firstMidi, Math.min(definition.lastMidi, midi));
-    const offset = definition.firstOffset + (pitch - definition.firstMidi) * definition.slotSeconds;
-    const now = this.context.currentTime + 0.003;
+  playPop(lane: number, accent: boolean): void {
+    if (!this.ready || !this.effectsBus || !this.context || !this.popNoise) return;
+    const now = this.context.currentTime + 0.002;
     const source = this.track(this.context.createBufferSource());
+    const filter = this.context.createBiquadFilter();
     const gain = this.context.createGain();
-    const level = Math.min(1.08, Math.max(0.2, velocity)) * (bank === "trumpet" ? 0.56 : 0.68);
-    source.buffer = buffer;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(level, now + 0.008);
-    gain.gain.setValueAtTime(level * 0.82, now + 0.52);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.88);
-    source.connect(gain);
-    gain.connect(this.playerBus);
-    source.start(now, offset, 0.92);
-    source.stop(now + 0.93);
+    source.buffer = this.popNoise;
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(760 + lane * 170, now);
+    filter.Q.value = 0.72;
+    const level = accent ? 0.105 : 0.068;
+    gain.gain.setValueAtTime(level, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + (accent ? 0.13 : 0.095));
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.effectsBus);
+    source.start(now);
+    source.stop(now + 0.15);
   }
 
   playUi(kind: "select" | "success" | "soft"): void {
@@ -145,32 +119,22 @@ export class AudioEngine {
   private setup(): void {
     this.context = new AudioContext({ latencyHint: "interactive" });
     const compressor = this.context.createDynamicsCompressor();
-    compressor.threshold.value = -12;
-    compressor.knee.value = 14;
-    compressor.ratio.value = 3;
-    compressor.attack.value = 0.004;
-    compressor.release.value = 0.2;
+    compressor.threshold.value = -10;
+    compressor.knee.value = 12;
+    compressor.ratio.value = 2.5;
+    compressor.attack.value = 0.006;
+    compressor.release.value = 0.22;
 
     this.master = this.context.createGain();
     this.master.gain.value = this.masterLevel;
     this.backingBus = this.context.createGain();
-    this.backingBus.gain.value = 0.76;
-    this.playerBus = this.context.createGain();
-    this.playerBus.gain.value = 0.92;
+    this.backingBus.gain.value = 0.92;
     this.effectsBus = this.context.createGain();
-    this.effectsBus.gain.value = 0.5;
-
-    this.hitReverb = this.context.createConvolver();
-    this.hitReverb.buffer = this.makeImpulse(1.15, 3.4);
-    this.hitReverbReturn = this.context.createGain();
-    this.hitReverbReturn.gain.value = 0.09;
+    this.effectsBus.gain.value = 0.48;
+    this.popNoise = this.makePopNoise();
 
     this.backingBus.connect(this.master);
-    this.playerBus.connect(this.master);
-    this.playerBus.connect(this.hitReverb);
     this.effectsBus.connect(this.master);
-    this.hitReverb.connect(this.hitReverbReturn);
-    this.hitReverbReturn.connect(this.master);
     this.master.connect(compressor);
     compressor.connect(this.context.destination);
   }
@@ -207,11 +171,11 @@ export class AudioEngine {
     const oscillator = this.track(this.context.createOscillator());
     const overtone = this.context.createOscillator();
     const gain = this.context.createGain();
+    const overtoneGain = this.context.createGain();
     oscillator.type = "sine";
     oscillator.frequency.value = frequency;
     overtone.type = "sine";
     overtone.frequency.value = frequency * 2.01;
-    const overtoneGain = this.context.createGain();
     overtoneGain.gain.value = 0.16;
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.exponentialRampToValueAtTime(level, when + 0.006);
@@ -226,21 +190,24 @@ export class AudioEngine {
     overtone.stop(when + 0.3);
   }
 
+  private makePopNoise(): AudioBuffer {
+    const duration = 0.16;
+    const length = Math.floor(this.context!.sampleRate * duration);
+    const buffer = this.context!.createBuffer(1, length, this.context!.sampleRate);
+    const data = buffer.getChannelData(0);
+    let previous = 0;
+    for (let index = 0; index < length; index += 1) {
+      const white = Math.random() * 2 - 1;
+      previous = previous * 0.32 + white * 0.68;
+      const envelope = (1 - index / length) ** 4.6;
+      data[index] = previous * envelope;
+    }
+    return buffer;
+  }
+
   private track<T extends TrackedSource>(source: T): T {
     this.scheduled.add(source);
     source.addEventListener("ended", () => this.scheduled.delete(source), { once: true });
     return source;
-  }
-
-  private makeImpulse(seconds: number, decay: number): AudioBuffer {
-    const length = Math.floor(this.context!.sampleRate * seconds);
-    const impulse = this.context!.createBuffer(2, length, this.context!.sampleRate);
-    for (let channel = 0; channel < 2; channel += 1) {
-      const data = impulse.getChannelData(channel);
-      for (let index = 0; index < length; index += 1) {
-        data[index] = (Math.random() * 2 - 1) * (1 - index / length) ** decay;
-      }
-    }
-    return impulse;
   }
 }

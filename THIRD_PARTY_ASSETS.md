@@ -1,27 +1,37 @@
 # Third-party Assets
 
-## Melody transcriptions
+## Performance recordings
 
-The four gameplay melodies are adapted from the hand-transcribed public-domain repertoire in [appleweiping/cadenza](https://github.com/appleweiping/cadenza).
+The game uses edited excerpts of real performances of public-domain compositions. Source files are downloaded to the ignored `tmp/` directory; only the classroom-length OGG derivatives are distributed.
 
-- Source code and transcription data: MIT License
-- Compositions: public domain
-- Used tracks: Rondo alla Turca, Can-Can, William Tell Overture, Hungarian Dance No. 5
+### Rondo alla Turca
 
-The orchestration, dynamics, form, accompaniment and gameplay chart reductions in this project are new arrangements.
+- Performer: Eduardo
+- Source: [IMSLP recording #111573](https://imslp.org/wiki/Piano_Sonata_No.11_in_A_major%2C_K.331%2F300i_%28Mozart%2C_Wolfgang_Amadeus%29)
+- Recording license: Creative Commons Attribution 3.0
+- Edit: approximately 8.26 seconds from the source, followed by a 68-second excerpt
 
-## GeneralUser GS
+### Can-Can from Orpheus in the Underworld
 
-The backing tracks and chromatic hit-sound sprites are rendered with [GeneralUser GS](https://github.com/ad-si/GeneralUser), created by S. Christian Collins.
+- Source collection: Musopen, mirrored by [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Offenbach_-_Orpheus_in_the_Underworld_-_Overture,_Can_Can_section.ogg)
+- Recording license: public-domain dedication
+- Edit: approximately 4.29 seconds from the source, followed by a 74-second excerpt
 
-GeneralUser GS permits unrestricted private or commercial music creation and permits use in software projects. The SoundFont itself is downloaded to the ignored `tmp/` directory and is not redistributed in this repository. Only newly rendered OGG audio is included.
+### William Tell Overture Finale
 
-## FluidSynth
+- Performer: United States Marine Corps Band, 2000
+- Source: [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Gioachino_Rossini,_William_Tell_Overture_(military_band_version,_2000).ogg)
+- Recording status: public domain as a work of the United States federal government
+- Edit: approximately 7:30.83 from the source, followed by a 74-second finale excerpt
 
-[FluidSynth](https://github.com/FluidSynth/fluidsynth) is used as an offline MIDI and SoundFont renderer by `tools/build_music.py`.
+### Hungarian Dance No. 5
 
-- Source license: LGPL-2.1
-- FluidSynth binaries are downloaded to the ignored `tmp/` directory and are not distributed with the web application.
+- Performer: Kassia
+- Source collection: Musopen, distributed by [Creazilla](https://prod.test.creazilla.com/media/audio/7955548/hungarian-dance-no.5)
+- Recording license listed by the distributor: public domain / free for commercial use
+- Edit: approximately 3.94 seconds from the source, followed by a 74-second excerpt
+
+All four derivatives add a short gameplay lead-in and apply fades, filtering, peak limiting, and loudness normalization. They do not add a synthetic arrangement. Gameplay charts are original analysis data generated from the edited recordings with librosa.
 
 ## Artwork
 

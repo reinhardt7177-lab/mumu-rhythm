@@ -1,7 +1,5 @@
 export type ScreenName = "library" | "mission" | "game" | "result";
 
-export type HitBank = "piano" | "violin" | "trumpet";
-
 export interface MelodyNote {
   id: string;
   beat: number;
@@ -51,7 +49,6 @@ export interface Song {
   beatsPerBar: 2 | 4;
   leadInBeats: number;
   totalBeats: number;
-  hitBank: HitBank;
   featuredInstrument: string;
   listeningPoint: string;
   instruments: string[];
