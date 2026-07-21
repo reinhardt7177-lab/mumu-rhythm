@@ -64,12 +64,11 @@ export interface Song {
   sections: SongSection[];
 }
 
-export type JudgeName = "PERFECT" | "GREAT" | "GOOD" | "MISS";
+export type JudgeName = "POP" | "MISS";
 
 export interface RuntimeNote extends MelodyNote {
   hit: boolean;
   missed: boolean;
-  holding: boolean;
   completed: boolean;
   judgedAt?: number;
 }
@@ -79,9 +78,7 @@ export interface GameResult {
   score: number;
   accuracy: number;
   maxCombo: number;
-  perfect: number;
-  great: number;
-  good: number;
+  popped: number;
   miss: number;
   stars: number;
 }

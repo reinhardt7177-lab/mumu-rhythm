@@ -29,6 +29,7 @@ export class AudioEngine {
   private scheduled = new Set<TrackedSource>();
   private songStartTime = 0;
   private useAudioClock = true;
+  private masterLevel = 0.88;
 
   get ready(): boolean {
     return this.context !== null && this.context.state === "running";
@@ -40,6 +41,13 @@ export class AudioEngine {
 
   get gameNow(): number {
     return this.useAudioClock && this.context ? this.context.currentTime : performance.now() / 1000;
+  }
+
+  setMasterVolume(value: number): void {
+    this.masterLevel = Math.max(0, Math.min(1, value));
+    if (this.master && this.context) {
+      this.master.gain.setTargetAtTime(this.masterLevel, this.context.currentTime, 0.025);
+    }
   }
 
   async ensureReady(timeoutMs = 3000): Promise<boolean> {
@@ -144,7 +152,7 @@ export class AudioEngine {
     compressor.release.value = 0.2;
 
     this.master = this.context.createGain();
-    this.master.gain.value = 0.88;
+    this.master.gain.value = this.masterLevel;
     this.backingBus = this.context.createGain();
     this.backingBus.gain.value = 0.76;
     this.playerBus = this.context.createGain();

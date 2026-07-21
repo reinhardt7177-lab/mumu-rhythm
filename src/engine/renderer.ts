@@ -20,6 +20,17 @@ interface LaneMetric {
   width: number;
 }
 
+interface NoteHitArea {
+  id: string;
+  lane: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  centerX: number;
+  centerY: number;
+}
+
 export interface RenderState {
   songTime: number;
   notes: RuntimeNote[];
@@ -42,8 +53,9 @@ export class StageRenderer {
   private background = new Image();
   private particles: Particle[] = [];
   private laneMetrics: LaneMetric[] = [];
+  private noteHitAreas: NoteHitArea[] = [];
   private stageTop = 82;
-  private judgeLine = 520;
+  private stageBottom = 520;
   private lastFrame = performance.now();
   private reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -67,19 +79,12 @@ export class StageRenderer {
     this.makeFallbackMetrics();
   }
 
-  setInputLayout(buttons: readonly HTMLElement[], keybar: HTMLElement, hud: HTMLElement): void {
+  setStageLayout(hud: HTMLElement): void {
     const canvasRect = this.canvas.getBoundingClientRect();
-    const keybarRect = keybar.getBoundingClientRect();
     const hudRect = hud.getBoundingClientRect();
     this.stageTop = clamp(hudRect.bottom - canvasRect.top + 6, 54, this.height * 0.24);
-    this.judgeLine = clamp(keybarRect.top - canvasRect.top - 9, this.stageTop + 180, this.height - 68);
-    const measured = buttons.map((button) => {
-      const rect = button.getBoundingClientRect();
-      const left = rect.left - canvasRect.left;
-      const right = rect.right - canvasRect.left;
-      return { left, right, center: (left + right) / 2, width: right - left };
-    });
-    if (measured.length === 5 && measured.every((lane) => lane.width > 0)) this.laneMetrics = measured;
+    this.stageBottom = this.height - clamp(this.height * 0.035, 18, 34);
+    this.makeLaneMetrics();
   }
 
   setSong(song: Song): void {
@@ -89,16 +94,29 @@ export class StageRenderer {
     this.background.src = song.artwork;
   }
 
-  hit(lane: number, strength: number): void {
+  hitTest(clientX: number, clientY: number): string | null {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const area = [...this.noteHitAreas].reverse().find((item) => (
+      x >= item.left - 8 && x <= item.right + 8 && y >= item.top - 10 && y <= item.bottom + 10
+    ));
+    return area?.id ?? null;
+  }
+
+  pop(noteId: string, lane: number): void {
+    const area = this.noteHitAreas.find((item) => item.id === noteId);
     const metric = this.laneMetrics[lane];
-    if (!metric) return;
-    const count = this.reducedMotion ? 6 : Math.round(12 + strength * 12);
+    if (!area && !metric) return;
+    const originX = area?.centerX ?? metric?.center ?? this.width / 2;
+    const originY = area?.centerY ?? this.stageBottom - 40;
+    const count = this.reducedMotion ? 8 : 26;
     for (let index = 0; index < count; index += 1) {
-      const angle = Math.PI * (1.08 + Math.random() * 0.84);
-      const speed = 75 + Math.random() * 190;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 70 + Math.random() * 230;
       this.particles.push({
-        x: metric.center + (Math.random() - 0.5) * metric.width * 0.34,
-        y: this.judgeLine - 6,
+        x: originX + (Math.random() - 0.5) * 24,
+        y: originY + (Math.random() - 0.5) * 12,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 0.55 + Math.random() * 0.4,
@@ -113,6 +131,7 @@ export class StageRenderer {
 
   clearEffects(): void {
     this.particles = [];
+    this.noteHitAreas = [];
   }
 
   render(state: RenderState): void {
@@ -127,6 +146,11 @@ export class StageRenderer {
   }
 
   private makeFallbackMetrics(): void {
+    this.makeLaneMetrics();
+    this.stageBottom = this.height - clamp(this.height * 0.035, 18, 34);
+  }
+
+  private makeLaneMetrics(): void {
     const gutter = clamp(this.width * 0.018, 10, 24);
     const gap = clamp(this.width * 0.004, 4, 8);
     const laneWidth = (this.width - gutter * 2 - gap * 4) / 5;
@@ -134,7 +158,6 @@ export class StageRenderer {
       const left = gutter + lane * (laneWidth + gap);
       return { left, right: left + laneWidth, center: left + laneWidth / 2, width: laneWidth };
     });
-    this.judgeLine = this.height - clamp(this.height * 0.16, 88, 126);
   }
 
   private drawBackdrop(state: RenderState): void {
@@ -167,7 +190,7 @@ export class StageRenderer {
     const beat = state.songTime * this.song.bpm / 60;
     for (let index = 0; index < 24; index += 1) {
       const x = ((index * 149) % 997) / 997 * this.width;
-      const y = 30 + (((index * 83) % 431) / 431) * Math.max(40, this.judgeLine - 80);
+      const y = 30 + (((index * 83) % 431) / 431) * Math.max(40, this.stageBottom - 80);
       const twinkle = 0.35 + Math.sin(beat * 1.6 + index * 1.7) * 0.3;
       ctx.globalAlpha = Math.max(0.06, twinkle);
       ctx.fillRect(x, y, index % 5 === 0 ? 3 : 1.5, index % 5 === 0 ? 3 : 1.5);
@@ -178,7 +201,7 @@ export class StageRenderer {
   private drawBoard(state: RenderState): void {
     const ctx = this.context;
     const top = this.stageTop;
-    const bottom = this.judgeLine;
+    const bottom = this.stageBottom;
     const left = this.laneMetrics[0]?.left ?? 12;
     const right = this.laneMetrics[4]?.right ?? this.width - 12;
 
@@ -228,33 +251,11 @@ export class StageRenderer {
       }
     }
 
-    this.laneMetrics.forEach((lane, index) => {
-      const targetWidth = Math.min(lane.width - 16, clamp(lane.width * 0.68, 50, 184));
-      const targetHeight = clamp(this.height * 0.032, 17, 27);
-      const pulse = state.lanePulse[index] ?? 0;
-      ctx.save();
-      ctx.shadowBlur = 12 + pulse * 20;
-      ctx.shadowColor = laneColors[index];
-      ctx.fillStyle = "rgba(4, 16, 20, .9)";
-      ctx.strokeStyle = this.alpha(laneColors[index], 0.72 + pulse * 0.26);
-      ctx.lineWidth = 2 + pulse * 2;
-      this.roundRect(ctx, lane.center - targetWidth / 2, bottom - targetHeight / 2, targetWidth, targetHeight, 6);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    });
-
-    const line = ctx.createLinearGradient(left, 0, right, 0);
-    laneColors.forEach((color, index) => line.addColorStop(index / 4, color));
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = this.song.palette.accent;
-    ctx.strokeStyle = line;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(left, bottom + 0.5);
-    ctx.lineTo(right, bottom + 0.5);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    const fade = ctx.createLinearGradient(0, bottom - 80, 0, bottom);
+    fade.addColorStop(0, "rgba(3,16,21,0)");
+    fade.addColorStop(1, "rgba(3,16,21,.82)");
+    ctx.fillStyle = fade;
+    ctx.fillRect(left, bottom - 80, right - left, 80);
 
     if (state.section.mode === "listen") {
       ctx.fillStyle = this.alpha(this.song.palette.accent, state.focusHint ? 0.075 : 0.04);
@@ -266,7 +267,8 @@ export class StageRenderer {
   private drawNotes(state: RenderState): void {
     const secondsPerBeat = 60 / this.song.bpm;
     const approachSeconds = this.song.approachSeconds ?? 3.7;
-    const travel = this.judgeLine - this.stageTop;
+    const travel = this.stageBottom - this.stageTop;
+    this.noteHitAreas = [];
     state.notes.forEach((note) => {
       if (note.missed || (note.hit && note.completed)) return;
       const metric = this.laneMetrics[note.lane];
@@ -275,34 +277,46 @@ export class StageRenderer {
       const until = noteTime - state.songTime;
       if (until > approachSeconds + 0.08 || until < -0.3) return;
 
-      const headY = note.holding
-        ? this.judgeLine
-        : this.judgeLine - (until / approachSeconds) * travel;
-      const width = Math.min(metric.width - 14, clamp(metric.width * 0.66, 52, 178));
-      const height = clamp(metric.width * 0.09, 15, 24);
-      const opacity = clamp((approachSeconds - until) / 0.35, 0.18, 1);
+      const headY = this.stageBottom - (until / approachSeconds) * travel;
+      const width = Math.min(metric.width - 12, clamp(metric.width * 0.78, 62, 210));
+      const height = clamp(metric.width * 0.14, 24, 38);
+      const opacity = clamp((approachSeconds - until) / 0.24, 0.24, 1);
       const isHold = note.durationBeats >= 1.75;
+      let areaTop = headY - height / 2;
+      let areaBottom = headY + height / 2;
 
       if (isHold) {
         const endTime = noteTime + note.durationBeats * secondsPerBeat;
         const endUntil = endTime - state.songTime;
-        const endY = clamp(this.judgeLine - (endUntil / approachSeconds) * travel, this.stageTop, this.judgeLine);
-        this.drawHoldRibbon(metric.center, endY, headY, width * 0.55, note.lane, note.holding, opacity);
+        const endY = clamp(this.stageBottom - (endUntil / approachSeconds) * travel, this.stageTop, this.stageBottom);
+        this.drawHoldRibbon(metric.center, endY, headY, width * 0.62, note.lane, opacity);
         this.drawNoteBar(metric.center, endY, width * 0.86, Math.max(10, height * 0.68), note.lane, false, opacity * 0.72);
+        areaTop = Math.min(areaTop, endY - height * 0.36);
+        areaBottom = Math.max(areaBottom, endY + height * 0.36);
       }
 
       this.drawNoteBar(metric.center, headY, width, height, note.lane, Boolean(note.accent), opacity);
+      this.noteHitAreas.push({
+        id: note.id,
+        lane: note.lane,
+        left: metric.center - width / 2,
+        right: metric.center + width / 2,
+        top: clamp(areaTop, this.stageTop, this.stageBottom),
+        bottom: clamp(areaBottom, this.stageTop, this.stageBottom),
+        centerX: metric.center,
+        centerY: clamp((areaTop + areaBottom) / 2, this.stageTop, this.stageBottom),
+      });
     });
   }
 
-  private drawHoldRibbon(x: number, top: number, bottom: number, width: number, lane: number, holding: boolean, opacity: number): void {
+  private drawHoldRibbon(x: number, top: number, bottom: number, width: number, lane: number, opacity: number): void {
     const ctx = this.context;
     if (bottom - top < 3) return;
     const ribbon = ctx.createLinearGradient(0, top, 0, bottom);
     ribbon.addColorStop(0, this.alpha(laneColors[lane], 0.16 * opacity));
-    ribbon.addColorStop(1, this.alpha(laneColors[lane], (holding ? 0.7 : 0.48) * opacity));
+    ribbon.addColorStop(1, this.alpha(laneColors[lane], 0.58 * opacity));
     ctx.save();
-    ctx.shadowBlur = holding ? 18 : 8;
+    ctx.shadowBlur = 10;
     ctx.shadowColor = laneColors[lane];
     ctx.fillStyle = ribbon;
     ctx.strokeStyle = this.alpha(laneColors[lane], 0.72 * opacity);

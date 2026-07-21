@@ -3,9 +3,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Headphones,
-  KeyboardMusic,
   Library,
   Music2,
+  MousePointerClick,
   Pause,
   Play,
   RotateCcw,
@@ -41,11 +41,11 @@ app.innerHTML = `
       <div class="library-layout">
         <section class="library-intro">
           <p class="eyebrow">초등 음악 감상 활동</p>
-          <h1 id="libraryTitle">빠르게 듣고<br />정확하게 반응해요</h1>
-          <p>실제 악기 샘플로 편곡한 네 곡을 연주하며 가락, 반복, 강박, 대비를 발견합니다.</p>
+          <h1 id="libraryTitle">음악을 듣고<br />바를 터뜨려요</h1>
+          <p>실제 악기 샘플로 편곡한 네 곡을 들으며 떨어지는 노트 바 속 가락, 반복, 강박, 대비를 발견합니다.</p>
           <dl class="program-facts">
             <div><dt>4</dt><dd>클래식 명곡</dd></div>
-            <div><dt>5</dt><dd>고정 레인</dd></div>
+            <div><dt>5</dt><dd>음높이 레인</dd></div>
             <div><dt>1</dt><dd>곡마다 귀 미션</dd></div>
           </dl>
           <div class="carousel-controls" aria-label="곡 목록 이동">
@@ -65,7 +65,7 @@ app.innerHTML = `
 
       <footer class="library-footer">
         <span><i data-lucide="headphones"></i> 헤드폰 또는 교실 스피커</span>
-        <span><i data-lucide="keyboard-music"></i> A · S · D · J · K / 멀티 터치</span>
+        <span><i data-lucide="mouse-pointer-click"></i> 떨어지는 노트 바를 직접 터치</span>
       </footer>
     </section>
 
@@ -100,8 +100,9 @@ app.innerHTML = `
 
       <div class="mission-dock">
         <button id="previewButton" class="secondary-button glass-action" type="button"><i data-lucide="volume-2"></i><span>12초 미리 듣기</span></button>
-        <div class="lane-preview" aria-label="낮은음에서 높은음까지 다섯 레인">
-          <span>A</span><span>S</span><span>D</span><span>J</span><span>K</span>
+        <div class="pop-preview" aria-label="다섯 색의 노트 바를 직접 터치">
+          <span></span><span></span><span></span><span></span><span></span>
+          <i data-lucide="mouse-pointer-click"></i>
         </div>
         <button id="startButton" class="primary-button" type="button"><span>연주 시작</span><i data-lucide="play"></i></button>
         <p id="missionAudioStatus" class="audio-status" aria-live="polite"></p>
@@ -109,7 +110,7 @@ app.innerHTML = `
     </section>
 
     <section id="gameScreen" class="screen game-screen" hidden aria-label="리듬 연주 화면">
-      <canvas id="stage" aria-label="다섯 레인 리듬 스테이지"></canvas>
+      <canvas id="stage" aria-label="떨어지는 노트 바를 직접 누르는 음악 스테이지"></canvas>
       <header class="game-hud">
         <div class="hud-track"><span id="hudNumber"></span><div><small>NOW PLAYING</small><strong id="hudTitle"></strong></div></div>
         <div class="section-status"><small>지금 듣는 곳</small><strong id="sectionLabel">준비</strong></div>
@@ -124,13 +125,6 @@ app.innerHTML = `
       <div id="sectionCallout" class="section-callout" aria-live="polite"></div>
       <div id="judgeText" class="judge-text" aria-live="polite"></div>
 
-      <div id="keybar" class="keybar" aria-label="연주 패드">
-        <button type="button" data-lane="0"><span>A</span><small>LOW</small></button>
-        <button type="button" data-lane="1"><span>S</span><small>↗</small></button>
-        <button type="button" data-lane="2"><span>D</span><small>MID</small></button>
-        <button type="button" data-lane="3"><span>J</span><small>↗</small></button>
-        <button type="button" data-lane="4"><span>K</span><small>HIGH</small></button>
-      </div>
     </section>
 
     <section id="resultScreen" class="screen result-screen" hidden aria-labelledby="resultTitle">
@@ -151,7 +145,7 @@ app.innerHTML = `
           <h2 id="resultTitle"></h2>
           <div id="resultStars" class="result-stars" aria-label="리듬 별"></div>
           <div class="result-metrics">
-            <span><small>리듬 정확도</small><strong id="accuracyValue"></strong></span>
+            <span><small>노트 수집률</small><strong id="accuracyValue"></strong></span>
             <span><small>최고 콤보</small><strong id="maxComboValue"></strong></span>
             <span><small>점수</small><strong id="resultScoreValue"></strong></span>
           </div>
@@ -177,16 +171,16 @@ app.innerHTML = `
 
     <dialog id="settingsDialog" class="settings-dialog">
       <form method="dialog">
-        <header><div><p class="eyebrow">교실 소리 맞춤</p><h2>타이밍 조절</h2></div><button class="icon-button" value="close" aria-label="닫기" title="닫기"><i data-lucide="x"></i></button></header>
-        <p>소리가 늦게 들리는 기기에서는 값을 오른쪽으로 옮겨요.</p>
-        <label class="offset-control"><span>판정 보정 <strong id="offsetValue">0ms</strong></span><input id="offsetInput" type="range" min="-180" max="180" step="10" value="0" /></label>
+        <header><div><p class="eyebrow">교실 소리 맞춤</p><h2>음량 조절</h2></div><button class="icon-button" value="close" aria-label="닫기" title="닫기"><i data-lucide="x"></i></button></header>
+        <p>교실 스피커와 태블릿에 알맞은 전체 음량을 선택해요.</p>
+        <label class="volume-control"><span>전체 음량 <strong id="volumeValue">88%</strong></span><input id="volumeInput" type="range" min="0" max="100" step="5" value="88" /></label>
         <button id="resetRecords" class="text-button" type="button">이 기기의 기록 초기화</button>
       </form>
     </dialog>
   </main>
 `;
 
-const iconSet = { ArrowLeft, ChevronLeft, ChevronRight, Headphones, KeyboardMusic, Library, Music2, Pause, Play, RotateCcw, Settings, Sparkles, Trophy, Volume2, X };
+const iconSet = { ArrowLeft, ChevronLeft, ChevronRight, Headphones, Library, Music2, MousePointerClick, Pause, Play, RotateCcw, Settings, Sparkles, Trophy, Volume2, X };
 const refreshIcons = (): void => createIcons({ icons: iconSet, attrs: { "stroke-width": 2, "aria-hidden": "true" } });
 
 const select = <T extends Element>(selector: string): T => {
@@ -224,8 +218,8 @@ const answerFeedback = select<HTMLElement>("#answerFeedback");
 const earnedBadge = select<HTMLElement>("#earnedBadge");
 const badgeName = select<HTMLElement>("#badgeName");
 const settingsDialog = select<HTMLDialogElement>("#settingsDialog");
-const offsetInput = select<HTMLInputElement>("#offsetInput");
-const offsetValue = select<HTMLElement>("#offsetValue");
+const volumeInput = select<HTMLInputElement>("#volumeInput");
+const volumeValue = select<HTMLElement>("#volumeValue");
 const canvas = select<HTMLCanvasElement>("#stage");
 const scoreValue = select<HTMLElement>("#scoreValue");
 const comboValue = select<HTMLElement>("#comboValue");
@@ -236,9 +230,7 @@ const gameProgress = select<HTMLElement>("#gameProgress");
 const sectionCallout = select<HTMLElement>("#sectionCallout");
 const judgeText = select<HTMLElement>("#judgeText");
 const pauseButton = select<HTMLButtonElement>("#pauseButton");
-const keybar = select<HTMLElement>("#keybar");
 const gameHud = select<HTMLElement>(".game-hud");
-const keyButtons = [...document.querySelectorAll<HTMLButtonElement>("#keybar button")];
 
 const screenElements: Record<ScreenName, HTMLElement> = {
   library: select("#libraryScreen"),
@@ -261,7 +253,6 @@ const renderer = new StageRenderer(canvas, selectedSong);
 const game = new RhythmGame(audio, {
   onFrame: handleFrame,
   onJudge: handleJudge,
-  onFeedback: (message) => showFeedback(message, "hint"),
   onSection: handleSection,
   onComplete: handleComplete,
 });
@@ -272,7 +263,7 @@ function formatTime(seconds: number): string {
 }
 
 function bestScoreKey(songId: string): string {
-  return `mumu-music-v3-best-${songId}`;
+  return `mumu-music-v4-best-${songId}`;
 }
 
 function getBest(songId: string): number {
@@ -402,6 +393,7 @@ async function startSelectedSong(): Promise<void> {
     showScreen("game");
     syncStageLayout();
     requestAnimationFrame(syncStageLayout);
+    showFeedback("노트 바를 직접 터치!", "hint");
   } catch (error) {
     console.error(error);
     missionAudioStatus.textContent = "음원을 시작하지 못했습니다. 다시 시도해 주세요.";
@@ -415,7 +407,7 @@ async function startSelectedSong(): Promise<void> {
 
 function syncStageLayout(): void {
   renderer.resize();
-  renderer.setInputLayout(keyButtons, keybar, gameHud);
+  renderer.setStageLayout(gameHud);
 }
 
 function handleFrame(snapshot: GameSnapshot): void {
@@ -438,17 +430,11 @@ function handleFrame(snapshot: GameSnapshot): void {
 }
 
 function handleJudge(event: JudgeEvent): void {
-  const button = keyButtons[event.lane];
-  button.classList.remove("is-hit");
-  void button.offsetWidth;
-  button.classList.add("is-hit");
-  window.setTimeout(() => button.classList.remove("is-hit"), 120);
   if (event.judge === "MISS") {
-    showFeedback("다음 박을 들어요", "miss");
     return;
   }
-  renderer.hit(event.lane, event.judge === "PERFECT" ? 1 : 0.65);
-  showFeedback(event.judge, event.judge.toLowerCase());
+  renderer.pop(event.noteId, event.lane);
+  showFeedback(event.combo > 0 && event.combo % 10 === 0 ? `${event.combo} POP!` : "POP!", "pop");
 }
 
 function showFeedback(message: string, kind: string): void {
@@ -502,7 +488,7 @@ function checkAnswer(button: HTMLButtonElement): void {
     earnedBadge.hidden = false;
     audio.playUi("success");
     answerOptions.querySelectorAll<HTMLButtonElement>("button").forEach((item) => { item.disabled = true; });
-    localStorage.setItem(`mumu-music-v3-badge-${selectedSong.id}`, "earned");
+    localStorage.setItem(`mumu-music-v4-badge-${selectedSong.id}`, "earned");
   } else {
     button.classList.add("wrong");
     answerFeedback.textContent = selectedSong.mission.hint;
@@ -511,39 +497,19 @@ function checkAnswer(button: HTMLButtonElement): void {
   }
 }
 
-const keyMap = new Map([["KeyA", 0], ["KeyS", 1], ["KeyD", 2], ["KeyJ", 3], ["KeyK", 4]]);
 window.addEventListener("keydown", (event) => {
   if (event.code === "Escape" && screen === "game") {
     event.preventDefault();
     void togglePause();
     return;
   }
-  const lane = keyMap.get(event.code);
-  if (lane === undefined || event.repeat || screen !== "game") return;
+});
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (screen !== "game" || lastSnapshot?.paused) return;
   event.preventDefault();
-  keyButtons[lane].classList.add("pressed");
-  game.laneDown(lane);
-});
-window.addEventListener("keyup", (event) => {
-  const lane = keyMap.get(event.code);
-  if (lane === undefined) return;
-  keyButtons[lane].classList.remove("pressed");
-  game.laneUp(lane);
-});
-keyButtons.forEach((button, lane) => {
-  button.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    button.setPointerCapture(event.pointerId);
-    button.classList.add("pressed");
-    game.laneDown(lane);
-  });
-  const release = (event: PointerEvent): void => {
-    event.preventDefault();
-    button.classList.remove("pressed");
-    game.laneUp(lane);
-  };
-  button.addEventListener("pointerup", release);
-  button.addEventListener("pointercancel", release);
+  const noteId = renderer.hitTest(event.clientX, event.clientY);
+  if (noteId) game.popNote(noteId);
 });
 
 async function togglePause(): Promise<void> {
@@ -560,17 +526,17 @@ document.querySelectorAll<HTMLButtonElement>(".settings-open").forEach((button) 
     settingsDialog.showModal();
   });
 });
-offsetInput.addEventListener("input", () => {
-  const value = Number(offsetInput.value);
-  offsetValue.textContent = `${value > 0 ? "+" : ""}${value}ms`;
-  localStorage.setItem("mumu-music-v3-offset", String(value));
-  game.setTimingOffset(value);
+volumeInput.addEventListener("input", () => {
+  const value = Number(volumeInput.value);
+  volumeValue.textContent = `${value}%`;
+  localStorage.setItem("mumu-music-v4-volume", String(value));
+  audio.setMasterVolume(value / 100);
 });
 select<HTMLButtonElement>("#resetRecords").addEventListener("click", () => {
-  Object.keys(localStorage).filter((key) => key.startsWith("mumu-music-v3-")).forEach((key) => localStorage.removeItem(key));
-  offsetInput.value = "0";
-  offsetValue.textContent = "0ms";
-  game.setTimingOffset(0);
+  Object.keys(localStorage).filter((key) => key.startsWith("mumu-music-")).forEach((key) => localStorage.removeItem(key));
+  volumeInput.value = "88";
+  volumeValue.textContent = "88%";
+  audio.setMasterVolume(0.88);
   audio.playUi("soft");
 });
 
@@ -587,15 +553,16 @@ document.querySelectorAll<HTMLAnchorElement>(".brand").forEach((brand) => {
   brand.addEventListener("click", (event) => { event.preventDefault(); game.stop(); showScreen("library"); });
 });
 window.addEventListener("resize", syncStageLayout);
-new ResizeObserver(() => { if (screen === "game") syncStageLayout(); }).observe(keybar);
+new ResizeObserver(() => { if (screen === "game") syncStageLayout(); }).observe(select("#gameScreen"));
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && screen === "game" && lastSnapshot && !lastSnapshot.paused) void togglePause();
 });
 
-const storedOffset = Number(localStorage.getItem("mumu-music-v3-offset")) || 0;
-offsetInput.value = String(storedOffset);
-offsetValue.textContent = `${storedOffset > 0 ? "+" : ""}${storedOffset}ms`;
-game.setTimingOffset(storedOffset);
+const storedVolumeValue = localStorage.getItem("mumu-music-v4-volume");
+const storedVolume = storedVolumeValue === null ? 88 : Number(storedVolumeValue);
+volumeInput.value = String(storedVolume);
+volumeValue.textContent = `${storedVolume}%`;
+audio.setMasterVolume(storedVolume / 100);
 renderLibrary();
 applySongPalette(selectedSong);
 refreshIcons();

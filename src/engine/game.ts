@@ -17,8 +17,8 @@ export interface GameSnapshot {
 
 export interface JudgeEvent {
   judge: JudgeName;
+  noteId: string;
   lane: number;
-  deltaMs: number;
   score: number;
   combo: number;
 }
@@ -26,16 +26,9 @@ export interface JudgeEvent {
 interface GameCallbacks {
   onFrame: (snapshot: GameSnapshot) => void;
   onJudge: (event: JudgeEvent) => void;
-  onFeedback: (message: string) => void;
   onSection: (section: SongSection) => void;
   onComplete: (result: GameResult) => void;
 }
-
-const windows = {
-  perfect: 0.07,
-  great: 0.13,
-  good: 0.2,
-};
 
 export class RhythmGame {
   private song: Song | null = null;
@@ -47,20 +40,15 @@ export class RhythmGame {
   private score = 0;
   private combo = 0;
   private maxCombo = 0;
-  private counts = { perfect: 0, great: 0, good: 0, miss: 0 };
+  private counts = { popped: 0, miss: 0 };
   private lanePulse = [0, 0, 0, 0, 0];
   private lastFrameTime = performance.now();
   private currentSectionId = "";
-  private timingOffsetMs = 0;
 
   constructor(
     private audio: AudioEngine,
     private callbacks: GameCallbacks,
   ) {}
-
-  setTimingOffset(milliseconds: number): void {
-    this.timingOffsetMs = Math.max(-180, Math.min(180, milliseconds));
-  }
 
   async start(song: Song): Promise<void> {
     this.stop();
@@ -69,13 +57,12 @@ export class RhythmGame {
       ...note,
       hit: false,
       missed: false,
-      holding: false,
       completed: false,
     }));
     this.score = 0;
     this.combo = 0;
     this.maxCombo = 0;
-    this.counts = { perfect: 0, great: 0, good: 0, miss: 0 };
+    this.counts = { popped: 0, miss: 0 };
     this.lanePulse = [0, 0, 0, 0, 0];
     this.currentSectionId = "";
     this.paused = false;
@@ -100,74 +87,29 @@ export class RhythmGame {
     return this.paused;
   }
 
-  laneDown(lane: number): void {
+  popNote(noteId: string): void {
     if (!this.running || this.paused || !this.song) return;
-    this.lanePulse[lane] = 1;
-    const time = this.songTime();
-    const secondsPerBeat = 60 / this.song.bpm;
-    const candidates = this.notes
-      .filter((note) => note.lane === lane && !note.hit && !note.missed)
-      .map((note) => ({ note, delta: note.beat * secondsPerBeat - time }))
-      .filter((candidate) => Math.abs(candidate.delta) <= windows.good)
-      .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta));
+    const note = this.notes.find((item) => item.id === noteId && !item.hit && !item.missed);
+    if (!note) return;
 
-    const candidate = candidates[0];
-    if (!candidate) {
-      const next = this.notes.find((note) => note.lane === lane && !note.hit && !note.missed && note.beat * secondsPerBeat > time);
-      if (next && next.beat * secondsPerBeat - time < 0.42) this.callbacks.onFeedback("조금만 기다려요");
-      this.audio.playUi("soft");
-      return;
-    }
-
-    const absoluteDelta = Math.abs(candidate.delta);
-    let judge: JudgeName;
-    let points: number;
-    if (absoluteDelta <= windows.perfect) {
-      judge = "PERFECT";
-      points = 1000;
-      this.counts.perfect += 1;
-    } else if (absoluteDelta <= windows.great) {
-      judge = "GREAT";
-      points = 720;
-      this.counts.great += 1;
-    } else {
-      judge = "GOOD";
-      points = 460;
-      this.counts.good += 1;
-    }
-
-    candidate.note.hit = true;
-    candidate.note.judgedAt = time;
-    candidate.note.holding = candidate.note.durationBeats >= 1.75;
-    candidate.note.completed = !candidate.note.holding;
+    this.lanePulse[note.lane] = 1;
+    note.hit = true;
+    note.completed = true;
+    note.judgedAt = this.songTime();
     this.combo += 1;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
-    this.score += points + Math.min(400, this.combo * 8);
-    this.audio.playHit(candidate.note.midi, this.song.hitBank, judge === "PERFECT" ? 1.05 : 0.88);
+    this.counts.popped += 1;
+    const lengthBonus = Math.min(240, Math.round(note.durationBeats * 70));
+    const accentBonus = note.accent ? 180 : 0;
+    this.score += 600 + lengthBonus + accentBonus + Math.min(500, this.combo * 7);
+    this.audio.playHit(note.midi, this.song.hitBank, note.accent ? 1.05 : 0.9);
     this.callbacks.onJudge({
-      judge,
-      lane,
-      deltaMs: candidate.delta * 1000,
+      judge: "POP",
+      noteId: note.id,
+      lane: note.lane,
       score: this.score,
       combo: this.combo,
     });
-  }
-
-  laneUp(lane: number): void {
-    if (!this.running || this.paused || !this.song) return;
-    const held = this.notes.find((note) => note.lane === lane && note.holding && !note.completed);
-    if (!held) return;
-    const secondsPerBeat = 60 / this.song.bpm;
-    const elapsed = this.songTime() - held.beat * secondsPerBeat;
-    const required = held.durationBeats * secondsPerBeat;
-    held.holding = false;
-    held.completed = true;
-    if (elapsed >= required * 0.72) {
-      this.score += 360;
-      this.callbacks.onFeedback("긴 음을 끝까지 잘 들었어요");
-    } else {
-      this.callbacks.onFeedback("긴 음은 조금 더 이어 보세요");
-    }
   }
 
   private tick = (): void => {
@@ -189,22 +131,12 @@ export class RhythmGame {
 
     this.notes.forEach((note) => {
       const noteTime = note.beat * secondsPerBeat;
-      if (!note.hit && !note.missed && songTime > noteTime + windows.good) {
+      if (!note.hit && !note.missed && songTime > noteTime + 0.22) {
         note.missed = true;
         note.completed = true;
         this.combo = 0;
         this.counts.miss += 1;
-        this.callbacks.onJudge({ judge: "MISS", lane: note.lane, deltaMs: 0, score: this.score, combo: this.combo });
-      }
-
-      if (note.holding && !note.completed) {
-        const noteEnd = noteTime + note.durationBeats * secondsPerBeat;
-        if (songTime >= noteEnd - 0.08) {
-          note.holding = false;
-          note.completed = true;
-          this.score += 420;
-          this.callbacks.onFeedback("긴 음이 예쁘게 이어졌어요");
-        }
+        this.callbacks.onJudge({ judge: "MISS", noteId: note.id, lane: note.lane, score: this.score, combo: this.combo });
       }
     });
 
@@ -231,7 +163,7 @@ export class RhythmGame {
   };
 
   private songTime(): number {
-    return this.audio.gameNow - this.startAt + this.timingOffsetMs / 1000;
+    return this.audio.gameNow - this.startAt;
   }
 
   private finish(): void {
@@ -239,17 +171,14 @@ export class RhythmGame {
     this.running = false;
     cancelAnimationFrame(this.frameId);
     const total = this.notes.length || 1;
-    const weighted = this.counts.perfect + this.counts.great * 0.78 + this.counts.good * 0.5;
-    const accuracy = Math.round((weighted / total) * 100);
-    const stars = accuracy >= 88 ? 3 : accuracy >= 68 ? 2 : 1;
+    const accuracy = Math.round((this.counts.popped / total) * 100);
+    const stars = accuracy >= 85 ? 3 : accuracy >= 60 ? 2 : 1;
     this.callbacks.onComplete({
       songId: this.song.id,
       score: this.score,
       accuracy,
       maxCombo: this.maxCombo,
-      perfect: this.counts.perfect,
-      great: this.counts.great,
-      good: this.counts.good,
+      popped: this.counts.popped,
       miss: this.counts.miss,
       stars,
     });
