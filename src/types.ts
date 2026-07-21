@@ -1,13 +1,6 @@
 export type ScreenName = "library" | "mission" | "game" | "result";
 
-export type SoundWorld =
-  | "starlight"
-  | "sunrise"
-  | "moonlight"
-  | "turkish"
-  | "cancan"
-  | "gallop"
-  | "hungarian";
+export type HitBank = "piano" | "violin" | "trumpet";
 
 export interface MelodyNote {
   id: string;
@@ -48,25 +41,27 @@ export interface SongPalette {
 
 export interface Song {
   id: string;
-  collection: "foundation" | "speed";
+  number: string;
   title: string;
   subtitle: string;
   origin: string;
   grade: string;
-  difficulty: "처음" | "차근차근" | "도전";
+  difficulty: "빠른 도전" | "최고 속도";
   bpm: number;
-  beatsPerBar: 2 | 3 | 4;
+  beatsPerBar: 2 | 4;
   leadInBeats: number;
   totalBeats: number;
-  soundWorld: SoundWorld;
+  hitBank: HitBank;
+  featuredInstrument: string;
+  listeningPoint: string;
+  instruments: string[];
   approachSeconds?: number;
-  backingTrack?: string;
+  backingTrack: string;
   artwork: string;
   palette: SongPalette;
   mission: ListeningMission;
   melody: MelodyNote[];
   sections: SongSection[];
-  harmony: number[][];
 }
 
 export type JudgeName = "PERFECT" | "GREAT" | "GOOD" | "MISS";

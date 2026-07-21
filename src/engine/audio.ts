@@ -1,112 +1,20 @@
-import type { MelodyNote, Song, SoundWorld } from "../types";
+import type { HitBank, Song } from "../types";
 
-type AudioNodeWithStop = AudioBufferSourceNode | OscillatorNode;
-type InstrumentName =
-  | "piano"
-  | "celesta"
-  | "flute"
-  | "strings"
-  | "glockenspiel"
-  | "violin"
-  | "trumpet"
-  | "timpani";
+type TrackedSource = AudioBufferSourceNode | OscillatorNode;
 
-interface SampleDefinition {
-  midi: number;
+interface HitSpriteDefinition {
   path: string;
+  firstMidi: number;
+  lastMidi: number;
+  firstOffset: number;
+  slotSeconds: number;
 }
 
-interface LoadedSample extends SampleDefinition {
-  buffer: AudioBuffer;
-}
-
-const SAMPLE_ROOT = "/assets/audio/instruments";
-const SAMPLE_MANIFEST: Record<InstrumentName, SampleDefinition[]> = {
-  piano: [
-    { midi: 36, path: `${SAMPLE_ROOT}/piano/C2.mp3` },
-    { midi: 41, path: `${SAMPLE_ROOT}/piano/F2.mp3` },
-    { midi: 45, path: `${SAMPLE_ROOT}/piano/A2.mp3` },
-    { midi: 48, path: `${SAMPLE_ROOT}/piano/C3.mp3` },
-    { midi: 53, path: `${SAMPLE_ROOT}/piano/F3.mp3` },
-    { midi: 57, path: `${SAMPLE_ROOT}/piano/A3.mp3` },
-    { midi: 60, path: `${SAMPLE_ROOT}/piano/C4.mp3` },
-    { midi: 64, path: `${SAMPLE_ROOT}/piano/E4.mp3` },
-    { midi: 67, path: `${SAMPLE_ROOT}/piano/G4.mp3` },
-    { midi: 72, path: `${SAMPLE_ROOT}/piano/C5.mp3` },
-  ],
-  celesta: [
-    { midi: 60, path: `${SAMPLE_ROOT}/celesta/C4.mp3` },
-    { midi: 64, path: `${SAMPLE_ROOT}/celesta/E4.mp3` },
-    { midi: 67, path: `${SAMPLE_ROOT}/celesta/G4.mp3` },
-    { midi: 69, path: `${SAMPLE_ROOT}/celesta/A4.mp3` },
-    { midi: 72, path: `${SAMPLE_ROOT}/celesta/C5.mp3` },
-  ],
-  flute: [
-    { midi: 59, path: `${SAMPLE_ROOT}/flute/B3.mp3` },
-    { midi: 60, path: `${SAMPLE_ROOT}/flute/C4.mp3` },
-    { midi: 64, path: `${SAMPLE_ROOT}/flute/E4.mp3` },
-    { midi: 67, path: `${SAMPLE_ROOT}/flute/G4.mp3` },
-    { midi: 69, path: `${SAMPLE_ROOT}/flute/A4.mp3` },
-    { midi: 71, path: `${SAMPLE_ROOT}/flute/B4.mp3` },
-    { midi: 72, path: `${SAMPLE_ROOT}/flute/C5.mp3` },
-  ],
-  strings: [
-    { midi: 48, path: `${SAMPLE_ROOT}/strings/C3.mp3` },
-    { midi: 55, path: `${SAMPLE_ROOT}/strings/G3.mp3` },
-    { midi: 60, path: `${SAMPLE_ROOT}/strings/C4.mp3` },
-    { midi: 67, path: `${SAMPLE_ROOT}/strings/G4.mp3` },
-    { midi: 72, path: `${SAMPLE_ROOT}/strings/C5.mp3` },
-  ],
-  glockenspiel: [
-    { midi: 60, path: `${SAMPLE_ROOT}/glockenspiel/C4.mp3` },
-    { midi: 64, path: `${SAMPLE_ROOT}/glockenspiel/E4.mp3` },
-    { midi: 67, path: `${SAMPLE_ROOT}/glockenspiel/G4.mp3` },
-    { midi: 72, path: `${SAMPLE_ROOT}/glockenspiel/C5.mp3` },
-    { midi: 76, path: `${SAMPLE_ROOT}/glockenspiel/E5.mp3` },
-  ],
-  violin: [
-    { midi: 48, path: `${SAMPLE_ROOT}/violin/C3.mp3` },
-    { midi: 55, path: `${SAMPLE_ROOT}/violin/G3.mp3` },
-    { midi: 60, path: `${SAMPLE_ROOT}/violin/C4.mp3` },
-    { midi: 67, path: `${SAMPLE_ROOT}/violin/G4.mp3` },
-    { midi: 72, path: `${SAMPLE_ROOT}/violin/C5.mp3` },
-  ],
-  trumpet: [
-    { midi: 48, path: `${SAMPLE_ROOT}/trumpet/C3.mp3` },
-    { midi: 55, path: `${SAMPLE_ROOT}/trumpet/G3.mp3` },
-    { midi: 60, path: `${SAMPLE_ROOT}/trumpet/C4.mp3` },
-    { midi: 67, path: `${SAMPLE_ROOT}/trumpet/G4.mp3` },
-    { midi: 72, path: `${SAMPLE_ROOT}/trumpet/C5.mp3` },
-  ],
-  timpani: [
-    { midi: 36, path: `${SAMPLE_ROOT}/timpani/C2.mp3` },
-    { midi: 43, path: `${SAMPLE_ROOT}/timpani/G2.mp3` },
-    { midi: 48, path: `${SAMPLE_ROOT}/timpani/C3.mp3` },
-    { midi: 55, path: `${SAMPLE_ROOT}/timpani/G3.mp3` },
-    { midi: 60, path: `${SAMPLE_ROOT}/timpani/C4.mp3` },
-  ],
+const HIT_SPRITES: Record<HitBank, HitSpriteDefinition> = {
+  piano: { path: "/assets/audio/v3/hits/piano.ogg", firstMidi: 48, lastMidi: 84, firstOffset: 0.25, slotSeconds: 1.25 },
+  violin: { path: "/assets/audio/v3/hits/violin.ogg", firstMidi: 48, lastMidi: 84, firstOffset: 0.25, slotSeconds: 1.25 },
+  trumpet: { path: "/assets/audio/v3/hits/trumpet.ogg", firstMidi: 48, lastMidi: 84, firstOffset: 0.25, slotSeconds: 1.25 },
 };
-
-const INSTRUMENT_LEVEL: Record<InstrumentName, number> = {
-  piano: 0.78,
-  celesta: 0.62,
-  flute: 0.54,
-  strings: 0.42,
-  glockenspiel: 0.5,
-  violin: 0.48,
-  trumpet: 0.42,
-  timpani: 0.46,
-};
-
-const midiToFrequency = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
-
-function leadInstrument(world: SoundWorld): InstrumentName {
-  if (world === "starlight") return "celesta";
-  if (world === "moonlight") return "flute";
-  if (world === "cancan" || world === "hungarian") return "violin";
-  if (world === "gallop") return "trumpet";
-  return "piano";
-}
 
 export class AudioEngine {
   private context: AudioContext | null = null;
@@ -114,14 +22,11 @@ export class AudioEngine {
   private backingBus: GainNode | null = null;
   private playerBus: GainNode | null = null;
   private effectsBus: GainNode | null = null;
-  private reverb: ConvolverNode | null = null;
-  private reverbReturn: GainNode | null = null;
-  private sampleBanks = new Map<InstrumentName, LoadedSample[]>();
-  private sampleLoadPromise: Promise<void> | null = null;
-  private backingBuffers = new Map<string, AudioBuffer>();
-  private backingLoadPromises = new Map<string, Promise<AudioBuffer>>();
-  private scheduledNodes = new Set<AudioNodeWithStop>();
-  private activePreview = false;
+  private hitReverb: ConvolverNode | null = null;
+  private hitReverbReturn: GainNode | null = null;
+  private buffers = new Map<string, AudioBuffer>();
+  private pendingBuffers = new Map<string, Promise<AudioBuffer>>();
+  private scheduled = new Set<TrackedSource>();
   private songStartTime = 0;
   private useAudioClock = true;
 
@@ -131,10 +36,6 @@ export class AudioEngine {
 
   get now(): number {
     return this.context?.currentTime ?? 0;
-  }
-
-  get startTime(): number {
-    return this.songStartTime;
   }
 
   get gameNow(): number {
@@ -149,108 +50,80 @@ export class AudioEngine {
     return Promise.race([resume, timeout]);
   }
 
-  private setup(): void {
-    this.context = new AudioContext({ latencyHint: "interactive" });
-    const compressor = this.context.createDynamicsCompressor();
-    compressor.threshold.value = -14;
-    compressor.knee.value = 16;
-    compressor.ratio.value = 4;
-    compressor.attack.value = 0.006;
-    compressor.release.value = 0.24;
-
-    this.master = this.context.createGain();
-    this.master.gain.value = 0.82;
-    this.backingBus = this.context.createGain();
-    this.backingBus.gain.value = 0.7;
-    this.playerBus = this.context.createGain();
-    this.playerBus.gain.value = 0.96;
-    this.effectsBus = this.context.createGain();
-    this.effectsBus.gain.value = 0.38;
-
-    this.reverb = this.context.createConvolver();
-    this.reverb.buffer = this.makeImpulse(1.65, 3.1);
-    this.reverbReturn = this.context.createGain();
-    this.reverbReturn.gain.value = 0.14;
-
-    this.backingBus.connect(this.master);
-    this.playerBus.connect(this.master);
-    this.effectsBus.connect(this.master);
-    this.backingBus.connect(this.reverb);
-    this.playerBus.connect(this.reverb);
-    this.reverb.connect(this.reverbReturn);
-    this.reverbReturn.connect(this.master);
-    this.master.connect(compressor);
-    compressor.connect(this.context.destination);
+  async preload(song: Song): Promise<void> {
+    const audible = await this.ensureReady();
+    if (!audible) throw new Error("브라우저가 소리 재생을 허용하지 않았습니다.");
+    await Promise.all([
+      this.loadBuffer(song.backingTrack),
+      this.loadBuffer(HIT_SPRITES[song.hitBank].path),
+    ]);
   }
 
-  private async loadSamples(): Promise<void> {
-    if (this.sampleLoadPromise) return this.sampleLoadPromise;
+  async preview(song: Song): Promise<void> {
+    await this.preload(song);
+    this.stop();
     const context = this.context!;
-    this.sampleLoadPromise = Promise.all(
-      (Object.entries(SAMPLE_MANIFEST) as [InstrumentName, SampleDefinition[]][]).map(async ([instrument, definitions]) => {
-        const loaded = await Promise.all(definitions.map(async (definition) => {
-          const response = await fetch(definition.path);
-          if (!response.ok) throw new Error(`악기 샘플을 불러오지 못했습니다: ${definition.path}`);
-          const buffer = await context.decodeAudioData(await response.arrayBuffer());
-          return { ...definition, buffer };
-        }));
-        this.sampleBanks.set(instrument, loaded);
-      }),
-    ).then(() => undefined);
-    return this.sampleLoadPromise;
+    const backing = this.buffers.get(song.backingTrack)!;
+    const startAt = context.currentTime + 0.08;
+    const previewOffset = Math.min(backing.duration - 0.5, song.leadInBeats * 60 / song.bpm);
+    const duration = Math.min(12, backing.duration - previewOffset);
+    const source = this.track(context.createBufferSource());
+    source.buffer = backing;
+    source.connect(this.backingBus!);
+    source.start(startAt, Math.max(0, previewOffset), duration);
   }
 
-  private async loadBacking(song: Song): Promise<AudioBuffer | null> {
-    if (!song.backingTrack) return null;
-    const cached = this.backingBuffers.get(song.backingTrack);
-    if (cached) return cached;
-    const pending = this.backingLoadPromises.get(song.backingTrack);
-    if (pending) return pending;
+  async start(song: Song): Promise<number> {
+    this.stop();
+    await this.preload(song);
     const context = this.context!;
-    const promise = fetch(song.backingTrack).then(async (response) => {
-      if (!response.ok) throw new Error(`반주를 불러오지 못했습니다: ${song.backingTrack}`);
-      const buffer = await context.decodeAudioData(await response.arrayBuffer());
-      this.backingBuffers.set(song.backingTrack!, buffer);
-      return buffer;
-    });
-    this.backingLoadPromises.set(song.backingTrack, promise);
-    try {
-      return await promise;
-    } finally {
-      this.backingLoadPromises.delete(song.backingTrack);
-    }
+    this.useAudioClock = true;
+    this.songStartTime = context.currentTime + 0.2;
+    const source = this.track(context.createBufferSource());
+    source.buffer = this.buffers.get(song.backingTrack)!;
+    source.connect(this.backingBus!);
+    source.start(this.songStartTime);
+    this.scheduleCountIn(song, this.songStartTime);
+    return this.songStartTime;
   }
 
-  private makeImpulse(seconds: number, decay: number): AudioBuffer {
-    const context = this.context!;
-    const length = Math.floor(context.sampleRate * seconds);
-    const impulse = context.createBuffer(2, length, context.sampleRate);
-    for (let channel = 0; channel < 2; channel += 1) {
-      const data = impulse.getChannelData(channel);
-      for (let index = 0; index < length; index += 1) {
-        const envelope = (1 - index / length) ** decay;
-        data[index] = (Math.random() * 2 - 1) * envelope * (channel === 0 ? 1 : 0.92);
-      }
-    }
-    return impulse;
+  playHit(midi: number, bank: HitBank, velocity = 1): void {
+    if (!this.ready || !this.playerBus || !this.context) return;
+    const definition = HIT_SPRITES[bank];
+    const buffer = this.buffers.get(definition.path);
+    if (!buffer) return;
+    const pitch = Math.max(definition.firstMidi, Math.min(definition.lastMidi, midi));
+    const offset = definition.firstOffset + (pitch - definition.firstMidi) * definition.slotSeconds;
+    const now = this.context.currentTime + 0.003;
+    const source = this.track(this.context.createBufferSource());
+    const gain = this.context.createGain();
+    const level = Math.min(1.08, Math.max(0.2, velocity)) * (bank === "trumpet" ? 0.56 : 0.68);
+    source.buffer = buffer;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(level, now + 0.008);
+    gain.gain.setValueAtTime(level * 0.82, now + 0.52);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.88);
+    source.connect(gain);
+    gain.connect(this.playerBus);
+    source.start(now, offset, 0.92);
+    source.stop(now + 0.93);
   }
 
-  private track<T extends AudioNodeWithStop>(source: T): T {
-    this.scheduledNodes.add(source);
-    source.addEventListener("ended", () => this.scheduledNodes.delete(source), { once: true });
-    return source;
+  playUi(kind: "select" | "success" | "soft"): void {
+    if (!this.ready || !this.effectsBus || !this.context) return;
+    const pitches = kind === "success" ? [523.25, 659.25, 783.99] : kind === "select" ? [659.25, 783.99] : [440];
+    pitches.forEach((frequency, index) => this.scheduleBell(frequency, this.context!.currentTime + index * 0.075, kind === "soft" ? 0.025 : 0.05));
   }
 
   stop(): void {
-    this.scheduledNodes.forEach((node) => {
+    this.scheduled.forEach((source) => {
       try {
-        node.stop();
+        source.stop();
       } catch {
-        // The source may have already ended.
+        // A source may already have reached its natural end.
       }
     });
-    this.scheduledNodes.clear();
-    this.activePreview = false;
+    this.scheduled.clear();
   }
 
   async suspend(): Promise<void> {
@@ -261,304 +134,105 @@ export class AudioEngine {
     if (this.context?.state === "suspended") await this.context.resume();
   }
 
-  async preview(song: Song): Promise<void> {
-    const audible = await this.ensureReady();
-    if (!audible) throw new Error("오디오 재생이 아직 허용되지 않았습니다.");
-    await this.loadSamples();
-    const backing = await this.loadBacking(song);
-    this.stop();
-    this.activePreview = true;
-    const startAt = this.now + 0.1;
-    const secondsPerBeat = 60 / song.bpm;
-    const notes = song.melody.slice(0, 12);
-    const previewStartBeat = notes[0]?.beat ?? song.leadInBeats;
-    const durationBeats = Math.min(16, song.beatsPerBar * 4);
+  private setup(): void {
+    this.context = new AudioContext({ latencyHint: "interactive" });
+    const compressor = this.context.createDynamicsCompressor();
+    compressor.threshold.value = -12;
+    compressor.knee.value = 14;
+    compressor.ratio.value = 3;
+    compressor.attack.value = 0.004;
+    compressor.release.value = 0.2;
 
-    if (backing && this.context && this.backingBus) {
-      const offsetSeconds = Math.min(backing.duration - 0.2, previewStartBeat * secondsPerBeat);
-      const durationSeconds = Math.min(11, backing.duration - offsetSeconds);
-      const source = this.track(this.context.createBufferSource());
-      source.buffer = backing;
-      source.connect(this.backingBus);
-      source.start(startAt, Math.max(0, offsetSeconds), durationSeconds);
-      window.setTimeout(() => {
-        if (this.activePreview) this.stop();
-      }, durationSeconds * 1000 + 300);
-      return;
-    }
+    this.master = this.context.createGain();
+    this.master.gain.value = 0.88;
+    this.backingBus = this.context.createGain();
+    this.backingBus.gain.value = 0.76;
+    this.playerBus = this.context.createGain();
+    this.playerBus.gain.value = 0.92;
+    this.effectsBus = this.context.createGain();
+    this.effectsBus.gain.value = 0.5;
 
-    this.scheduleHarmony(song, startAt, previewStartBeat, previewStartBeat + durationBeats, previewStartBeat);
-    this.scheduleOrchestration(song, startAt, previewStartBeat, previewStartBeat + durationBeats, previewStartBeat);
-    notes.forEach((note) => {
-      const when = startAt + (note.beat - previewStartBeat) * secondsPerBeat;
-      this.scheduleLead(note, when, secondsPerBeat, song.soundWorld, 0.4, this.backingBus!);
+    this.hitReverb = this.context.createConvolver();
+    this.hitReverb.buffer = this.makeImpulse(1.15, 3.4);
+    this.hitReverbReturn = this.context.createGain();
+    this.hitReverbReturn.gain.value = 0.09;
+
+    this.backingBus.connect(this.master);
+    this.playerBus.connect(this.master);
+    this.playerBus.connect(this.hitReverb);
+    this.effectsBus.connect(this.master);
+    this.hitReverb.connect(this.hitReverbReturn);
+    this.hitReverbReturn.connect(this.master);
+    this.master.connect(compressor);
+    compressor.connect(this.context.destination);
+  }
+
+  private async loadBuffer(path: string): Promise<AudioBuffer> {
+    const cached = this.buffers.get(path);
+    if (cached) return cached;
+    const pending = this.pendingBuffers.get(path);
+    if (pending) return pending;
+    const promise = fetch(path).then(async (response) => {
+      if (!response.ok) throw new Error(`음원을 불러오지 못했습니다: ${path}`);
+      const buffer = await this.context!.decodeAudioData(await response.arrayBuffer());
+      this.buffers.set(path, buffer);
+      return buffer;
     });
-
-    window.setTimeout(() => {
-      if (this.activePreview) this.stop();
-    }, durationBeats * secondsPerBeat * 1000 + 300);
-  }
-
-  async start(song: Song): Promise<number> {
-    this.stop();
-    let audible = await this.ensureReady();
-    let backing: AudioBuffer | null = null;
-    if (audible) {
-      try {
-        await this.loadSamples();
-      } catch {
-        audible = false;
-      }
+    this.pendingBuffers.set(path, promise);
+    try {
+      return await promise;
+    } finally {
+      this.pendingBuffers.delete(path);
     }
-    if (audible && song.backingTrack) {
-      try {
-        backing = await this.loadBacking(song);
-      } catch (error) {
-        console.error("완성 반주를 불러오지 못해 실시간 반주로 전환합니다.", error);
-      }
-    }
-
-    this.useAudioClock = audible;
-    const startAt = audible ? this.now + 0.42 : performance.now() / 1000 + 0.12;
-    this.songStartTime = startAt;
-    if (!audible) return startAt;
-
-    this.scheduleCountIn(song, startAt);
-    if (backing && this.context && this.backingBus) {
-      const source = this.track(this.context.createBufferSource());
-      source.buffer = backing;
-      source.connect(this.backingBus);
-      source.start(startAt);
-      return startAt;
-    }
-    this.scheduleHarmony(song, startAt, 0, song.totalBeats, 0);
-    this.scheduleOrchestration(song, startAt, 0, song.totalBeats, 0);
-    const secondsPerBeat = 60 / song.bpm;
-    song.melody.forEach((note) => {
-      const when = startAt + note.beat * secondsPerBeat;
-      this.scheduleLead(note, when, secondsPerBeat, song.soundWorld, 0.16, this.backingBus!);
-    });
-    return startAt;
-  }
-
-  playHit(midi: number, world: SoundWorld, velocity = 1): void {
-    if (!this.ready || !this.playerBus || this.sampleBanks.size === 0) return;
-    this.scheduleSample(leadInstrument(world), midi, this.now + 0.004, 0.72, Math.min(1.05, velocity), this.playerBus);
-  }
-
-  playUi(kind: "select" | "success" | "soft"): void {
-    if (!this.ready || !this.effectsBus) return;
-    const now = this.now;
-    const notes = kind === "success" ? [67, 72, 76] : kind === "select" ? [67, 72] : [60];
-    if (this.sampleBanks.size > 0) {
-      notes.forEach((midi, index) => {
-        this.scheduleSample("celesta", midi, now + index * 0.075, 0.35, kind === "soft" ? 0.12 : 0.2, this.effectsBus!);
-      });
-      return;
-    }
-    notes.forEach((midi, index) => this.scheduleFallbackBell(midiToFrequency(midi), now + index * 0.075, 0.05, this.effectsBus!));
   }
 
   private scheduleCountIn(song: Song, startAt: number): void {
     const secondsPerBeat = 60 / song.bpm;
     for (let beat = 0; beat < song.leadInBeats; beat += 1) {
-      this.scheduleSample(
-        "celesta",
-        beat === song.leadInBeats - 1 ? 72 : 67,
-        startAt + beat * secondsPerBeat,
-        0.32,
-        beat === song.leadInBeats - 1 ? 0.28 : 0.18,
-        this.effectsBus!,
-      );
+      const strong = beat === song.leadInBeats - 1;
+      this.scheduleBell(strong ? 1046.5 : 783.99, startAt + beat * secondsPerBeat, strong ? 0.055 : 0.032);
     }
   }
 
-  private scheduleHarmony(
-    song: Song,
-    startAt: number,
-    fromBeat: number,
-    toBeat: number,
-    timelineOriginBeat: number,
-  ): void {
-    const beatSeconds = 60 / song.bpm;
-    const beatsPerBar = song.beatsPerBar;
-    const firstBar = Math.floor(fromBeat / beatsPerBar);
-    const lastBar = Math.ceil(toBeat / beatsPerBar);
-    const timeForBeat = (beat: number): number => startAt + (beat - timelineOriginBeat) * beatSeconds;
-
-    for (let bar = firstBar; bar < lastBar; bar += 1) {
-      const barBeat = bar * beatsPerBar;
-      if (barBeat + beatsPerBar <= fromBeat || barBeat >= toBeat) continue;
-      const chord = song.harmony[bar % song.harmony.length];
-      const section = song.sections.find((item) => barBeat >= item.startBeat && barBeat < item.endBeat);
-      const listenBoost = section?.mode === "listen" ? 1.12 : 1;
-      const growth = 0.82 + Math.min(0.18, bar / Math.max(1, lastBar) * 0.18);
-      const dynamic = listenBoost * growth;
-
-      if (song.soundWorld === "moonlight") {
-        this.scheduleSample("piano", chord[0], timeForBeat(barBeat), beatSeconds * 0.9, 0.24 * dynamic, this.backingBus!, -0.12);
-        for (let beat = 1; beat < beatsPerBar; beat += 1) {
-          this.scheduleChord(chord.slice(1).map((midi) => midi + 12), timeForBeat(barBeat + beat), beatSeconds * 0.66, 0.1 * dynamic, this.backingBus!);
-        }
-        continue;
-      }
-
-      this.scheduleSample("piano", chord[0] - 12, timeForBeat(barBeat), beatSeconds * 0.82, 0.2 * dynamic, this.backingBus!, -0.15);
-      if (beatsPerBar === 4) {
-        this.scheduleSample("piano", chord[2], timeForBeat(barBeat + 2), beatSeconds * 0.72, 0.13 * dynamic, this.backingBus!, -0.08);
-      }
-
-      if (song.soundWorld === "starlight") {
-        const pattern = [0, 2, 1, 2, 0, 2, 1, 2];
-        for (let half = 0; half < beatsPerBar * 2; half += 1) {
-          const midi = chord[pattern[half % pattern.length]] + 12;
-          this.scheduleSample("piano", midi, timeForBeat(barBeat + half * 0.5), beatSeconds * 0.4, 0.075 * dynamic, this.backingBus!, 0.12);
-        }
-      } else {
-        for (let beat = 0; beat < beatsPerBar; beat += 1) {
-          const strength = beat === 0 ? 0.12 : beat === 2 ? 0.1 : 0.075;
-          this.scheduleChord(chord.map((midi) => midi + 12), timeForBeat(barBeat + beat), beatSeconds * 0.64, strength * dynamic, this.backingBus!);
-        }
-      }
-    }
-  }
-
-  private scheduleOrchestration(
-    song: Song,
-    startAt: number,
-    fromBeat: number,
-    toBeat: number,
-    timelineOriginBeat: number,
-  ): void {
-    const beatSeconds = 60 / song.bpm;
-    const beatsPerBar = song.beatsPerBar;
-    const firstBar = Math.floor(fromBeat / beatsPerBar);
-    const lastBar = Math.ceil(toBeat / beatsPerBar);
-    const timeForBeat = (beat: number): number => startAt + (beat - timelineOriginBeat) * beatSeconds;
-
-    for (let bar = firstBar; bar < lastBar; bar += 1) {
-      const barBeat = bar * beatsPerBar;
-      if (barBeat + beatsPerBar <= fromBeat || barBeat >= toBeat) continue;
-      const chord = song.harmony[bar % song.harmony.length];
-      const section = song.sections.find((item) => barBeat >= item.startBeat && barBeat < item.endBeat);
-      const listenSection = section?.mode === "listen";
-      const phraseLift = 0.9 + Math.min(0.16, bar / Math.max(1, lastBar) * 0.16);
-      const stringLevel = (song.soundWorld === "sunrise" ? 0.12 : 0.095) * phraseLift * (listenSection ? 0.86 : 1);
-
-      if (barBeat >= fromBeat) {
-        this.scheduleChord(
-          chord,
-          timeForBeat(barBeat),
-          beatSeconds * beatsPerBar * 0.94,
-          stringLevel,
-          this.backingBus!,
-          "strings",
-        );
-      }
-
-      const sparkleBeats = song.soundWorld === "starlight"
-        ? (beatsPerBar === 4 ? [0.5, 1.5, 2.5, 3.5] : [0.5, 1.5, 2.5])
-        : song.soundWorld === "moonlight"
-          ? [0, beatsPerBar - 0.5]
-          : [0, 2];
-      sparkleBeats.forEach((beatOffset, index) => {
-        const beat = barBeat + beatOffset;
-        if (beat < fromBeat || beat >= toBeat || beatOffset >= beatsPerBar) return;
-        const chordTone = chord[(bar + index * 2) % chord.length] + 24;
-        const level = song.soundWorld === "starlight" ? 0.085 : listenSection ? 0.035 : 0.052;
-        this.scheduleSample(
-          "glockenspiel",
-          chordTone,
-          timeForBeat(beat),
-          beatSeconds * 0.48,
-          level * phraseLift,
-          this.backingBus!,
-          index % 2 === 0 ? -0.18 : 0.18,
-        );
-      });
-    }
-  }
-
-  private scheduleChord(
-    chord: number[],
-    when: number,
-    duration: number,
-    velocity: number,
-    destination: AudioNode,
-    instrument: InstrumentName = "piano",
-  ): void {
-    chord.forEach((midi, index) => {
-      const spread = instrument === "strings" ? 0.42 : 0.24;
-      const pan = chord.length <= 1 ? 0 : -spread / 2 + (index / (chord.length - 1)) * spread;
-      const stagger = instrument === "strings" ? index * 0.024 : index * 0.014;
-      this.scheduleSample(instrument, midi, when + stagger, duration, velocity, destination, pan);
-    });
-  }
-
-  private scheduleLead(
-    note: MelodyNote,
-    when: number,
-    secondsPerBeat: number,
-    world: SoundWorld,
-    velocity: number,
-    destination: AudioNode,
-  ): void {
-    const duration = Math.max(0.28, note.durationBeats * secondsPerBeat * 0.9);
-    this.scheduleSample(leadInstrument(world), note.midi, when, duration, velocity, destination);
-  }
-
-  private scheduleSample(
-    instrument: InstrumentName,
-    midi: number,
-    when: number,
-    duration: number,
-    velocity: number,
-    destination: AudioNode,
-    pan = 0,
-  ): void {
-    const samples = this.sampleBanks.get(instrument);
-    if (!samples?.length || !this.context) return;
-    const sample = samples.reduce((closest, candidate) => (
-      Math.abs(candidate.midi - midi) < Math.abs(closest.midi - midi) ? candidate : closest
-    ));
-    const playbackRate = 2 ** ((midi - sample.midi) / 12);
-    const source = this.track(this.context.createBufferSource());
+  private scheduleBell(frequency: number, when: number, level: number): void {
+    if (!this.context || !this.effectsBus) return;
+    const oscillator = this.track(this.context.createOscillator());
+    const overtone = this.context.createOscillator();
     const gain = this.context.createGain();
-    const panner = this.context.createStereoPanner();
-    const sustained = instrument === "strings" || instrument === "violin" || instrument === "trumpet";
-    const attack = sustained ? 0.065 : instrument === "flute" ? 0.045 : 0.006;
-    const release = sustained ? 0.3 : instrument === "flute" ? 0.16 : 0.32;
-    const naturalDuration = sample.buffer.duration / playbackRate;
-    const stopAfter = Math.max(0.14, Math.min(naturalDuration, duration + release));
-    const releaseAt = Math.max(when + attack + 0.04, when + Math.min(duration * 0.88, stopAfter - 0.07));
-    const level = Math.max(0.0001, velocity * INSTRUMENT_LEVEL[instrument]);
-
-    source.buffer = sample.buffer;
-    source.playbackRate.value = playbackRate;
-    gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.linearRampToValueAtTime(level, when + attack);
-    gain.gain.setValueAtTime(level, releaseAt);
-    gain.gain.exponentialRampToValueAtTime(0.0001, when + stopAfter);
-    panner.pan.value = Math.max(-1, Math.min(1, pan));
-    source.connect(gain);
-    gain.connect(panner);
-    panner.connect(destination);
-    source.start(when);
-    source.stop(when + stopAfter + 0.02);
-  }
-
-  private scheduleFallbackBell(frequency: number, when: number, volume: number, destination: AudioNode): void {
-    const context = this.context!;
-    const oscillator = this.track(context.createOscillator());
-    const gain = context.createGain();
     oscillator.type = "sine";
     oscillator.frequency.value = frequency;
+    overtone.type = "sine";
+    overtone.frequency.value = frequency * 2.01;
+    const overtoneGain = this.context.createGain();
+    overtoneGain.gain.value = 0.16;
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.exponentialRampToValueAtTime(volume, when + 0.008);
+    gain.gain.exponentialRampToValueAtTime(level, when + 0.006);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.28);
     oscillator.connect(gain);
-    gain.connect(destination);
+    overtone.connect(overtoneGain);
+    overtoneGain.connect(gain);
+    gain.connect(this.effectsBus);
     oscillator.start(when);
+    overtone.start(when);
     oscillator.stop(when + 0.3);
+    overtone.stop(when + 0.3);
+  }
+
+  private track<T extends TrackedSource>(source: T): T {
+    this.scheduled.add(source);
+    source.addEventListener("ended", () => this.scheduled.delete(source), { once: true });
+    return source;
+  }
+
+  private makeImpulse(seconds: number, decay: number): AudioBuffer {
+    const length = Math.floor(this.context!.sampleRate * seconds);
+    const impulse = this.context!.createBuffer(2, length, this.context!.sampleRate);
+    for (let channel = 0; channel < 2; channel += 1) {
+      const data = impulse.getChannelData(channel);
+      for (let index = 0; index < length; index += 1) {
+        data[index] = (Math.random() * 2 - 1) * (1 - index / length) ** decay;
+      }
+    }
+    return impulse;
   }
 }

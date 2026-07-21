@@ -143,7 +143,7 @@ export class RhythmGame {
     this.combo += 1;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
     this.score += points + Math.min(400, this.combo * 8);
-    this.audio.playHit(candidate.note.midi, this.song.soundWorld, judge === "PERFECT" ? 1.05 : 0.88);
+    this.audio.playHit(candidate.note.midi, this.song.hitBank, judge === "PERFECT" ? 1.05 : 0.88);
     this.callbacks.onJudge({
       judge,
       lane,

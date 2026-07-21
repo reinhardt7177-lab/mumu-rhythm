@@ -1,30 +1,28 @@
-# Third-party Audio Assets
+# Third-party Assets
 
-## FluidR3 GM instrument samples
+## Melody transcriptions
 
-This project includes a small, pitch-shifted subset of pre-rendered FluidR3 GM samples:
+The four gameplay melodies are adapted from the hand-transcribed public-domain repertoire in [appleweiping/cadenza](https://github.com/appleweiping/cadenza).
 
-- Acoustic Grand Piano
-- Celesta
-- Flute
-- String Ensemble 1
-- Glockenspiel
-- Violin
-- Trumpet
-- Timpani
+- Source code and transcription data: MIT License
+- Compositions: public domain
+- Used tracks: Rondo alla Turca, Can-Can, William Tell Overture, Hungarian Dance No. 5
 
-Source: [gleitz/midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts)
+The orchestration, dynamics, form, accompaniment and gameplay chart reductions in this project are new arrangements.
 
-Web sample collection: [FluidR3_GM](https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/)
+## GeneralUser GS
 
-The source collection states that FluidR3 GM is released under the Creative Commons Attribution 3.0 license. Only the notes required by this project are stored under `public/assets/audio/instruments/`.
+The backing tracks and chromatic hit-sound sprites are rendered with [GeneralUser GS](https://github.com/ad-si/GeneralUser), created by S. Christian Collins.
 
-FluidR3 GM is credited to Frank Wen and contributors. The web-ready conversions are distributed by the midi-js-soundfonts project.
+GeneralUser GS permits unrestricted private or commercial music creation and permits use in software projects. The SoundFont itself is downloaded to the ignored `tmp/` directory and is not redistributed in this repository. Only newly rendered OGG audio is included.
 
-## Public-domain score references
+## FluidSynth
 
-- Mozart, *Rondo Alla Turca*, K.331: [Mutopia Project score 108](https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=108), public domain.
-- Brahms, *Hungarian Dance No. 5*: [MuseTrainer public-domain MusicXML library](https://github.com/musetrainer/library).
-- Offenbach, *Orpheus in the Underworld* and Rossini, *William Tell Overture*: public-domain compositions transcribed into the project arrangement timeline.
+[FluidSynth](https://github.com/FluidSynth/fluidsynth) is used as an offline MIDI and SoundFont renderer by `tools/build_music.py`.
 
-No copyrighted commercial recording is bundled. The four speed-classic backing tracks are newly rendered inside this project from score events and the credited FluidR3 GM sample subset.
+- Source license: LGPL-2.1
+- FluidSynth binaries are downloaded to the ignored `tmp/` directory and are not distributed with the web application.
+
+## Artwork
+
+The four song artworks were generated specifically for this project from the prompts documented in `ASSET_PROMPTS.md`. They do not reproduce commercial rhythm-game artwork.
