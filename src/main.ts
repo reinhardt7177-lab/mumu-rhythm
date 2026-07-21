@@ -248,6 +248,7 @@ let sectionTimer = 0;
 let lastHudUpdate = 0;
 let lastSnapshot: GameSnapshot | null = null;
 let previewing = false;
+const activePointers = new Map<number, string>();
 
 const renderer = new StageRenderer(canvas, selectedSong);
 const game = new RhythmGame(audio, {
@@ -380,6 +381,7 @@ async function startSelectedSong(): Promise<void> {
   audio.stop();
   previewing = false;
   renderer.clearEffects();
+  activePointers.clear();
   renderer.setSong(selectedSong);
   hudTitle.textContent = selectedSong.title;
   hudNumber.textContent = selectedSong.number;
@@ -393,7 +395,7 @@ async function startSelectedSong(): Promise<void> {
     showScreen("game");
     syncStageLayout();
     requestAnimationFrame(syncStageLayout);
-    showFeedback("노트 바를 직접 터치!", "hint");
+    showFeedback("짧은 바는 톡, 긴 바는 꾹!", "hint");
   } catch (error) {
     console.error(error);
     missionAudioStatus.textContent = "음원을 시작하지 못했습니다. 다시 시도해 주세요.";
@@ -433,6 +435,11 @@ function handleJudge(event: JudgeEvent): void {
   if (event.judge === "MISS") {
     return;
   }
+  activePointers.forEach((noteId, pointerId) => {
+    if (noteId !== event.noteId) return;
+    activePointers.delete(pointerId);
+    if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+  });
   renderer.pop(event.noteId, event.lane);
   showFeedback(event.combo > 0 && event.combo % 10 === 0 ? `${event.combo} POP!` : "POP!", "pop");
 }
@@ -454,6 +461,7 @@ function handleSection(section: SongSection): void {
 
 function handleComplete(result: GameResult): void {
   latestResult = result;
+  activePointers.clear();
   audio.stop();
   const best = Math.max(getBest(result.songId), result.score);
   localStorage.setItem(bestScoreKey(result.songId), String(best));
@@ -509,8 +517,30 @@ canvas.addEventListener("pointerdown", (event) => {
   if (screen !== "game" || lastSnapshot?.paused) return;
   event.preventDefault();
   const noteId = renderer.hitTest(event.clientX, event.clientY);
-  if (noteId) game.popNote(noteId);
+  if (!noteId) return;
+  const result = game.pressNote(noteId);
+  if (result !== "holding") return;
+  activePointers.set(event.pointerId, noteId);
+  showFeedback("누르는 중", "hold");
+  try {
+    canvas.setPointerCapture(event.pointerId);
+  } catch {
+    // Synthetic test events do not own an active browser pointer.
+  }
 });
+
+const releasePointer = (event: PointerEvent): void => {
+  const noteId = activePointers.get(event.pointerId);
+  if (!noteId) return;
+  event.preventDefault();
+  activePointers.delete(event.pointerId);
+  const releasedEarly = game.releaseNote(noteId);
+  if (releasedEarly) showFeedback("조금 더 길게!", "hint");
+  if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+};
+
+canvas.addEventListener("pointerup", releasePointer);
+canvas.addEventListener("pointercancel", releasePointer);
 
 async function togglePause(): Promise<void> {
   const paused = await game.togglePause();

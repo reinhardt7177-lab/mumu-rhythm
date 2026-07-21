@@ -1,5 +1,7 @@
 export type ScreenName = "library" | "mission" | "game" | "result";
 
+export const HOLD_NOTE_MIN_BEATS = 1.75;
+
 export interface MelodyNote {
   id: string;
   beat: number;
@@ -67,6 +69,9 @@ export interface RuntimeNote extends MelodyNote {
   hit: boolean;
   missed: boolean;
   completed: boolean;
+  holding: boolean;
+  holdProgress: number;
+  holdStartedAt?: number;
   judgedAt?: number;
 }
 

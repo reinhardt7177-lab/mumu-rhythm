@@ -1,4 +1,4 @@
-import type { RuntimeNote, Song, SongSection } from "../types";
+import { HOLD_NOTE_MIN_BEATS, type RuntimeNote, type Song, type SongSection } from "../types";
 
 interface Particle {
   x: number;
@@ -281,7 +281,7 @@ export class StageRenderer {
       const width = Math.min(metric.width - 12, clamp(metric.width * 0.78, 62, 210));
       const height = clamp(metric.width * 0.14, 24, 38);
       const opacity = clamp((approachSeconds - until) / 0.24, 0.24, 1);
-      const isHold = note.durationBeats >= 1.75;
+      const isHold = note.durationBeats >= HOLD_NOTE_MIN_BEATS;
       let areaTop = headY - height / 2;
       let areaBottom = headY + height / 2;
 
@@ -289,13 +289,16 @@ export class StageRenderer {
         const endTime = noteTime + note.durationBeats * secondsPerBeat;
         const endUntil = endTime - state.songTime;
         const endY = clamp(this.stageBottom - (endUntil / approachSeconds) * travel, this.stageTop, this.stageBottom);
-        this.drawHoldRibbon(metric.center, endY, headY, width * 0.62, note.lane, opacity);
+        this.drawHoldRibbon(metric.center, endY, headY, width * 0.62, note.lane, opacity, note.holding);
+        if (note.holding) {
+          this.drawHoldProgress(metric.center, endY, headY, width * 0.54, note.lane, note.holdProgress);
+        }
         this.drawNoteBar(metric.center, endY, width * 0.86, Math.max(10, height * 0.68), note.lane, false, opacity * 0.72);
         areaTop = Math.min(areaTop, endY - height * 0.36);
         areaBottom = Math.max(areaBottom, endY + height * 0.36);
       }
 
-      this.drawNoteBar(metric.center, headY, width, height, note.lane, Boolean(note.accent), opacity);
+      this.drawNoteBar(metric.center, headY, width, height, note.lane, Boolean(note.accent) || note.holding, opacity);
       this.noteHitAreas.push({
         id: note.id,
         lane: note.lane,
@@ -309,20 +312,42 @@ export class StageRenderer {
     });
   }
 
-  private drawHoldRibbon(x: number, top: number, bottom: number, width: number, lane: number, opacity: number): void {
+  private drawHoldRibbon(x: number, top: number, bottom: number, width: number, lane: number, opacity: number, holding: boolean): void {
     const ctx = this.context;
     if (bottom - top < 3) return;
     const ribbon = ctx.createLinearGradient(0, top, 0, bottom);
     ribbon.addColorStop(0, this.alpha(laneColors[lane], 0.16 * opacity));
     ribbon.addColorStop(1, this.alpha(laneColors[lane], 0.58 * opacity));
     ctx.save();
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = holding ? 18 : 10;
     ctx.shadowColor = laneColors[lane];
     ctx.fillStyle = ribbon;
     ctx.strokeStyle = this.alpha(laneColors[lane], 0.72 * opacity);
     ctx.lineWidth = 1.5;
     this.roundRect(ctx, x - width / 2, top, width, bottom - top, Math.min(7, width * 0.08));
     ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  private drawHoldProgress(x: number, top: number, bottom: number, width: number, lane: number, progress: number): void {
+    const ctx = this.context;
+    const height = bottom - top;
+    if (height < 3) return;
+    const amount = clamp(progress, 0, 1);
+    const fillTop = bottom - height * amount;
+    const fillHeight = Math.max(3, bottom - fillTop);
+    ctx.save();
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = laneColors[lane];
+    ctx.fillStyle = this.alpha("#ffffff", 0.28 + amount * 0.2);
+    this.roundRect(ctx, x - width / 2, fillTop, width, fillHeight, Math.min(6, width * 0.08));
+    ctx.fill();
+    ctx.strokeStyle = this.alpha("#ffffff", 0.9);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - width * 0.42, fillTop);
+    ctx.lineTo(x + width * 0.42, fillTop);
     ctx.stroke();
     ctx.restore();
   }

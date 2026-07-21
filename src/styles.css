@@ -934,6 +934,7 @@ svg {
 }
 
 .judge-text.pop { color: #fff39b; text-shadow: 0 0 20px #f2ca4e; }
+.judge-text.hold { color: #8ff7e8; font-family: inherit; font-size: 17px; text-shadow: 0 0 18px rgba(88, 215, 208, .8); }
 .judge-text.miss,
 .judge-text.hint { font-family: inherit; font-size: 17px; color: #fff; }
 
