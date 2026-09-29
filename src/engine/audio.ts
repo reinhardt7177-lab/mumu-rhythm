@@ -10,16 +10,34 @@ export class AudioEngine {
   private popNoise: AudioBuffer | null = null;
   private buffers = new Map<string, AudioBuffer>();
   private pendingBuffers = new Map<string, Promise<AudioBuffer>>();
+  private resolvedBacking = new Map<string, string>();
   private scheduled = new Set<TrackedSource>();
-  private useAudioClock = true;
   private masterLevel = 0.88;
+  private frozenHeardTime: number | null = null;
 
   get ready(): boolean {
     return this.context !== null && this.context.state === "running";
   }
 
   get gameNow(): number {
-    return this.useAudioClock && this.context ? this.context.currentTime : performance.now() / 1000;
+    return this.heardTimeAt(performance.now());
+  }
+
+  get outputLatencyMs(): number {
+    return (this.context?.outputLatency ?? 0) * 1000;
+  }
+
+  heardTimeAt(performanceTime: number): number {
+    if (!this.context) return performanceTime / 1000;
+    const userOffset = Number(localStorage.getItem("mumu-music-v5-offset-ms")) / 1000 || 0;
+    if (this.frozenHeardTime !== null) return this.frozenHeardTime;
+    const timestamp = this.context.getOutputTimestamp?.();
+    const contextTime = timestamp?.contextTime;
+    const outputPerformanceTime = timestamp?.performanceTime;
+    if (contextTime !== undefined && outputPerformanceTime !== undefined && contextTime > 0 && outputPerformanceTime > 0) {
+      return contextTime + (performanceTime - outputPerformanceTime) / 1000 - userOffset;
+    }
+    return this.context.currentTime - (this.context.outputLatency ?? 0) - userOffset;
   }
 
   setMasterVolume(value: number): void {
@@ -31,8 +49,15 @@ export class AudioEngine {
 
   async ensureReady(timeoutMs = 3000): Promise<boolean> {
     if (!this.context) this.setup();
-    if (this.context?.state === "running") return true;
-    const resume = this.context?.resume().then(() => this.context?.state === "running").catch(() => false) ?? Promise.resolve(false);
+    if (this.context?.state === "running") {
+      this.frozenHeardTime = null;
+      return true;
+    }
+    const resume = this.context?.resume().then(() => {
+      const running = this.context?.state === "running";
+      if (running) this.frozenHeardTime = null;
+      return running;
+    }).catch(() => false) ?? Promise.resolve(false);
     const timeout = new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), timeoutMs));
     return Promise.race([resume, timeout]);
   }
@@ -40,14 +65,14 @@ export class AudioEngine {
   async preload(song: Song): Promise<void> {
     const audible = await this.ensureReady();
     if (!audible) throw new Error("브라우저가 소리 재생을 허용하지 않았습니다.");
-    await this.loadBuffer(song.backingTrack);
+    await this.loadSongBuffer(song);
   }
 
   async preview(song: Song): Promise<void> {
     await this.preload(song);
     this.stop();
     const context = this.context!;
-    const backing = this.buffers.get(song.backingTrack)!;
+    const backing = this.buffers.get(this.resolvedBacking.get(song.id) ?? song.backingTrack)!;
     const startAt = context.currentTime + 0.08;
     const previewOffset = Math.min(backing.duration - 0.5, song.leadInBeats * 60 / song.bpm);
     const duration = Math.min(12, backing.duration - previewOffset);
@@ -61,10 +86,9 @@ export class AudioEngine {
     this.stop();
     await this.preload(song);
     const context = this.context!;
-    this.useAudioClock = true;
     const songStartTime = context.currentTime + 0.2;
     const source = this.track(context.createBufferSource());
-    source.buffer = this.buffers.get(song.backingTrack)!;
+    source.buffer = this.buffers.get(this.resolvedBacking.get(song.id) ?? song.backingTrack)!;
     source.connect(this.backingBus!);
     source.start(songStartTime);
     this.scheduleCountIn(song, songStartTime);
@@ -109,11 +133,15 @@ export class AudioEngine {
   }
 
   async suspend(): Promise<void> {
-    if (this.context?.state === "running") await this.context.suspend();
+    if (this.context?.state === "running") {
+      this.frozenHeardTime = this.heardTimeAt(performance.now());
+      await this.context.suspend();
+    }
   }
 
   async resume(): Promise<void> {
     if (this.context?.state === "suspended") await this.context.resume();
+    if (this.context?.state === "running") this.frozenHeardTime = null;
   }
 
   private setup(): void {
@@ -158,6 +186,30 @@ export class AudioEngine {
     }
   }
 
+  private async loadSongBuffer(song: Song): Promise<AudioBuffer> {
+    const paths = [song.backingTrack, song.backingTrackFallback].filter((path): path is string => Boolean(path));
+    let latestError: unknown;
+    for (const path of paths) {
+      try {
+        const buffer = await this.loadBuffer(path);
+        this.resolvedBacking.set(song.id, path);
+        this.pruneBackingBuffers(new Set(paths));
+        return buffer;
+      } catch (error) {
+        latestError = error;
+      }
+    }
+    throw latestError ?? new Error(`음원을 불러오지 못했습니다: ${song.id}`);
+  }
+
+  private pruneBackingBuffers(keep: Set<string>): void {
+    const backingPaths = [...this.resolvedBacking.values()];
+    if (backingPaths.length <= 2) return;
+    backingPaths.slice(0, -2).forEach((path) => {
+      if (!keep.has(path)) this.buffers.delete(path);
+    });
+  }
+
   private scheduleCountIn(song: Song, startAt: number): void {
     const secondsPerBeat = 60 / song.bpm;
     for (let beat = 0; beat < song.leadInBeats; beat += 1) {
@@ -169,7 +221,7 @@ export class AudioEngine {
   private scheduleBell(frequency: number, when: number, level: number): void {
     if (!this.context || !this.effectsBus) return;
     const oscillator = this.track(this.context.createOscillator());
-    const overtone = this.context.createOscillator();
+    const overtone = this.track(this.context.createOscillator());
     const gain = this.context.createGain();
     const overtoneGain = this.context.createGain();
     oscillator.type = "sine";

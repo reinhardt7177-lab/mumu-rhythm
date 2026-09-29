@@ -1,10 +1,11 @@
 import type { MelodyNote, Song, SongSection } from "../types";
 import { producedTracks } from "./fastCharts.generated";
+import { synthTracks } from "./synthCharts.generated";
 
 interface SongMetadata extends Omit<Song, "bpm" | "melody" | "sections" | "totalBeats"> {}
 
 function buildSong(metadata: SongMetadata): Song {
-  const produced = producedTracks[metadata.id];
+  const produced = producedTracks[metadata.id] ?? synthTracks[metadata.id];
   if (!produced) throw new Error(`제작된 악보를 찾을 수 없습니다: ${metadata.id}`);
   const melody: MelodyNote[] = produced.notes.map((item, index) => ({
     id: `${metadata.id}-${index}`,
@@ -25,6 +26,35 @@ function buildSong(metadata: SongMetadata): Song {
 }
 
 export const songs: Song[] = [
+  buildSong({
+    id: "neon-run",
+    number: "S1",
+    title: "네온 런",
+    subtitle: "다섯 색 신스가 별빛 무대를 가로질러요",
+    origin: "MUMU ORIGINAL · 생성형 신스 스코어",
+    grade: "4~6학년",
+    difficulty: "최고 속도",
+    beatsPerBar: 4,
+    leadInBeats: 4,
+    featuredInstrument: "신시사이저 앙상블",
+    listeningPoint: "드럼·베이스·패드·리드가 쌓이는 순서",
+    instruments: ["드럼 머신", "신스 베이스", "패드", "아르페지오", "리드 신스"],
+    approachSeconds: 2.45,
+    backingTrack: "/assets/audio/v5/synth/neon-run.ogg",
+    backingTrackFallback: "/assets/audio/v5/synth/neon-run.m4a",
+    artwork: "/assets/art/synth/neon-run-stage.webp",
+    palette: { ink: "#081417", deep: "#071014", accent: "#54e7d7", warm: "#ff5d72", mist: "#ffe58a" },
+    mission: {
+      eyebrow: "오리지널 신스 01",
+      title: "소리의 층이 하나씩 쌓이는 순간을 잡아요",
+      description: "낮은 베이스 위에 반짝이는 아르페지오와 리드 가락이 더해집니다. 브레이크 뒤 피날레가 얼마나 풍성해지는지 들어 보세요.",
+      question: "네온 런의 피날레를 가장 풍성하게 만든 변화는 무엇인가요?",
+      options: ["여러 신스와 드럼이 층층이 합쳐졌어요", "한 음만 남았어요", "박자가 완전히 사라졌어요"],
+      answerIndex: 0,
+      hint: "브레이크가 끝난 뒤 동시에 들린 소리의 수를 떠올려 보세요.",
+      badge: "네온 사운드 디자이너",
+    },
+  }),
   buildSong({
     id: "turkish-march",
     number: "01",

@@ -1,5 +1,6 @@
-import { HOLD_NOTE_MIN_BEATS, type GameResult, type JudgeName, type RuntimeNote, type Song, type SongSection } from "../types";
 import { sectionAt } from "../content/songs";
+import { judgeDelta, judgeScore } from "../core/judge";
+import { HOLD_NOTE_MIN_BEATS, type GameResult, type JudgeName, type RuntimeNote, type Song, type SongSection } from "../types";
 import { AudioEngine } from "./audio";
 
 export interface GameSnapshot {
@@ -23,7 +24,7 @@ export interface JudgeEvent {
   combo: number;
 }
 
-export type PressResult = "popped" | "holding" | null;
+export type PressResult = { kind: "popped" | "holding"; noteId: string; judge: Exclude<JudgeName, "MISS"> } | null;
 
 interface GameCallbacks {
   onFrame: (snapshot: GameSnapshot) => void;
@@ -31,6 +32,9 @@ interface GameCallbacks {
   onSection: (section: SongSection) => void;
   onComplete: (result: GameResult) => void;
 }
+
+const HOLD_RECONNECT_SECONDS = 0.12;
+const HOLD_TAIL_GRACE_SECONDS = 0.15;
 
 export class RhythmGame {
   private song: Song | null = null;
@@ -42,7 +46,7 @@ export class RhythmGame {
   private score = 0;
   private combo = 0;
   private maxCombo = 0;
-  private counts = { popped: 0, miss: 0 };
+  private counts = { popped: 0, miss: 0, perfect: 0, great: 0, good: 0 };
   private lanePulse = [0, 0, 0, 0, 0];
   private lastFrameTime = performance.now();
   private currentSectionId = "";
@@ -66,7 +70,7 @@ export class RhythmGame {
     this.score = 0;
     this.combo = 0;
     this.maxCombo = 0;
-    this.counts = { popped: 0, miss: 0 };
+    this.counts = { popped: 0, miss: 0, perfect: 0, great: 0, good: 0 };
     this.lanePulse = [0, 0, 0, 0, 0];
     this.currentSectionId = "";
     this.paused = false;
@@ -91,60 +95,98 @@ export class RhythmGame {
     return this.paused;
   }
 
-  pressNote(noteId: string): PressResult {
+  pressNote(noteId: string, performanceTime = performance.now()): PressResult {
     if (!this.running || this.paused || !this.song) return null;
-    const note = this.notes.find((item) => item.id === noteId && !item.hit && !item.missed);
-    if (!note) return null;
-
-    this.lanePulse[note.lane] = 1;
-    if (note.durationBeats >= HOLD_NOTE_MIN_BEATS) {
-      if (note.holding) return null;
-      note.holding = true;
-      note.holdProgress = 0;
-      note.holdStartedAt = this.songTime();
-      return "holding";
-    }
-
-    this.completeNote(note);
-    return "popped";
+    const note = this.notes.find((item) => item.id === noteId && !item.completed && !item.missed);
+    return note ? this.pressCandidate(note, performanceTime) : null;
   }
 
-  releaseNote(noteId: string): boolean {
-    if (!this.running || !this.song) return false;
+  pressLane(lane: number, performanceTime = performance.now()): PressResult {
+    if (!this.running || this.paused || !this.song) return null;
+    const inputTime = this.inputSongTime(performanceTime);
+    const secondsPerBeat = 60 / this.song.bpm;
+    const candidate = this.notes
+      .filter((note) => note.lane === lane && !note.completed && !note.missed)
+      .map((note) => ({ note, delta: inputTime - note.beat * secondsPerBeat }))
+      .filter(({ note, delta }) => (note.hit && note.holdReleasedAt !== undefined) || judgeDelta(delta) !== null)
+      .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))[0]?.note;
+    return candidate ? this.pressCandidate(candidate, performanceTime) : null;
+  }
+
+  releaseNote(noteId: string, performanceTime = performance.now()): boolean {
+    if (!this.running || this.paused || !this.song) return false;
     const note = this.notes.find((item) => item.id === noteId && item.holding && !item.completed);
     if (!note) return false;
-    if (note.holdProgress >= 0.88) {
-      this.completeNote(note);
+    const inputTime = this.inputSongTime(performanceTime);
+    const endTime = (note.beat + note.durationBeats) * (60 / this.song.bpm);
+    note.holding = false;
+    if (inputTime >= endTime - HOLD_TAIL_GRACE_SECONDS) {
+      this.completeNote(note, note.headJudge ?? "GOOD");
       return false;
     }
-    note.holding = false;
-    note.holdProgress = 0;
-    note.holdStartedAt = undefined;
+    note.holdReleasedAt = inputTime;
     return true;
   }
 
-  private completeNote(note: RuntimeNote): void {
+  private pressCandidate(note: RuntimeNote, performanceTime: number): PressResult {
+    if (!this.song) return null;
+    const inputTime = this.inputSongTime(performanceTime);
+    if (note.hit && note.durationBeats >= HOLD_NOTE_MIN_BEATS && note.holdReleasedAt !== undefined) {
+      if (inputTime - note.holdReleasedAt > HOLD_RECONNECT_SECONDS) return null;
+      note.holding = true;
+      note.holdReleasedAt = undefined;
+      this.lanePulse[note.lane] = 1;
+      return { kind: "holding", noteId: note.id, judge: note.headJudge ?? "GOOD" };
+    }
+
+    if (note.hit) return null;
+    const noteTime = note.beat * (60 / this.song.bpm);
+    const judge = judgeDelta(inputTime - noteTime);
+    if (!judge) return null;
+    this.lanePulse[note.lane] = 1;
+
+    if (note.durationBeats >= HOLD_NOTE_MIN_BEATS) {
+      note.hit = true;
+      note.holding = true;
+      note.headJudge = judge;
+      note.holdStartedAt = inputTime;
+      note.holdReleasedAt = undefined;
+      return { kind: "holding", noteId: note.id, judge };
+    }
+
+    this.completeNote(note, judge);
+    return { kind: "popped", noteId: note.id, judge };
+  }
+
+  private completeNote(note: RuntimeNote, judge: Exclude<JudgeName, "MISS">): void {
     if (!this.song || note.completed) return;
     note.hit = true;
     note.completed = true;
     note.holding = false;
     note.holdProgress = 1;
     note.holdStartedAt = undefined;
+    note.holdReleasedAt = undefined;
+    note.headJudge = judge;
     note.judgedAt = this.songTime();
     this.combo += 1;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
     this.counts.popped += 1;
-    const lengthBonus = Math.min(240, Math.round(note.durationBeats * 70));
-    const accentBonus = note.accent ? 180 : 0;
-    this.score += 600 + lengthBonus + accentBonus + Math.min(500, this.combo * 7);
+    this.counts[judge.toLowerCase() as "perfect" | "great" | "good"] += 1;
+    const holdBonus = note.durationBeats >= HOLD_NOTE_MIN_BEATS ? Math.min(420, Math.round(note.durationBeats * 95)) : 0;
+    const accentBonus = note.accent ? 120 : 0;
+    this.score += judgeScore(judge) + holdBonus + accentBonus + Math.min(420, this.combo * 6);
     this.audio.playPop(note.lane, Boolean(note.accent));
-    this.callbacks.onJudge({
-      judge: "POP",
-      noteId: note.id,
-      lane: note.lane,
-      score: this.score,
-      combo: this.combo,
-    });
+    this.callbacks.onJudge({ judge, noteId: note.id, lane: note.lane, score: this.score, combo: this.combo });
+  }
+
+  private missNote(note: RuntimeNote): void {
+    if (note.completed) return;
+    note.missed = true;
+    note.completed = true;
+    note.holding = false;
+    this.combo = 0;
+    this.counts.miss += 1;
+    this.callbacks.onJudge({ judge: "MISS", noteId: note.id, lane: note.lane, score: this.score, combo: 0 });
   }
 
   private tick = (): void => {
@@ -152,6 +194,10 @@ export class RhythmGame {
     const now = performance.now();
     const delta = Math.min(0.05, (now - this.lastFrameTime) / 1000);
     this.lastFrameTime = now;
+    if (this.paused) {
+      this.frameId = requestAnimationFrame(this.tick);
+      return;
+    }
     this.lanePulse = this.lanePulse.map((value) => Math.max(0, value - delta * 4.8));
 
     const songTime = this.songTime();
@@ -165,21 +211,20 @@ export class RhythmGame {
     }
 
     this.notes.forEach((note) => {
+      if (note.completed) return;
       const noteTime = note.beat * secondsPerBeat;
-      if (note.holding && note.holdStartedAt !== undefined) {
-        const musicalDuration = note.durationBeats * secondsPerBeat;
-        const requiredSeconds = Math.max(0.65, Math.min(1.25, musicalDuration * 0.82));
-        note.holdProgress = Math.max(0, Math.min(1, (songTime - note.holdStartedAt) / requiredSeconds));
-        this.lanePulse[note.lane] = Math.max(this.lanePulse[note.lane], 0.38 + note.holdProgress * 0.5);
-        if (note.holdProgress >= 1) this.completeNote(note);
+      const endTime = (note.beat + note.durationBeats) * secondsPerBeat;
+      if (note.hit && note.durationBeats >= HOLD_NOTE_MIN_BEATS) {
+        note.holdProgress = Math.max(0, Math.min(1, (songTime - noteTime) / Math.max(0.01, endTime - noteTime)));
+        if (note.holding) {
+          this.lanePulse[note.lane] = Math.max(this.lanePulse[note.lane], 0.38 + note.holdProgress * 0.5);
+          if (songTime >= endTime - HOLD_TAIL_GRACE_SECONDS) this.completeNote(note, note.headJudge ?? "GOOD");
+        } else if (note.holdReleasedAt !== undefined && songTime - note.holdReleasedAt > HOLD_RECONNECT_SECONDS) {
+          this.missNote(note);
+        }
+        return;
       }
-      if (!note.hit && !note.missed && !note.holding && songTime > noteTime + 0.22) {
-        note.missed = true;
-        note.completed = true;
-        this.combo = 0;
-        this.counts.miss += 1;
-        this.callbacks.onJudge({ judge: "MISS", noteId: note.id, lane: note.lane, score: this.score, combo: this.combo });
-      }
+      if (!note.hit && songTime > noteTime + 0.2) this.missNote(note);
     });
 
     const duration = this.song.totalBeats * secondsPerBeat;
@@ -204,6 +249,10 @@ export class RhythmGame {
     this.frameId = requestAnimationFrame(this.tick);
   };
 
+  private inputSongTime(performanceTime: number): number {
+    return this.audio.heardTimeAt(performanceTime) - this.startAt;
+  }
+
   private songTime(): number {
     return this.audio.gameNow - this.startAt;
   }
@@ -222,6 +271,9 @@ export class RhythmGame {
       maxCombo: this.maxCombo,
       popped: this.counts.popped,
       miss: this.counts.miss,
+      perfect: this.counts.perfect,
+      great: this.counts.great,
+      good: this.counts.good,
       stars,
     });
   }

@@ -800,6 +800,15 @@ svg {
   user-select: none;
 }
 
+#skiaFx {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .game-hud {
   position: absolute;
   top: 0;
@@ -935,8 +944,18 @@ svg {
 
 .judge-text.pop { color: #fff39b; text-shadow: 0 0 20px #f2ca4e; }
 .judge-text.hold { color: #8ff7e8; font-family: inherit; font-size: 17px; text-shadow: 0 0 18px rgba(88, 215, 208, .8); }
+.judge-text.perfect { color: #fff39b; text-shadow: 0 0 22px rgba(255, 214, 79, .9); }
+.judge-text.great { color: #8ff7e8; text-shadow: 0 0 20px rgba(88, 215, 208, .86); }
+.judge-text.good { color: #b7c7ff; text-shadow: 0 0 18px rgba(137, 170, 255, .8); }
 .judge-text.miss,
 .judge-text.hint { font-family: inherit; font-size: 17px; color: #fff; }
+
+.result-judges {
+  margin: 14px 0 0;
+  color: rgba(255, 255, 255, .72);
+  font-size: 12px;
+  font-weight: 800;
+}
 
 .section-callout {
   position: absolute;
@@ -1233,6 +1252,12 @@ svg {
 .volume-control input {
   width: 100%;
   accent-color: #277f82;
+}
+
+.settings-dialog .latency-info {
+  margin: 10px 0 0;
+  color: #617074;
+  font-size: 11px;
 }
 
 .text-button {

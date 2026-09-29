@@ -56,6 +56,7 @@ export interface Song {
   instruments: string[];
   approachSeconds?: number;
   backingTrack: string;
+  backingTrackFallback?: string;
   artwork: string;
   palette: SongPalette;
   mission: ListeningMission;
@@ -63,7 +64,7 @@ export interface Song {
   sections: SongSection[];
 }
 
-export type JudgeName = "POP" | "MISS";
+export type JudgeName = "PERFECT" | "GREAT" | "GOOD" | "MISS";
 
 export interface RuntimeNote extends MelodyNote {
   hit: boolean;
@@ -72,6 +73,8 @@ export interface RuntimeNote extends MelodyNote {
   holding: boolean;
   holdProgress: number;
   holdStartedAt?: number;
+  holdReleasedAt?: number;
+  headJudge?: Exclude<JudgeName, "MISS">;
   judgedAt?: number;
 }
 
@@ -82,5 +85,8 @@ export interface GameResult {
   maxCombo: number;
   popped: number;
   miss: number;
+  perfect: number;
+  great: number;
+  good: number;
   stars: number;
 }

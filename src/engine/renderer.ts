@@ -98,9 +98,9 @@ export class StageRenderer {
     const rect = this.canvas.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-    const area = [...this.noteHitAreas].reverse().find((item) => (
-      x >= item.left - 8 && x <= item.right + 8 && y >= item.top - 10 && y <= item.bottom + 10
-    ));
+    const area = this.noteHitAreas
+      .filter((item) => x >= item.left - 8 && x <= item.right + 8 && y >= item.top - 10 && y <= item.bottom + 10)
+      .sort((a, b) => Math.abs(y - a.centerY) - Math.abs(y - b.centerY))[0];
     return area?.id ?? null;
   }
 
@@ -257,6 +257,30 @@ export class StageRenderer {
     ctx.fillStyle = fade;
     ctx.fillRect(left, bottom - 80, right - left, 80);
 
+    const zoneHeight = clamp((bottom - top) * 0.18, 86, 160);
+    const zoneTop = bottom - zoneHeight;
+    const zoneGlow = ctx.createLinearGradient(0, zoneTop, 0, bottom);
+    zoneGlow.addColorStop(0, "rgba(255,255,255,0)");
+    zoneGlow.addColorStop(0.72, this.alpha(this.song.palette.accent, 0.085));
+    zoneGlow.addColorStop(1, this.alpha(this.song.palette.accent, 0.2));
+    ctx.fillStyle = zoneGlow;
+    ctx.fillRect(left, zoneTop, right - left, zoneHeight);
+    ctx.strokeStyle = this.alpha(this.song.palette.accent, 0.72);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(left, bottom - 1);
+    ctx.lineTo(right, bottom - 1);
+    ctx.stroke();
+
+    const keys = ["A", "S", "D", "J", "K"];
+    this.laneMetrics.forEach((lane, index) => {
+      ctx.fillStyle = "rgba(255,255,255,.52)";
+      ctx.font = "800 11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(keys[index], lane.center, bottom - 10);
+    });
+
     if (state.section.mode === "listen") {
       ctx.fillStyle = this.alpha(this.song.palette.accent, state.focusHint ? 0.075 : 0.04);
       ctx.fillRect(left, top, right - left, bottom - top);
@@ -274,28 +298,28 @@ export class StageRenderer {
       const metric = this.laneMetrics[note.lane];
       if (!metric) return;
       const noteTime = note.beat * secondsPerBeat;
+      const endTime = noteTime + note.durationBeats * secondsPerBeat;
       const until = noteTime - state.songTime;
-      if (until > approachSeconds + 0.08 || until < -0.3) return;
+      const endUntil = endTime - state.songTime;
+      const isHold = note.durationBeats >= HOLD_NOTE_MIN_BEATS;
+      if (until > approachSeconds + 0.08) return;
+      if (isHold ? endUntil < -0.25 : until < -0.3) return;
 
-      const headY = this.stageBottom - (until / approachSeconds) * travel;
+      const rawHeadY = this.stageBottom - (until / approachSeconds) * travel;
+      const headY = isHold && note.hit ? clamp(rawHeadY, this.stageTop, this.stageBottom) : rawHeadY;
       const width = Math.min(metric.width - 12, clamp(metric.width * 0.78, 62, 210));
       const height = clamp(metric.width * 0.14, 24, 38);
       const opacity = clamp((approachSeconds - until) / 0.24, 0.24, 1);
-      const isHold = note.durationBeats >= HOLD_NOTE_MIN_BEATS;
-      let areaTop = headY - height / 2;
-      let areaBottom = headY + height / 2;
+      const areaTop = headY - height / 2;
+      const areaBottom = headY + height / 2;
 
       if (isHold) {
-        const endTime = noteTime + note.durationBeats * secondsPerBeat;
-        const endUntil = endTime - state.songTime;
         const endY = clamp(this.stageBottom - (endUntil / approachSeconds) * travel, this.stageTop, this.stageBottom);
         this.drawHoldRibbon(metric.center, endY, headY, width * 0.62, note.lane, opacity, note.holding);
         if (note.holding) {
           this.drawHoldProgress(metric.center, endY, headY, width * 0.54, note.lane, note.holdProgress);
         }
         this.drawNoteBar(metric.center, endY, width * 0.86, Math.max(10, height * 0.68), note.lane, false, opacity * 0.72);
-        areaTop = Math.min(areaTop, endY - height * 0.36);
-        areaBottom = Math.max(areaBottom, endY + height * 0.36);
       }
 
       this.drawNoteBar(metric.center, headY, width, height, note.lane, Boolean(note.accent) || note.holding, opacity);
@@ -430,7 +454,7 @@ export class StageRenderer {
     ctx.fillText("잠시 쉬는 중", this.width / 2, this.height / 2 - 12);
     ctx.font = `600 ${clamp(this.width * 0.014, 14, 20)}px system-ui, sans-serif`;
     ctx.fillStyle = "rgba(255,255,255,.76)";
-    ctx.fillText("계속하려면 ESC를 눌러요", this.width / 2, this.height / 2 + 30);
+    ctx.fillText("ESC 또는 위의 재생 버튼으로 계속해요", this.width / 2, this.height / 2 + 30);
   }
 
   private alpha(hex: string, alpha: number): string {

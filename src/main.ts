@@ -21,6 +21,7 @@ import { songDurationSeconds, songs } from "./content/songs";
 import { AudioEngine } from "./engine/audio";
 import { RhythmGame, type GameSnapshot, type JudgeEvent } from "./engine/game";
 import { StageRenderer } from "./engine/renderer";
+import { SkiaEffectsRenderer } from "./render/skiaEffects";
 import type { GameResult, ScreenName, Song, SongSection } from "./types";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -34,7 +35,7 @@ app.innerHTML = `
           <span class="brand-mark" aria-hidden="true"><i data-lucide="music-2"></i></span>
           <span><strong>MUMU</strong><small>리듬 스튜디오</small></span>
         </a>
-        <div class="topbar-label"><span>CLASSICAL SET</span><strong>빠른 클래식 4선</strong></div>
+        <div class="topbar-label"><span>CLASSIC + SYNTH</span><strong>뮤직 액션 컬렉션</strong></div>
         <button class="icon-button settings-open" type="button" aria-label="소리 맞춤" title="소리 맞춤"><i data-lucide="settings"></i></button>
       </header>
 
@@ -42,9 +43,9 @@ app.innerHTML = `
         <section class="library-intro">
           <p class="eyebrow">초등 음악 감상 활동</p>
           <h1 id="libraryTitle">음악을 듣고<br />바를 터뜨려요</h1>
-          <p>피아니스트와 관현악단의 실제 연주를 들으며 떨어지는 노트 바 속 가락, 반복, 강박, 대비를 발견합니다.</p>
+          <p>실제 클래식 연주와 오리지널 신스 트랙을 들으며 비트 존의 노트를 터뜨리고 소리의 층과 가락을 발견합니다.</p>
           <dl class="program-facts">
-            <div><dt>4</dt><dd>클래식 명곡</dd></div>
+            <div><dt>5</dt><dd>뮤직 스테이지</dd></div>
             <div><dt>5</dt><dd>음높이 레인</dd></div>
             <div><dt>1</dt><dd>곡마다 귀 미션</dd></div>
           </dl>
@@ -111,6 +112,7 @@ app.innerHTML = `
 
     <section id="gameScreen" class="screen game-screen" hidden aria-label="리듬 연주 화면">
       <canvas id="stage" aria-label="떨어지는 노트 바를 직접 누르는 음악 스테이지"></canvas>
+      <canvas id="skiaFx" aria-hidden="true"></canvas>
       <header class="game-hud">
         <div class="hud-track"><span id="hudNumber"></span><div><small>NOW PLAYING</small><strong id="hudTitle"></strong></div></div>
         <div class="section-status"><small>지금 듣는 곳</small><strong id="sectionLabel">준비</strong></div>
@@ -123,7 +125,7 @@ app.innerHTML = `
 
       <div class="progress-track" aria-hidden="true"><span id="gameProgress"></span></div>
       <div id="sectionCallout" class="section-callout" aria-live="polite"></div>
-      <div id="judgeText" class="judge-text" aria-live="polite"></div>
+      <div id="judgeText" class="judge-text" aria-hidden="true"></div>
 
     </section>
 
@@ -149,6 +151,7 @@ app.innerHTML = `
             <span><small>최고 콤보</small><strong id="maxComboValue"></strong></span>
             <span><small>점수</small><strong id="resultScoreValue"></strong></span>
           </div>
+          <p id="resultJudges" class="result-judges"></p>
         </section>
 
         <section class="listening-check" aria-labelledby="questionTitle">
@@ -174,6 +177,8 @@ app.innerHTML = `
         <header><div><p class="eyebrow">교실 소리 맞춤</p><h2>음량 조절</h2></div><button class="icon-button" value="close" aria-label="닫기" title="닫기"><i data-lucide="x"></i></button></header>
         <p>교실 스피커와 태블릿에 알맞은 전체 음량을 선택해요.</p>
         <label class="volume-control"><span>전체 음량 <strong id="volumeValue">88%</strong></span><input id="volumeInput" type="range" min="0" max="100" step="5" value="88" /></label>
+        <label class="volume-control"><span>소리 타이밍 <strong id="timingValue">0 ms</strong></span><input id="timingInput" type="range" min="-250" max="250" step="10" value="0" /></label>
+        <p id="latencyInfo" class="latency-info">현재 출력 지연을 확인하고 있어요.</p>
         <button id="resetRecords" class="text-button" type="button">이 기기의 기록 초기화</button>
       </form>
     </dialog>
@@ -212,6 +217,7 @@ const resultBest = select<HTMLElement>("#resultBest");
 const accuracyValue = select<HTMLElement>("#accuracyValue");
 const maxComboValue = select<HTMLElement>("#maxComboValue");
 const resultScoreValue = select<HTMLElement>("#resultScoreValue");
+const resultJudges = select<HTMLElement>("#resultJudges");
 const questionTitle = select<HTMLElement>("#questionTitle");
 const answerOptions = select<HTMLElement>("#answerOptions");
 const answerFeedback = select<HTMLElement>("#answerFeedback");
@@ -220,7 +226,11 @@ const badgeName = select<HTMLElement>("#badgeName");
 const settingsDialog = select<HTMLDialogElement>("#settingsDialog");
 const volumeInput = select<HTMLInputElement>("#volumeInput");
 const volumeValue = select<HTMLElement>("#volumeValue");
+const timingInput = select<HTMLInputElement>("#timingInput");
+const timingValue = select<HTMLElement>("#timingValue");
+const latencyInfo = select<HTMLElement>("#latencyInfo");
 const canvas = select<HTMLCanvasElement>("#stage");
+const skiaCanvas = select<HTMLCanvasElement>("#skiaFx");
 const scoreValue = select<HTMLElement>("#scoreValue");
 const comboValue = select<HTMLElement>("#comboValue");
 const hudTitle = select<HTMLElement>("#hudTitle");
@@ -248,9 +258,12 @@ let sectionTimer = 0;
 let lastHudUpdate = 0;
 let lastSnapshot: GameSnapshot | null = null;
 let previewing = false;
+let previewTimer = 0;
 const activePointers = new Map<number, string>();
+const activeKeys = new Map<string, string>();
 
 const renderer = new StageRenderer(canvas, selectedSong);
+const skiaEffects = new SkiaEffectsRenderer(skiaCanvas);
 const game = new RhythmGame(audio, {
   onFrame: handleFrame,
   onJudge: handleJudge,
@@ -281,7 +294,7 @@ function showScreen(next: ScreenName): void {
 
 function renderLibrary(): void {
   const totalSeconds = songs.reduce((sum, song) => sum + songDurationSeconds(song), 0);
-  select<HTMLElement>("#programDuration").textContent = `4곡 · 약 ${Math.round(totalSeconds / 60)}분`;
+  select<HTMLElement>("#programDuration").textContent = `${songs.length}곡 · 약 ${Math.round(totalSeconds / 60)}분`;
   songGrid.innerHTML = songs.map((song, index) => `
     <button class="song-card" type="button" data-song-index="${index}" style="--song-accent:${song.palette.accent};--song-deep:${song.palette.deep}">
       <span class="song-art-wrap">
@@ -335,7 +348,7 @@ function openMission(song: Song): void {
   showScreen("mission");
   void audio.preload(song).then(() => {
     if (selectedSong.id !== song.id || screen !== "mission") return;
-    missionAudioStatus.textContent = "실제 연주 음원 준비 완료";
+    missionAudioStatus.textContent = "고품질 음원 준비 완료";
     previewButton.disabled = false;
     startButton.disabled = false;
   }).catch((error) => {
@@ -347,6 +360,7 @@ function openMission(song: Song): void {
 async function previewSong(): Promise<void> {
   if (previewing) {
     audio.stop();
+    window.clearTimeout(previewTimer);
     previewing = false;
     previewButton.innerHTML = `<i data-lucide="volume-2"></i><span>12초 미리 듣기</span>`;
     refreshIcons();
@@ -358,11 +372,11 @@ async function previewSong(): Promise<void> {
     await audio.preview(selectedSong);
     previewing = true;
     previewButton.innerHTML = `<i data-lucide="pause"></i><span>미리 듣기 멈춤</span>`;
-    window.setTimeout(() => {
+    previewTimer = window.setTimeout(() => {
       if (!previewing || screen !== "mission") return;
       previewing = false;
       previewButton.innerHTML = `<i data-lucide="volume-2"></i><span>다시 미리 듣기</span>`;
-      missionAudioStatus.textContent = "실제 연주 음원 준비 완료";
+      missionAudioStatus.textContent = "고품질 음원 준비 완료";
       refreshIcons();
     }, 12200);
   } catch (error) {
@@ -379,9 +393,11 @@ async function startSelectedSong(): Promise<void> {
   previewButton.disabled = true;
   startButton.innerHTML = `<span>음원 준비 중</span>`;
   audio.stop();
+  window.clearTimeout(previewTimer);
   previewing = false;
   renderer.clearEffects();
   activePointers.clear();
+  activeKeys.clear();
   renderer.setSong(selectedSong);
   hudTitle.textContent = selectedSong.title;
   hudNumber.textContent = selectedSong.number;
@@ -392,6 +408,7 @@ async function startSelectedSong(): Promise<void> {
   judgeText.textContent = "";
   try {
     await game.start(selectedSong);
+    void skiaEffects.initialize();
     showScreen("game");
     syncStageLayout();
     requestAnimationFrame(syncStageLayout);
@@ -410,6 +427,7 @@ async function startSelectedSong(): Promise<void> {
 function syncStageLayout(): void {
   renderer.resize();
   renderer.setStageLayout(gameHud);
+  skiaEffects.resize();
 }
 
 function handleFrame(snapshot: GameSnapshot): void {
@@ -423,6 +441,7 @@ function handleFrame(snapshot: GameSnapshot): void {
     paused: snapshot.paused,
     focusHint: snapshot.section.mode === "listen",
   });
+  skiaEffects.render(snapshot);
   if (performance.now() - lastHudUpdate > 70) {
     lastHudUpdate = performance.now();
     scoreValue.textContent = snapshot.score.toLocaleString("ko-KR");
@@ -435,13 +454,17 @@ function handleJudge(event: JudgeEvent): void {
   if (event.judge === "MISS") {
     return;
   }
+  scoreValue.textContent = event.score.toLocaleString("ko-KR");
+  comboValue.textContent = String(event.combo);
   activePointers.forEach((noteId, pointerId) => {
     if (noteId !== event.noteId) return;
     activePointers.delete(pointerId);
     if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
   });
   renderer.pop(event.noteId, event.lane);
-  showFeedback(event.combo > 0 && event.combo % 10 === 0 ? `${event.combo} POP!` : "POP!", "pop");
+  skiaEffects.burst(event.lane);
+  const message = event.combo > 0 && event.combo % 10 === 0 ? `${event.combo} COMBO` : event.judge;
+  showFeedback(message, event.judge.toLowerCase());
 }
 
 function showFeedback(message: string, kind: string): void {
@@ -462,6 +485,7 @@ function handleSection(section: SongSection): void {
 function handleComplete(result: GameResult): void {
   latestResult = result;
   activePointers.clear();
+  activeKeys.clear();
   audio.stop();
   const best = Math.max(getBest(result.songId), result.score);
   localStorage.setItem(bestScoreKey(result.songId), String(best));
@@ -477,6 +501,7 @@ function renderResult(result: GameResult, best: number): void {
   accuracyValue.textContent = `${result.accuracy}%`;
   maxComboValue.textContent = `${result.maxCombo}회`;
   resultScoreValue.textContent = result.score.toLocaleString("ko-KR");
+  resultJudges.textContent = `PERFECT ${result.perfect} · GREAT ${result.great} · GOOD ${result.good}`;
   questionTitle.textContent = selectedSong.mission.question;
   answerFeedback.textContent = "";
   earnedBadge.hidden = true;
@@ -511,6 +536,24 @@ window.addEventListener("keydown", (event) => {
     void togglePause();
     return;
   }
+  if (screen !== "game" || event.repeat || lastSnapshot?.paused) return;
+  const lane = ({ KeyA: 0, KeyS: 1, KeyD: 2, KeyJ: 3, KeyK: 4 } as Record<string, number>)[event.code];
+  if (lane === undefined) return;
+  event.preventDefault();
+  const result = game.pressLane(lane, event.timeStamp);
+  if (result?.kind === "holding") {
+    activeKeys.set(event.code, result.noteId);
+    showFeedback("HOLD", "hold");
+  }
+});
+
+window.addEventListener("keyup", (event) => {
+  const noteId = activeKeys.get(event.code);
+  if (!noteId) return;
+  event.preventDefault();
+  activeKeys.delete(event.code);
+  const releasedEarly = game.releaseNote(noteId, event.timeStamp);
+  if (releasedEarly) showFeedback("다시 이어 눌러요", "hint");
 });
 
 canvas.addEventListener("pointerdown", (event) => {
@@ -518,9 +561,9 @@ canvas.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   const noteId = renderer.hitTest(event.clientX, event.clientY);
   if (!noteId) return;
-  const result = game.pressNote(noteId);
-  if (result !== "holding") return;
-  activePointers.set(event.pointerId, noteId);
+  const result = game.pressNote(noteId, event.timeStamp);
+  if (result?.kind !== "holding") return;
+  activePointers.set(event.pointerId, result.noteId);
   showFeedback("누르는 중", "hold");
   try {
     canvas.setPointerCapture(event.pointerId);
@@ -534,8 +577,8 @@ const releasePointer = (event: PointerEvent): void => {
   if (!noteId) return;
   event.preventDefault();
   activePointers.delete(event.pointerId);
-  const releasedEarly = game.releaseNote(noteId);
-  if (releasedEarly) showFeedback("조금 더 길게!", "hint");
+  const releasedEarly = game.releaseNote(noteId, event.timeStamp);
+  if (releasedEarly) showFeedback("다시 이어 눌러요", "hint");
   if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
 };
 
@@ -553,6 +596,7 @@ async function togglePause(): Promise<void> {
 document.querySelectorAll<HTMLButtonElement>(".settings-open").forEach((button) => {
   button.addEventListener("click", async () => {
     await audio.ensureReady();
+    latencyInfo.textContent = `이 기기의 출력 지연 약 ${Math.round(audio.outputLatencyMs)} ms`;
     settingsDialog.showModal();
   });
 });
@@ -562,17 +606,25 @@ volumeInput.addEventListener("input", () => {
   localStorage.setItem("mumu-music-v4-volume", String(value));
   audio.setMasterVolume(value / 100);
 });
+timingInput.addEventListener("input", () => {
+  const value = Number(timingInput.value);
+  timingValue.textContent = `${value > 0 ? "+" : ""}${value} ms`;
+  localStorage.setItem("mumu-music-v5-offset-ms", String(value));
+});
 select<HTMLButtonElement>("#resetRecords").addEventListener("click", () => {
   Object.keys(localStorage).filter((key) => key.startsWith("mumu-music-")).forEach((key) => localStorage.removeItem(key));
   volumeInput.value = "88";
   volumeValue.textContent = "88%";
   audio.setMasterVolume(0.88);
+  timingInput.value = "0";
+  timingValue.textContent = "0 ms";
+  localStorage.removeItem("mumu-music-v5-offset-ms");
   audio.playUi("soft");
 });
 
 select<HTMLButtonElement>("#songPrev").addEventListener("click", () => songGrid.scrollBy({ left: -songGrid.clientWidth * 0.7, behavior: "smooth" }));
 select<HTMLButtonElement>("#songNext").addEventListener("click", () => songGrid.scrollBy({ left: songGrid.clientWidth * 0.7, behavior: "smooth" }));
-select<HTMLButtonElement>("#missionBack").addEventListener("click", () => { audio.stop(); previewing = false; showScreen("library"); });
+select<HTMLButtonElement>("#missionBack").addEventListener("click", () => { audio.stop(); window.clearTimeout(previewTimer); previewing = false; showScreen("library"); });
 previewButton.addEventListener("click", () => { void previewSong(); });
 startButton.addEventListener("click", () => { void startSelectedSong(); });
 pauseButton.addEventListener("click", () => { void togglePause(); });
@@ -593,6 +645,9 @@ const storedVolume = storedVolumeValue === null ? 88 : Number(storedVolumeValue)
 volumeInput.value = String(storedVolume);
 volumeValue.textContent = `${storedVolume}%`;
 audio.setMasterVolume(storedVolume / 100);
+const storedTiming = Number(localStorage.getItem("mumu-music-v5-offset-ms") ?? "0");
+timingInput.value = String(storedTiming);
+timingValue.textContent = `${storedTiming > 0 ? "+" : ""}${storedTiming} ms`;
 renderLibrary();
 applySongPalette(selectedSong);
 refreshIcons();
