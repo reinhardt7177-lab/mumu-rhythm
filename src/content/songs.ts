@@ -42,7 +42,6 @@ export const songs: Song[] = [
     approachSeconds: 2.45,
     backingTrack: "/assets/audio/v5/synth/neon-run.ogg",
     backingTrackFallback: "/assets/audio/v5/synth/neon-run.m4a",
-    artwork: "/assets/art/synth/neon-run-stage.webp",
     palette: { ink: "#081417", deep: "#071014", accent: "#54e7d7", warm: "#ff5d72", mist: "#ffe58a" },
     mission: {
       eyebrow: "오리지널 신스 01",
@@ -70,7 +69,6 @@ export const songs: Song[] = [
     instruments: ["콘서트 피아노"],
     approachSeconds: 3.05,
     backingTrack: "/assets/audio/v4/backing/turkish-march.ogg",
-    artwork: "/assets/art/turkish-march.webp",
     palette: { ink: "#23191d", deep: "#2b1820", accent: "#34d6c4", warm: "#ef5350", mist: "#fff0c9" },
     mission: {
       eyebrow: "빠른 클래식 01",
@@ -98,7 +96,6 @@ export const songs: Song[] = [
     instruments: ["현악 합주", "목관", "금관", "타악기"],
     approachSeconds: 2.85,
     backingTrack: "/assets/audio/v4/backing/can-can.ogg",
-    artwork: "/assets/art/can-can.webp",
     palette: { ink: "#20261d", deep: "#263127", accent: "#ffd34f", warm: "#e84b4b", mist: "#eef4d0" },
     mission: {
       eyebrow: "빠른 클래식 02",
@@ -126,7 +123,6 @@ export const songs: Song[] = [
     instruments: ["트럼펫", "호른", "목관", "타악기"],
     approachSeconds: 2.95,
     backingTrack: "/assets/audio/v4/backing/william-tell.ogg",
-    artwork: "/assets/art/william-tell.webp",
     palette: { ink: "#15262d", deep: "#153640", accent: "#ffda4c", warm: "#ee654c", mist: "#dff5e7" },
     mission: {
       eyebrow: "빠른 클래식 03",
@@ -154,7 +150,6 @@ export const songs: Song[] = [
     instruments: ["콘서트 피아노"],
     approachSeconds: 3.0,
     backingTrack: "/assets/audio/v4/backing/hungarian-dance.ogg",
-    artwork: "/assets/art/hungarian-dance.webp",
     palette: { ink: "#2a1827", deep: "#372337", accent: "#55d1c6", warm: "#df5369", mist: "#f7e2c5" },
     mission: {
       eyebrow: "빠른 클래식 04",

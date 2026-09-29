@@ -348,14 +348,14 @@ svg {
   content: "";
 }
 
-.song-art-wrap img {
+.song-art-wrap canvas {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 360ms ease;
 }
 
-.song-card:hover img {
+.song-card:hover canvas {
   transform: scale(1.035);
 }
 
@@ -493,9 +493,9 @@ svg {
 .screen-art {
   position: absolute;
   inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
 .screen-shade {
@@ -634,6 +634,7 @@ svg {
   margin: 0;
   font-size: 28px;
   line-height: 1.25;
+  word-break: keep-all;
 }
 
 .listening-brief > p:nth-of-type(2) {
@@ -783,10 +784,49 @@ svg {
   text-align: center;
 }
 
+/* ------------------------------------------------------------------ V7 game shell
+   Center: integer-pixel 9:16 stage (Canvas 2D notes + lazy Skia effects).
+   Around it: WebGL2 music video (Canvas 2D, then CSS gradient fallbacks). */
+
 .game-screen {
   height: 100dvh;
-  min-height: 520px;
-  background: #061417;
+  min-height: 0;
+  background:
+    radial-gradient(ellipse at 18% 55%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 58%),
+    radial-gradient(ellipse at 82% 45%, color-mix(in srgb, var(--warm) 20%, transparent), transparent 58%),
+    linear-gradient(180deg, #0a1022, #05070c);
+  overscroll-behavior: none;
+}
+
+.mv-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* CSS-only MV fallback when neither WebGL2 nor Canvas 2D can draw. */
+.game-screen[data-mv="css"]::before {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(115deg, transparent 0 38px, color-mix(in srgb, var(--accent) 14%, transparent) 38px 40px);
+  content: "";
+  animation: mv-drift 6s linear infinite;
+}
+
+@keyframes mv-drift {
+  to { background-position: 160px 0; }
+}
+
+.stage-frame {
+  position: absolute;
+  z-index: 5;
+  overflow: hidden;
+  background: #06080e;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 70px rgba(0, 0, 0, 0.65);
+  container-type: inline-size;
 }
 
 #stage {
@@ -798,6 +838,8 @@ svg {
   cursor: pointer;
   touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 #skiaFx {
@@ -814,25 +856,27 @@ svg {
   top: 0;
   right: 0;
   left: 0;
-  height: 76px;
-  padding: 0 20px;
+  height: 52px;
+  gap: 8px;
+  padding: 0 10px;
   color: #fff;
-  background: rgba(3, 13, 16, 0.78);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(14px);
+  background: linear-gradient(180deg, rgba(4, 6, 12, 0.94), rgba(4, 6, 12, 0.76));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .hud-track {
   display: flex;
-  min-width: 210px;
+  min-width: 0;
+  flex: 1;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .hud-track > span {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   place-items: center;
   border-radius: 50%;
   color: #102627;
@@ -842,70 +886,56 @@ svg {
   font-weight: 900;
 }
 
-.hud-track div {
-  display: grid;
-}
-
-.hud-track small,
-.section-status small,
-.score-status small {
-  color: rgba(255, 255, 255, 0.5);
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 8px;
-  font-weight: 800;
-}
-
 .hud-track strong {
-  margin-top: 3px;
-  font-size: 14px;
-}
-
-.section-status {
-  position: absolute;
-  left: 50%;
-  display: grid;
-  text-align: center;
-  transform: translateX(-50%);
-}
-
-.section-status strong {
-  max-width: 360px;
-  margin-top: 4px;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .score-status {
   display: flex;
-  gap: 22px;
-  margin-left: auto;
-  margin-right: 14px;
+  gap: 10px;
 }
 
 .score-status span {
   display: grid;
-  min-width: 72px;
+  min-width: 52px;
   text-align: right;
+}
+
+.score-status small {
+  color: rgba(255, 255, 255, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 8px;
+  font-weight: 800;
 }
 
 .score-status strong {
   margin-top: 2px;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .game-control {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   border-color: rgba(255, 255, 255, 0.24);
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
 }
 
+.game-control:hover {
+  border-color: rgba(255, 255, 255, 0.44);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+}
+
 .progress-track {
   position: absolute;
   z-index: 11;
-  top: 76px;
+  top: 52px;
   right: 0;
   left: 0;
   height: 3px;
@@ -918,6 +948,172 @@ svg {
   height: 100%;
   background: var(--accent);
   box-shadow: 0 0 10px var(--accent);
+}
+
+.section-label {
+  position: absolute;
+  z-index: 11;
+  top: 55px;
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 4px 10px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(4, 6, 12, 0.6);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage-frame .section-callout {
+  top: 92px;
+}
+
+@container (max-width: 360px) {
+  .hud-track > span { display: none; }
+  .score-status span { min-width: 44px; }
+  .score-status strong { font-size: 13px; }
+  .judge-text { font-size: 24px; }
+}
+
+/* Side-panel MV captions (only when the side panels are wide enough). */
+.mv-caption {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  display: none;
+  width: min(260px, calc((100% - var(--stage-w, 0px)) / 2 - 48px));
+  gap: 6px;
+  color: #fff;
+  pointer-events: none;
+  transform: translateY(-50%);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+}
+
+.game-screen[data-layout="wide"] .mv-caption {
+  display: grid;
+}
+
+.mv-left { left: 28px; }
+.mv-right { right: 28px; text-align: right; }
+
+.mv-caption small {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.mv-caption strong {
+  font-size: clamp(18px, 2.2vw, 28px);
+  line-height: 1.15;
+}
+
+.mv-caption > span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.scene-steps {
+  display: grid;
+  gap: 5px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scene-steps li {
+  padding-left: 12px;
+  border-left: 2px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.scene-steps li.active {
+  border-left-color: var(--accent);
+  color: #fff;
+}
+
+.beat-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.beat-dots span {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+}
+
+.beat-dots span.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+}
+
+.energy-meter {
+  height: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.energy-meter span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--warm));
+  transform: scaleX(0.08);
+  transform-origin: right;
+  transition: transform 180ms ease;
+}
+
+/* Short landscape phones (e.g. 844x390): block play and ask to rotate. */
+.rotate-notice {
+  position: absolute;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: #fff;
+  background: rgba(4, 6, 12, 0.94);
+  text-align: center;
+}
+
+.rotate-notice strong {
+  font-size: 22px;
+}
+
+.rotate-notice p {
+  max-width: 420px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rotate-icon svg {
+  width: 44px;
+  height: 44px;
+  color: var(--accent);
+  animation: rotate-hint 1.8s ease-in-out infinite;
+}
+
+@keyframes rotate-hint {
+  0%, 30% { transform: rotate(90deg); }
+  60%, 100% { transform: rotate(0deg); }
 }
 
 .judge-text {
@@ -1249,6 +1445,17 @@ svg {
   font-weight: 800;
 }
 
+.volume-control select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid rgba(26, 45, 48, 0.2);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+}
+
 .volume-control input {
   width: 100%;
   accent-color: #277f82;
@@ -1444,58 +1651,6 @@ svg {
     bottom: calc(100% + 5px);
   }
 
-  .game-hud {
-    height: 64px;
-    padding: 0 10px;
-  }
-
-  .hud-track {
-    min-width: 0;
-  }
-
-  .hud-track > span {
-    display: none;
-  }
-
-  .hud-track small {
-    display: none;
-  }
-
-  .hud-track strong {
-    display: block;
-    max-width: 130px;
-    overflow: hidden;
-    font-size: 12px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .score-status {
-    gap: 8px;
-    margin-right: 6px;
-  }
-
-  .score-status span {
-    min-width: 48px;
-  }
-
-  .score-status strong {
-    font-size: 14px;
-  }
-
-  .game-control {
-    width: 38px;
-    height: 38px;
-    flex-basis: 38px;
-  }
-
-  .progress-track {
-    top: 64px;
-  }
-
-  .section-callout {
-    top: 78px;
-  }
 
   .result-layout {
     display: block;

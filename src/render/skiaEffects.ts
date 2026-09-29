@@ -1,4 +1,5 @@
 import type { GameSnapshot } from "../engine/game";
+import type { LaneLayout } from "./stageLayout";
 import wasmUrl from "canvaskit-wasm/bin/canvaskit.wasm?url";
 
 interface BurstParticle {
@@ -13,13 +14,18 @@ interface BurstParticle {
 type CanvasKitApi = Record<string, any>;
 
 const colors = [
-  [64, 236, 220],
-  [255, 82, 147],
-  [255, 205, 72],
-  [97, 231, 117],
-  [106, 145, 255],
+  [63, 224, 216],
+  [255, 95, 162],
+  [255, 201, 74],
+  [111, 220, 106],
+  [111, 155, 255],
 ] as const;
 
+/**
+ * Lazy CanvasKit (Skia WASM) layer for the stage's premium effects only:
+ * lane light, hold energy and hit debris. It reads the same LaneLayout the
+ * Canvas 2D renderer uses, so effects line up with notes at every size.
+ */
 export class SkiaEffectsRenderer {
   private kit: CanvasKitApi | null = null;
   private surface: any = null;
@@ -27,131 +33,161 @@ export class SkiaEffectsRenderer {
   private glContextHandle = 0;
   private loading: Promise<void> | null = null;
   private particles: BurstParticle[] = [];
-  private width = 1;
-  private height = 1;
+  private layout: LaneLayout | null = null;
   private density = 1;
   private pixelWidth = 0;
   private pixelHeight = 0;
   private lastFrame = performance.now();
   private reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   private failed = false;
+  private particleScale = 1;
   private laneBlur: any = null;
   private holdBlur: any = null;
   private particleBlur: any = null;
 
-  constructor(private element: HTMLCanvasElement) {}
+  /** Called with true once Skia is drawing, false when it stops (failure / context loss). */
+  onActiveChange: (active: boolean) => void = () => {};
+
+  constructor(private element: HTMLCanvasElement) {
+    element.addEventListener("webglcontextlost", (event) => {
+      event.preventDefault();
+      this.disable(new Error("WebGL context lost"), "Skia GPU 컨텍스트가 사라져 기본 효과로 전환합니다.");
+    });
+  }
+
+  get active(): boolean {
+    return Boolean(this.kit && this.surface && !this.failed);
+  }
+
+  setParticleScale(value: number): void {
+    this.particleScale = Math.max(0, Math.min(1, value));
+  }
+
+  setReducedMotion(value: boolean): void {
+    this.reducedMotion = value;
+  }
 
   initialize(): Promise<void> {
+    if (this.failed) return Promise.resolve();
     if (this.loading) return this.loading;
     this.loading = import("canvaskit-wasm").then(async ({ default: CanvasKitInit }) => {
       this.kit = await CanvasKitInit({ locateFile: () => wasmUrl });
-      this.laneBlur = this.kit.MaskFilter.MakeBlur(this.kit.BlurStyle.Normal, 24, true);
-      this.holdBlur = this.kit.MaskFilter.MakeBlur(this.kit.BlurStyle.Normal, 12, true);
-      this.particleBlur = this.kit.MaskFilter.MakeBlur(this.kit.BlurStyle.Normal, 3, true);
-      this.resize();
+      this.laneBlur = this.kit.MaskFilter.MakeBlur(this.kit.BlurStyle.Normal, 18, true);
+      this.holdBlur = this.kit.MaskFilter.MakeBlur(this.kit.BlurStyle.Normal, 10, true);
+      this.particleBlur = this.kit.MaskFilter.MakeBlur(this.kit.BlurStyle.Normal, 2.5, true);
+      if (this.layout) this.setLayout(this.layout, this.density);
+      if (this.failed) return;
       this.element.dataset.renderer = "skia";
+      this.onActiveChange(true);
     }).catch((error) => {
       this.disable(error, "Skia 효과 레이어를 시작하지 못해 기본 효과로 계속합니다.");
     });
     return this.loading;
   }
 
-  resize(): void {
-    if (this.failed) return;
-    const rect = this.element.getBoundingClientRect();
-    this.width = Math.max(1, rect.width);
-    this.height = Math.max(1, rect.height);
-    this.density = Math.min(2, window.devicePixelRatio || 1);
-    const pixelWidth = Math.floor(this.width * this.density);
-    const pixelHeight = Math.floor(this.height * this.density);
-    if (this.surface && pixelWidth === this.pixelWidth && pixelHeight === this.pixelHeight) return;
-    this.pixelWidth = pixelWidth;
-    this.pixelHeight = pixelHeight;
-    this.surface?.delete?.();
-    this.surface = null;
-    if (!this.kit) return;
-    this.element.width = pixelWidth;
-    this.element.height = pixelHeight;
-    if (!this.grContext) {
-      this.glContextHandle = this.kit.GetWebGLContext(this.element, { antialias: true, alpha: true });
-      if (!this.glContextHandle) throw new Error("WebGL context creation failed.");
-      this.grContext = this.kit.MakeWebGLContext(this.glContextHandle);
-      if (!this.grContext) throw new Error("Skia GPU context creation failed.");
+  /** Disables Skia permanently for this session (e.g. low quality preset). */
+  shutdown(): void {
+    if (!this.failed) this.disable(null, "");
+  }
+
+  setLayout(layout: LaneLayout, dprCap: number): void {
+    this.layout = layout;
+    this.density = Math.max(1, Math.min(dprCap, window.devicePixelRatio || 1));
+    if (this.failed || !this.kit) return;
+    try {
+      const pixelWidth = Math.round(layout.width * this.density);
+      const pixelHeight = Math.round(layout.height * this.density);
+      if (this.surface && pixelWidth === this.pixelWidth && pixelHeight === this.pixelHeight) return;
+      this.pixelWidth = pixelWidth;
+      this.pixelHeight = pixelHeight;
+      this.surface?.delete?.();
+      this.surface = null;
+      this.element.width = pixelWidth;
+      this.element.height = pixelHeight;
+      if (!this.grContext) {
+        this.glContextHandle = this.kit.GetWebGLContext(this.element, { antialias: 0, alpha: 1 });
+        if (!this.glContextHandle) throw new Error("WebGL context creation failed.");
+        this.grContext = this.kit.MakeWebGLContext(this.glContextHandle);
+        if (!this.grContext) throw new Error("Skia GPU context creation failed.");
+      }
+      this.surface = this.kit.MakeOnScreenGLSurface(this.grContext, pixelWidth, pixelHeight, this.kit.ColorSpace.SRGB);
+      if (!this.surface) throw new Error("Skia surface creation failed.");
+    } catch (error) {
+      this.disable(error, "Skia 표면을 만들지 못해 기본 효과로 계속합니다.");
     }
-    this.surface = this.kit.MakeOnScreenGLSurface(this.grContext, pixelWidth, pixelHeight, this.kit.ColorSpace.SRGB);
-    if (!this.surface) throw new Error("Skia surface creation failed.");
   }
 
   burst(lane: number): void {
-    const amount = this.reducedMotion ? 5 : 18;
+    if (!this.active) return;
+    const amount = Math.round((this.reducedMotion ? 5 : 18) * Math.max(0.3, this.particleScale));
     for (let index = 0; index < amount; index += 1) {
       this.particles.push({
         lane,
         angle: -Math.PI + Math.random() * Math.PI,
-        speed: 80 + Math.random() * 260,
+        speed: 70 + Math.random() * 220,
         age: 0,
-        life: 0.42 + Math.random() * 0.42,
-        size: 2 + Math.random() * 5,
+        life: 0.38 + Math.random() * 0.38,
+        size: 1.6 + Math.random() * 3.6,
       });
     }
   }
 
+  clear(): void {
+    this.particles = [];
+  }
+
   render(snapshot: GameSnapshot): void {
-    if (!this.kit || !this.surface || this.failed) return;
+    const layout = this.layout;
+    if (!this.kit || !this.surface || this.failed || !layout) return;
     try {
       const now = performance.now();
-      const delta = Math.min(0.04, (now - this.lastFrame) / 1000);
+      const delta = snapshot.paused ? 0 : Math.min(0.04, (now - this.lastFrame) / 1000);
       this.lastFrame = now;
       const kit = this.kit;
       const canvas = this.surface.getCanvas();
       canvas.clear(kit.Color4f(0, 0, 0, 0));
       canvas.save();
       canvas.scale(this.density, this.density);
-
-      const gutter = Math.max(10, Math.min(24, this.width * 0.018));
-      const gap = Math.max(4, Math.min(8, this.width * 0.004));
-      const laneWidth = (this.width - gutter * 2 - gap * 4) / 5;
-      const top = Math.max(62, Math.min(this.height * 0.24, 82));
-      const bottom = this.height - Math.max(18, Math.min(34, this.height * 0.035));
+      const { top, hitY, lanes } = layout;
       const paint = new kit.Paint();
       paint.setAntiAlias(true);
 
+      paint.setMaskFilter(this.laneBlur);
       snapshot.lanePulse.forEach((pulse, lane) => {
         if (pulse <= 0.02) return;
+        const metric = lanes[lane];
         const [red, green, blue] = colors[lane];
-        const left = gutter + lane * (laneWidth + gap);
-        paint.setColor(kit.Color(red, green, blue, Math.min(0.22, pulse * 0.18)));
-        paint.setMaskFilter(this.laneBlur);
-        canvas.drawRRect(kit.RRectXY(kit.XYWHRect(left + 5, top, laneWidth - 10, bottom - top), 14, 14), paint);
-        paint.setMaskFilter(null);
+        paint.setColor(kit.Color(red, green, blue, Math.min(0.3, pulse * 0.26)));
+        canvas.drawRRect(kit.RRectXY(kit.XYWHRect(metric.left + 4, top, metric.width - 8, hitY - top), 10, 10), paint);
       });
 
-      snapshot.notes.filter((note) => note.holding && !note.completed).forEach((note) => {
+      paint.setMaskFilter(this.holdBlur);
+      for (const note of snapshot.notes) {
+        if (!note.holding || note.completed) continue;
+        const metric = lanes[note.lane];
         const [red, green, blue] = colors[note.lane];
-        const left = gutter + note.lane * (laneWidth + gap);
-        const fillHeight = (bottom - top) * Math.max(0.04, note.holdProgress);
-        paint.setColor(kit.Color(red, green, blue, 0.16 + note.holdProgress * 0.16));
-        paint.setMaskFilter(this.holdBlur);
-        canvas.drawRRect(kit.RRectXY(kit.XYWHRect(left + laneWidth * 0.18, bottom - fillHeight, laneWidth * 0.64, fillHeight), 9, 9), paint);
-        paint.setMaskFilter(null);
-      });
+        const fillHeight = (hitY - top) * Math.max(0.05, note.holdProgress) * 0.6;
+        paint.setColor(kit.Color(red, green, blue, 0.2 + note.holdProgress * 0.2));
+        canvas.drawRRect(kit.RRectXY(kit.XYWHRect(metric.left + metric.width * 0.2, hitY - fillHeight, metric.width * 0.6, fillHeight), 8, 8), paint);
+      }
 
-      this.particles = this.particles.filter((particle) => {
+      paint.setMaskFilter(this.particleBlur);
+      let write = 0;
+      for (const particle of this.particles) {
         particle.age += delta;
-        if (particle.age >= particle.life) return false;
+        if (particle.age >= particle.life) continue;
         const progress = particle.age / particle.life;
-        const laneCenter = gutter + particle.lane * (laneWidth + gap) + laneWidth / 2;
+        const metric = lanes[particle.lane];
         const distance = particle.speed * particle.age;
-        const x = laneCenter + Math.cos(particle.angle) * distance;
-        const y = bottom - 34 + Math.sin(particle.angle) * distance + progress * progress * 70;
+        const x = metric.center + Math.cos(particle.angle) * distance;
+        const y = hitY + Math.sin(particle.angle) * distance + progress * progress * 60;
         const [red, green, blue] = colors[particle.lane];
         paint.setColor(kit.Color(red, green, blue, 1 - progress));
-        paint.setMaskFilter(this.particleBlur);
         canvas.drawCircle(x, y, particle.size * (1 - progress * 0.5), paint);
-        paint.setMaskFilter(null);
-        return true;
-      });
-
+        this.particles[write++] = particle;
+      }
+      this.particles.length = write;
+      paint.setMaskFilter(null);
       paint.delete();
       canvas.restore();
       this.surface.flush();
@@ -161,6 +197,7 @@ export class SkiaEffectsRenderer {
   }
 
   private disable(error: unknown, message: string): void {
+    const wasActive = this.active;
     this.failed = true;
     this.element.dataset.renderer = "fallback";
     this.surface?.delete?.();
@@ -171,11 +208,17 @@ export class SkiaEffectsRenderer {
     this.laneBlur = null;
     this.holdBlur = null;
     this.particleBlur = null;
-    this.grContext?.releaseResourcesAndAbandonContext?.();
-    this.grContext?.delete?.();
+    try {
+      this.grContext?.releaseResourcesAndAbandonContext?.();
+      this.grContext?.delete?.();
+      if (this.glContextHandle && this.kit) this.kit.deleteContext(this.glContextHandle);
+    } catch {
+      // The GPU context may already be gone after a context loss.
+    }
     this.grContext = null;
-    if (this.glContextHandle && this.kit) this.kit.deleteContext(this.glContextHandle);
     this.glContextHandle = 0;
-    console.warn(message, error);
+    this.particles = [];
+    if (message) console.warn(message, error);
+    if (wasActive || message) this.onActiveChange(false);
   }
 }

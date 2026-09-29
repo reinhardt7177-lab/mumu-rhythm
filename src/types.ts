@@ -57,7 +57,6 @@ export interface Song {
   approachSeconds?: number;
   backingTrack: string;
   backingTrackFallback?: string;
-  artwork: string;
   palette: SongPalette;
   mission: ListeningMission;
   melody: MelodyNote[];

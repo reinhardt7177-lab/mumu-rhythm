@@ -1,34 +1,24 @@
-# Visual Asset Prompts
+# Visual Assets (V7: code-drawn)
 
-네 곡의 비주얼은 OpenAI 기본 이미지 생성 도구로 제작했다. 모든 이미지는 텍스트와 UI를 포함하지 않는 가로형 게임 배경이며, 노트와 판정 UI는 Canvas/CSS로 렌더링한다.
+V7부터 저장소와 `public/`에는 이미지 파일(webp/png/jpg/jpeg/svg)이 없다. 모든 화면은 런타임에 코드로 그린다.
 
-## Shared Art Direction
+| 영역 | 렌더러 | 파일 |
+| --- | --- | --- |
+| 곡 카드·미션·결과 아트 | Canvas 2D 프로시저럴 모티프 | `src/render/songArt.ts` |
+| 중앙 9:16 노트 스테이지 | Canvas 2D (스프라이트 캐시) | `src/engine/renderer.ts` |
+| 레인 광원·홀드 에너지·타격 파편 | CanvasKit(Skia) 지연 로드, 실패 시 Canvas 2D | `src/render/skiaEffects.ts` |
+| 좌우(또는 상하) 뮤직비디오 | WebGL2 셰이더 → Canvas 2D → CSS 그라디언트 | `src/render/mvRenderer.ts` |
 
-- premium children's picture-book gouache illustration
-- subtle paper grain, clean shapes, sophisticated editorial finish
-- wide landscape with clear central depth for a five-lane rhythm highway
-- keep important subjects away from the bottom UI zone
-- no text, interface, logo, watermark, pixel art, anime, 3D, or nightclub imagery
+## 곡별 모티프
 
-## Turkish March
+`src/render/visualTimeline.ts`의 `songMotif()`가 색과 모티프를 정한다.
 
-Spectacular evening concert pavilion with a polished grand piano, rhythmic ceremonial drums, jewel-like lanterns, and an ivory keyboard ribbon sweeping through the scene. Ruby, turquoise, ivory, midnight blue, and warm gold. Animated-feature painterly finish; playful energy without flags, soldiers, or weapons.
+- 네온 런: circuit (회로 선과 노드)
+- 터키 행진곡: keys (건반과 행진하는 음계)
+- 캉캉: frills (겹치는 프릴 곡선)
+- 윌리엄 텔 서곡: gallop (산맥과 질주 셰브런)
+- 헝가리 무곡 5번: spiral (회전 나선과 길고 짧은 대비)
 
-## Can-Can
+## Blender의 역할
 
-Grand Belle Epoque music hall transformed into an orchestral carnival, with strings, brass, percussion, glowing footlights, and crisp ribbons of musical motion. Cherry red, emerald, lemon yellow, white, and theatrical gold. No people or cabaret imagery.
-
-## William Tell Overture
-
-Bright Alpine valley at sunrise with brass, timpani, and strings framing five luminous rhythmic trails racing toward the mountains. Cobalt blue, fresh green, scarlet, white, and sunrise gold. Heroic and optimistic, with no battle or cowboy imagery.
-
-## Hungarian Dance No. 5
-
-Ornate concert salon opening onto a moonlit festival courtyard, with violin, cimbalom, strings, and alternating suspended and rushing musical arcs. Raspberry, peacock teal, midnight blue, ivory, and antique gold. Elegant and energetic without costume stereotypes.
-
-## Runtime Files
-
-- `public/assets/art/turkish-march.webp`
-- `public/assets/art/can-can.webp`
-- `public/assets/art/william-tell.webp`
-- `public/assets/art/hungarian-dance.webp`
+Blender는 깊이감 설계 도구로만 사용한다. `tools/art/blender/export_stage_geometry.py`가 카메라, 바닥 레일, 터널 링, 별 레이어, 도시 블록을 실제 3D 장면으로 만든 뒤 카메라 투영 좌표만 `src/content/stageGeometry.generated.ts`에 숫자로 기록한다. 렌더 이미지나 `.blend` 파일은 만들지 않는다.

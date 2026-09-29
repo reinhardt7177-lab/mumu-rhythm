@@ -66,10 +66,16 @@ python tools/build_real_music.py
 
 ## 그래픽 제작
 
-`NEON RUN` 무대는 Blender 5.x의 실제 3D 장면을 WebP로 렌더한 에셋입니다.
+화면에는 이미지 파일을 쓰지 않고 모두 코드로 그립니다.
+
+- 중앙: 정수 픽셀 9:16 스테이지. Canvas 2D가 레인·노트·판정 영역을 그리고, 게임 진입 후 CanvasKit WASM을 지연 로드해 Skia GPU 레인 광원, 홀드 에너지, 타격 파편을 같은 `stageLayout`에 맞춰 그립니다. 실패 시 Canvas 2D 효과로 전환합니다.
+- 주변: WebGL2 뮤직비디오가 포털 → 도시·파형 → 감상 → 가락 리본 → 만화경 피날레 장면을 `AudioEngine` 게임 시간 기반 `visualTimeline`에 동기화합니다. 컨텍스트 손실이나 WebGL2 미지원 시 Canvas 2D, 이어서 CSS 그라디언트로 전환합니다.
+- 데스크톱·태블릿 가로는 좌우 MV와 장면 캡션, 세로 화면은 스테이지를 폭에 맞추고 남는 위아래를 MV로 채웁니다. 844x390 같은 낮은 가로 휴대폰에서는 회전 안내를 띄우고 자동으로 일시정지합니다.
+- 곡 카드·미션·결과 아트는 곡별 Canvas 2D 프로시저럴 모티프입니다.
+- 설정의 "화면 효과 품질"로 MV 해상도·fps와 Skia 사용 여부를 조절합니다.
+
+깊이감은 Blender 5.x에서 설계합니다. 헤드리스 Blender가 카메라, 바닥 레일, 터널 링, 별 레이어, 도시 블록을 3D로 배치하고 카메라 투영 좌표만 `src/content/stageGeometry.generated.ts`로 내보냅니다. 렌더 이미지는 만들지 않습니다.
 
 ```powershell
 npm run build:art
 ```
-
-게임 진입 후 CanvasKit WASM을 지연 로드해 Skia GPU 레인 광원, 홀드 에너지, 타격 파편을 그립니다. 로드나 WebGL 초기화가 실패하면 기본 Canvas 2D 효과로 자동 전환됩니다.
