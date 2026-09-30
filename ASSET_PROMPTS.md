@@ -14,6 +14,8 @@ V7부터 저장소와 `public/`에는 이미지 파일(webp/png/jpg/jpeg/svg)이
 `src/render/visualTimeline.ts`의 `songMotif()`가 색과 모티프를 정한다.
 
 - 네온 런: circuit (회로 선과 노드)
+- 구름 점프: clouds (묻고 답하는 구름 계단과 점프 궤적)
+- 로봇 퍼레이드: gears (오스티나토 블록과 맞물린 톱니)
 - 터키 행진곡: keys (건반과 행진하는 음계)
 - 캉캉: frills (겹치는 프릴 곡선)
 - 윌리엄 텔 서곡: gallop (산맥과 질주 셰브런)

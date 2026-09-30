@@ -251,7 +251,143 @@ function spiral(art: ArtContext): void {
   }
 }
 
-const DRAWERS = [circuit, keys, frills, gallop, spiral];
+function puff(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(x, y, size * 1.25, size * 0.42, 0, 0, Math.PI * 2);
+  ctx.arc(x - size * 0.5, y - size * 0.18, size * 0.46, 0, Math.PI * 2);
+  ctx.arc(x + size * 0.18, y - size * 0.34, size * 0.58, 0, Math.PI * 2);
+  ctx.arc(x + size * 0.75, y - size * 0.1, size * 0.36, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Cloud Hop: cloud platforms climb (the call) then step back down (the answer), joined by hop arcs. */
+function clouds(art: ArtContext): void {
+  const { ctx, width, height, colors } = art;
+  backdrop(art, "#27508f");
+  const rand = random(art.seed);
+  for (let star = 0; star < 36; star += 1) {
+    ctx.fillStyle = withAlpha(colors[0], 0.25 + rand() * 0.5);
+    const size = 1 + rand() * 2;
+    ctx.fillRect(rand() * width, rand() * height * 0.55, size, size);
+  }
+  // Far soft cloud bank.
+  for (let index = 0; index < 6; index += 1) {
+    puff(ctx, width * (index / 5), height * 0.9, width * 0.14, withAlpha(colors[4], 0.28));
+  }
+  const steps = [0.72, 0.6, 0.48, 0.36, 0.46, 0.58, 0.7];
+  const points = steps.map((level, index) => ({ x: width * (0.1 + index * 0.13), y: height * level }));
+  // Hop arcs: warm on the way up (question), cool on the way down (answer).
+  ctx.lineWidth = Math.max(2, width / 220);
+  ctx.setLineDash([Math.max(3, width / 120), Math.max(4, width / 90)]);
+  for (let index = 0; index + 1 < points.length; index += 1) {
+    const a = points[index];
+    const b = points[index + 1];
+    ctx.strokeStyle = index < 3 ? colors[1] : colors[2];
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y - height * 0.05);
+    ctx.quadraticCurveTo((a.x + b.x) / 2, Math.min(a.y, b.y) - height * 0.16, b.x, b.y - height * 0.05);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  points.forEach((point, index) => {
+    puff(ctx, point.x, point.y, width * 0.045, index === 3 ? colors[3] : colors[0]);
+    ctx.fillStyle = index < 3 ? colors[1] : index === 3 ? colors[3] : colors[2];
+    ctx.beginPath();
+    ctx.arc(point.x, point.y - height * 0.075, Math.max(3, width * 0.012), 0, Math.PI * 2);
+    ctx.fill();
+  });
+  // Question and answer marks.
+  ctx.font = `800 ${Math.max(12, height * 0.11)}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = withAlpha(colors[1], 0.9);
+  ctx.fillText("?", points[3].x, points[3].y - height * 0.2);
+  ctx.fillStyle = withAlpha(colors[2], 0.9);
+  ctx.fillText("♪", points[6].x + width * 0.06, points[6].y - height * 0.14);
+}
+
+function gear(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, teeth: number, rotation: number, color: string, hole: string): void {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let index = 0; index < teeth * 2; index += 1) {
+    const angle = rotation + (index / (teeth * 2)) * Math.PI * 2;
+    const r = index % 2 === 0 ? radius : radius * 0.8;
+    const spread = Math.PI / (teeth * 2) * 0.55;
+    ctx.lineTo(x + Math.cos(angle - spread) * r, y + Math.sin(angle - spread) * r);
+    ctx.lineTo(x + Math.cos(angle + spread) * r, y + Math.sin(angle + spread) * r);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = hole;
+  ctx.beginPath();
+  ctx.arc(x, y, radius * 0.32, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Robot Parade: interlocking gears above one bar-long riff block repeated identically (ostinato). */
+function gears(art: ArtContext): void {
+  const { ctx, width, height, colors, night } = art;
+  backdrop(art, "#23331c");
+  ctx.strokeStyle = withAlpha(colors[2], 0.12);
+  ctx.lineWidth = 1;
+  const cell = Math.max(12, width / 24);
+  for (let x = 0; x < width; x += cell) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+  for (let y = 0; y < height; y += cell) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+  const big = height * 0.2;
+  gear(ctx, width * 0.66, height * 0.36, big, 12, 0.1, colors[3], night);
+  gear(ctx, width * 0.66 + big * 1.72, height * 0.36 + big * 0.55, big * 0.62, 8, 0.35, colors[1], night);
+  gear(ctx, width * 0.66 - big * 1.45, height * 0.36 - big * 0.62, big * 0.5, 7, 0.2, colors[2], night);
+  // Same riff shape four times: heights follow the bass lanes 0,0,1,2,3,1.
+  const riff = [0, 0, 1, 2, 3, 1];
+  const onsets = [0, 0.75, 1.5, 2, 2.5, 3.5];
+  const baseY = height * 0.9;
+  const barWidth = width * 0.22;
+  for (let bar = 0; bar < 4; bar += 1) {
+    const left = width * 0.06 + bar * barWidth;
+    ctx.fillStyle = withAlpha(colors[0], 0.08);
+    ctx.fillRect(left, baseY - height * 0.24, barWidth - width * 0.015, height * 0.26);
+    riff.forEach((lane, index) => {
+      const x = left + (onsets[index] / 4) * (barWidth - width * 0.02);
+      const h = height * (0.05 + lane * 0.045);
+      ctx.fillStyle = [colors[2], colors[2], colors[3], colors[1], colors[4], colors[3]][index];
+      ctx.fillRect(x, baseY - h, barWidth * 0.1, h);
+    });
+  }
+  // Robot marchers: square heads with antennas stepping on the beat.
+  for (let index = 0; index < 5; index += 1) {
+    const x = width * (0.1 + index * 0.1);
+    const y = height * (0.5 + (index % 2) * 0.03);
+    const size = height * 0.07;
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(x, y, size, size);
+    ctx.fillStyle = night;
+    ctx.fillRect(x + size * 0.2, y + size * 0.3, size * 0.18, size * 0.18);
+    ctx.fillRect(x + size * 0.62, y + size * 0.3, size * 0.18, size * 0.18);
+    ctx.strokeStyle = colors[0];
+    ctx.lineWidth = Math.max(1, width / 400);
+    ctx.beginPath();
+    ctx.moveTo(x + size / 2, y);
+    ctx.lineTo(x + size / 2, y - size * 0.4);
+    ctx.stroke();
+    ctx.fillStyle = colors[index % 2 ? 1 : 3];
+    ctx.beginPath();
+    ctx.arc(x + size / 2, y - size * 0.45, size * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+const DRAWERS = [circuit, keys, frills, gallop, spiral, clouds, gears];
 
 /** Draws the procedural artwork for `song` into `canvas` at its CSS size (DPR capped at 2). */
 export function drawSongArt(canvas: HTMLCanvasElement, song: Song, variant: ArtVariant = "card"): void {
@@ -259,12 +395,18 @@ export function drawSongArt(canvas: HTMLCanvasElement, song: Song, variant: ArtV
   const cssWidth = Math.max(1, Math.round(rect.width || canvas.clientWidth || 320));
   const cssHeight = Math.max(1, Math.round(rect.height || canvas.clientHeight || 240));
   const density = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = Math.round(cssWidth * density);
-  canvas.height = Math.round(cssHeight * density);
+  const pixelWidth = Math.round(cssWidth * density);
+  const pixelHeight = Math.round(cssHeight * density);
+  const motif = songMotif(song.id);
+  const signature = `${song.id}|${variant}|${pixelWidth}x${pixelHeight}`;
+  // Resize storms (rotation, keyboard) redraw the same art; skip identical repaints.
+  if (canvas.dataset.artSignature === signature) return;
+  if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+  if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.setTransform(density, 0, 0, density, 0, 0);
-  const motif = songMotif(song.id);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
   const art: ArtContext = {
     ctx,
     width: cssWidth,
@@ -285,4 +427,5 @@ export function drawSongArt(canvas: HTMLCanvasElement, song: Song, variant: ArtV
     ctx.fillRect(0, 0, cssWidth, cssHeight);
   }
   canvas.dataset.motif = motif.name;
+  canvas.dataset.artSignature = signature;
 }

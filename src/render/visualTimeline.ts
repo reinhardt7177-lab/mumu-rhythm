@@ -52,7 +52,7 @@ export interface VisualFrame {
 
 export interface SongMotif {
   /** Shader/preview motif id. */
-  id: 0 | 1 | 2 | 3 | 4;
+  id: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   name: string;
   /** Five MV colors: warm white, coral, teal, gold, blue ordering. */
   colors: [string, string, string, string, string];
@@ -66,6 +66,8 @@ const MOTIFS: Record<string, SongMotif> = {
   "can-can": { id: 2, name: "frills", colors: ["#fff6e6", "#ff7a6b", "#35c2a0", "#ffd05a", "#5a86ff"], night: "#1a1417" },
   "william-tell": { id: 3, name: "gallop", colors: ["#fdf3df", "#ee6a4e", "#1fa6a8", "#f3c24a", "#2f6ee0"], night: "#0b1a24" },
   "hungarian-dance": { id: 4, name: "spiral", colors: ["#fff0e0", "#e85a70", "#2cb8b0", "#e6b54c", "#5a70e8"], night: "#1c1026" },
+  "cloud-hop": { id: 5, name: "clouds", colors: ["#fffaf0", "#ff8fb1", "#5fd4e8", "#ffd97a", "#7f9bff"], night: "#0e1b36" },
+  "robot-parade": { id: 6, name: "gears", colors: ["#f4ffe8", "#ff9f43", "#3fd9a2", "#d8f24a", "#5b8cff"], night: "#0f1510" },
 };
 
 export function songMotif(songId: string): SongMotif {
@@ -147,7 +149,11 @@ export class VisualTimeline {
     return { span: spans[spans.length - 1], index: spans.length - 1 };
   }
 
-  frameAt(songTime: number): VisualFrame {
+  /**
+   * Pure frame for `songTime`. Pass the previous frame as `target` to fill it in
+   * place (the render loop reuses one object and its melody array every frame).
+   */
+  frameAt(songTime: number, target?: VisualFrame): VisualFrame {
     const song = this.song;
     const beat = songTime / this.secondsPerBeat;
     const wholeBeat = Math.floor(beat);
@@ -161,31 +167,36 @@ export class VisualTimeline {
     const spanLength = Math.max(0.001, span.endBeat - span.startBeat);
     const density = this.densityAt(songTime);
 
-    const melody: MelodyPoint[] = [];
+    const melody: MelodyPoint[] = target?.melody ?? [];
+    let count = 0;
     let cursor = lowerBound(this.times, songTime - 0.25);
-    while (melody.length < MELODY_POINTS && cursor < this.times.length) {
-      melody.push({ until: this.times[cursor] - songTime, pitch: this.pitches[cursor] });
+    while (count < MELODY_POINTS && cursor < this.times.length) {
+      const point = melody[count] ?? (melody[count] = { until: 0, pitch: 0 });
+      point.until = this.times[cursor] - songTime;
+      point.pitch = this.pitches[cursor];
+      count += 1;
       cursor += 1;
     }
+    melody.length = count;
 
-    return {
-      songTime,
-      beat,
-      beatPhase: beat < 0 ? 0 : beatPhase,
-      barPhase: barBeat / barLength,
-      beatPulse: beat < 0 ? 0 : Math.exp(-beatPhase * 5),
-      downbeat: beat >= 0 && Math.floor(barBeat) === 0,
-      section,
-      sectionProgress: clamp01((beat - span.startBeat) / spanLength),
-      scene: span.scene,
-      sceneIndex: MV_SCENES.indexOf(span.scene),
-      previousScene: previous,
-      sceneBlend,
-      density,
-      energy: clamp01(density / this.peakDensity),
-      melody,
-      progress: clamp01(songTime / this.duration),
-    };
+    const frame: VisualFrame = target ?? ({} as VisualFrame);
+    frame.songTime = songTime;
+    frame.beat = beat;
+    frame.beatPhase = beat < 0 ? 0 : beatPhase;
+    frame.barPhase = barBeat / barLength;
+    frame.beatPulse = beat < 0 ? 0 : Math.exp(-beatPhase * 5);
+    frame.downbeat = beat >= 0 && Math.floor(barBeat) === 0;
+    frame.section = section;
+    frame.sectionProgress = clamp01((beat - span.startBeat) / spanLength);
+    frame.scene = span.scene;
+    frame.sceneIndex = MV_SCENES.indexOf(span.scene);
+    frame.previousScene = previous;
+    frame.sceneBlend = sceneBlend;
+    frame.density = density;
+    frame.energy = clamp01(density / this.peakDensity);
+    frame.melody = melody;
+    frame.progress = clamp01(songTime / this.duration);
+    return frame;
   }
 }
 

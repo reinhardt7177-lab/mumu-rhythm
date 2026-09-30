@@ -49,4 +49,4 @@ The optional GPU effects layer uses [CanvasKit](https://skia.org/docs/user/modul
 
 ## Original synth recording
 
-Neon Run is generated locally by `tools/music/build_synth_tracks.py`. It uses no third-party samples or model output. The score, synthesis, arrangement, mix, gameplay chart, OGG, and M4A derivatives are original project assets.
+Neon Run, Cloud Hop and Robot Parade are generated locally by `tools/music/build_synth_tracks.py` (scores in `tools/music/synth_tracks.py`). Their melodies are original scale-degree sequences written for this project, not arrangements of existing songs. They use no third-party samples or model output. The score, synthesis, arrangement, mix, gameplay chart, OGG, and M4A derivatives are original project assets.

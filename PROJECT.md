@@ -24,7 +24,7 @@
 
 ## Current Scope
 
-- 실제 연주 클래식 4곡과 오리지널 신스 1곡
+- 실제 연주 클래식 4곡과 오리지널 신스 3곡
 - 마우스, 멀티 터치, `A S D J K` 키보드 입력
 - 넓은 가로 노트 바와 긴 노트 바
 - PERFECT/GREAT/GOOD 판정, 노트 수집률, 점수, 콤보
@@ -32,6 +32,7 @@
 - CanvasKit 지연 로드 GPU 효과와 Canvas 2D 안전 대체 경로
 - 곡별 감상 미션과 결과 질문
 - 교실 기기별 전체 음량 조절
+- 실제 프레임 시간을 이용한 자동 효과 품질 조절
 - 최고 기록과 최근 감상 결과의 로컬 저장
 
 ## Non-goals
@@ -64,7 +65,7 @@
 - 중앙 9:16 Canvas 2D 노트 스테이지 + CanvasKit/Skia GPU 효과 레이어
 - 좌우 WebGL2 뮤직비디오(Canvas 2D·CSS 폴백), 오디오 게임 시간 동기화
 - 출력 지연을 보정한 Web Audio 시계와 무음정 입력 효과
-- Vitest 판정·stageLayout·visualTimeline 순수 테스트
+- Vitest 판정·stageLayout·visualTimeline·자동 품질·곡 콘텐츠 순수 테스트
 - Blender 5.x 헤드리스 숫자 geometry 익스포터 (이미지 에셋 없음)
 - NumPy 결정론적 신스 합성 + FFmpeg OGG/M4A 제작
 - FFmpeg 실제 연주 편집과 librosa 기반 온셋·음역 분석
@@ -90,6 +91,6 @@
 
 ## Next Steps
 
-1. 다섯 곡을 실제 수업에서 플레이 테스트하고 판정 폭과 노트 밀도를 조정한다.
+1. 일곱 곡을 실제 수업에서 플레이 테스트하고 판정 폭과 노트 밀도를 조정한다.
 2. 쉬움·보통·도전의 곡별 다중 차트를 추가한다.
 3. 같은 제작 파이프라인으로 10곡 콘텐츠 팩을 확장한다.

@@ -19,11 +19,11 @@ import {
 } from "lucide";
 import "./styles.css";
 import { songDurationSeconds, songs } from "./content/songs";
-import { AudioEngine } from "./engine/audio";
+import { AudioEngine, OFFSET_KEY } from "./engine/audio";
 import { RhythmGame, type GameSnapshot, type JudgeEvent } from "./engine/game";
 import { StageRenderer } from "./engine/renderer";
 import { MvRenderer, type MvMode } from "./render/mvRenderer";
-import { parseQualitySetting, resolveQuality, type QualityProfile, type QualitySetting } from "./render/quality";
+import { AdaptiveQuality, parseQualitySetting, resolveQuality, type DeviceHints, type QualityLevel, type QualityProfile, type QualitySetting } from "./render/quality";
 import { SkiaEffectsRenderer } from "./render/skiaEffects";
 import { drawSongArt } from "./render/songArt";
 import { computeViewportLayout, type ViewportLayout } from "./render/stageLayout";
@@ -60,7 +60,7 @@ app.innerHTML = `
           <h1 id="libraryTitle">음악을 듣고<br />바를 터뜨려요</h1>
           <p>실제 클래식 연주와 오리지널 신스 트랙을 들으며 비트 라인의 노트를 터뜨리고 소리의 층과 가락을 발견합니다.</p>
           <dl class="program-facts">
-            <div><dt>5</dt><dd>뮤직 스테이지</dd></div>
+            <div><dt>${songs.length}</dt><dd>뮤직 스테이지</dd></div>
             <div><dt>5</dt><dd>음높이 레인</dd></div>
             <div><dt>1</dt><dd>곡마다 귀 미션</dd></div>
           </dl>
@@ -320,12 +320,18 @@ let lastSnapshot: GameSnapshot | null = null;
 let previewing = false;
 let previewTimer = 0;
 let qualitySetting: QualitySetting = parseQualitySetting(localStorage.getItem(QUALITY_KEY));
+/** Frame-time governor; only steers quality in "auto" (explicit choices are respected). */
+const governor = new AdaptiveQuality(resolveQuality(qualitySetting, deviceHints()).level);
 let profile: QualityProfile = currentProfile();
 let viewportLayout: ViewportLayout = computeViewportLayout(window.innerWidth, window.innerHeight);
 let timeline: VisualTimeline | null = null;
+let visualFrame: VisualFrame | undefined;
 let lastScene: MvScene | null = null;
 let lastBeatDot = -1;
+let beatDotElements: Element[] = [];
 let rotatePaused = false;
+let lastFrameAt = 0;
+let layoutKey = "";
 const activePointers = new Map<number, string>();
 const activeKeys = new Map<string, string>();
 
@@ -342,19 +348,47 @@ const game = new RhythmGame(audio, {
 skiaEffects.onActiveChange = () => syncEffectOwnership();
 mv.onModeChange = (mode: MvMode) => { gameScreen.dataset.mv = mode; };
 
-function currentProfile(): QualityProfile {
+function deviceHints(): DeviceHints {
   const nav = navigator as Navigator & { deviceMemory?: number };
-  return resolveQuality(qualitySetting, {
+  return {
     devicePixelRatio: window.devicePixelRatio || 1,
     hardwareConcurrency: nav.hardwareConcurrency,
     deviceMemory: nav.deviceMemory,
     reducedMotion: motionQuery.matches,
     coarsePointer: coarseQuery.matches,
-  });
+  };
+}
+
+function currentProfile(): QualityProfile {
+  return resolveQuality(qualitySetting, deviceHints(), qualitySetting === "auto" ? governor.level : undefined);
+}
+
+function qualityLabel(): string {
+  return qualitySetting === "auto" ? `${QUALITY_LABELS.auto} · ${QUALITY_LABELS[profile.level]}` : QUALITY_LABELS[qualitySetting];
+}
+
+/** Settings changed: the device/user ceiling moves and the governor restarts from it. */
+function resetQualityCeiling(): void {
+  governor.setCeiling(resolveQuality(qualitySetting, deviceHints()).level, performance.now());
+  applyProfile();
+}
+
+/** The governor stepped quality down or back up mid-song. */
+function handleRuntimeQuality(level: QualityLevel): void {
+  console.info(`화면 효과 품질을 ${QUALITY_LABELS[level]}(으)로 자동 조정했습니다.`);
+  applyProfile();
+  if (screen === "game" && profile.skia) void skiaEffects.initialize().then(() => { syncEffectOwnership(); syncGameLayout(true); });
+}
+
+/** Pauses, resumes and layout rebuilds are not performance samples. */
+function restartFrameClock(): void {
+  lastFrameAt = 0;
+  governor.reset(performance.now());
 }
 
 function applyProfile(): void {
   profile = currentProfile();
+  qualityValue.textContent = qualityLabel();
   const reduced = motionQuery.matches;
   renderer.setReducedMotion(reduced);
   renderer.setParticleScale(profile.particles);
@@ -510,6 +544,11 @@ function prepareGameChrome(song: Song): void {
   mvSongTitle.textContent = song.title;
   mvSongMeta.textContent = `${song.featuredInstrument} · ${song.bpm} BPM · ${song.beatsPerBar}박`;
   beatDots.innerHTML = Array.from({ length: song.beatsPerBar }, () => "<span></span>").join("");
+  beatDotElements = [...beatDots.children];
+  visualFrame = undefined;
+  hudScore = -1;
+  hudCombo = -1;
+  hudProgress = -1;
   lastScene = null;
   lastBeatDot = -1;
   rotatePaused = false;
@@ -535,11 +574,13 @@ async function startSelectedSong(): Promise<void> {
   try {
     showScreen("game");
     mv.initialize();
-    syncGameLayout();
+    syncGameLayout(true);
     await game.start(selectedSong);
+    restartFrameClock();
     // CanvasKit is only fetched once a game is actually running.
-    if (profile.skia) void skiaEffects.initialize().then(() => { syncEffectOwnership(); syncGameLayout(); });
-    requestAnimationFrame(syncGameLayout);
+    if (profile.skia) void skiaEffects.initialize().then(() => { syncEffectOwnership(); syncGameLayout(true); });
+    // Re-measure once the HUD fonts have laid out.
+    requestAnimationFrame(() => syncGameLayout(true));
     showFeedback("짧은 바는 톡, 긴 바는 꾹!", "hint");
     if (viewportLayout.mode === "rotate") void pauseForRotation();
   } catch (error) {
@@ -554,10 +595,19 @@ async function startSelectedSong(): Promise<void> {
   }
 }
 
-/** Positions the 9:16 stage with integer CSS pixels (no transform scaling) and resizes every layer. */
-function syncGameLayout(): void {
+/**
+ * Positions the 9:16 stage with integer CSS pixels (no transform scaling) and resizes every layer.
+ * Resize observers, orientation and window events often report the same size several times;
+ * unless forced, identical viewport/quality states skip the DOM reads and canvas work.
+ */
+function syncGameLayout(force = false): void {
   const rect = gameScreen.getBoundingClientRect();
-  viewportLayout = computeViewportLayout(rect.width || window.innerWidth, rect.height || window.innerHeight);
+  const width = rect.width || window.innerWidth;
+  const height = rect.height || window.innerHeight;
+  const key = `${Math.round(width)}x${Math.round(height)}|${window.devicePixelRatio}|${profile.level}|${skiaEffects.active}`;
+  if (!force && key === layoutKey) return;
+  layoutKey = key;
+  viewportLayout = computeViewportLayout(width, height);
   const { stage, mode } = viewportLayout;
   gameScreen.dataset.layout = mode;
   gameScreen.style.setProperty("--stage-w", `${stage.width}px`);
@@ -571,6 +621,8 @@ function syncGameLayout(): void {
   mv.setLayout(viewportLayout, profile);
   rotateNotice.hidden = mode !== "rotate";
   if (mode === "rotate") void pauseForRotation();
+  // Canvas resizes stall a frame; do not let that count as a slow frame.
+  restartFrameClock();
   if (lastSnapshot) renderAll(lastSnapshot);
 }
 
@@ -592,7 +644,8 @@ function renderAll(snapshot: GameSnapshot): void {
   });
   if (profile.skia && skiaEffects.active) skiaEffects.render(snapshot);
   if (timeline) {
-    const frame = timeline.frameAt(snapshot.songTime);
+    // One VisualFrame object is reused for the whole song (no per-frame allocation).
+    const frame = (visualFrame = timeline.frameAt(snapshot.songTime, visualFrame));
     mv.render(frame, snapshot.paused);
     updateMvCaptions(frame);
   }
@@ -611,19 +664,32 @@ function updateMvCaptions(frame: VisualFrame): void {
   const dot = Math.floor(frame.barPhase * (selectedSong.beatsPerBar));
   if (dot !== lastBeatDot && frame.beat >= 0) {
     lastBeatDot = dot;
-    [...beatDots.children].forEach((child, index) => child.classList.toggle("on", index === dot));
+    beatDotElements.forEach((child, index) => child.classList.toggle("on", index === dot));
     energyBar.style.transform = `scaleX(${(0.08 + frame.energy * 0.92).toFixed(3)})`;
   }
 }
 
+let hudScore = -1;
+let hudCombo = -1;
+let hudProgress = -1;
+
 function handleFrame(snapshot: GameSnapshot): void {
+  const start = performance.now();
+  const interval = lastFrameAt > 0 ? start - lastFrameAt : 0;
+  lastFrameAt = start;
   lastSnapshot = snapshot;
   renderAll(snapshot);
-  if (performance.now() - lastHudUpdate > 70) {
-    lastHudUpdate = performance.now();
-    scoreValue.textContent = snapshot.score.toLocaleString("ko-KR");
-    comboValue.textContent = String(snapshot.combo);
-    gameProgress.style.width = `${snapshot.progress * 100}%`;
+  if (start - lastHudUpdate > 70) {
+    lastHudUpdate = start;
+    if (snapshot.score !== hudScore) scoreValue.textContent = (hudScore = snapshot.score).toLocaleString("ko-KR");
+    if (snapshot.combo !== hudCombo) comboValue.textContent = String((hudCombo = snapshot.combo));
+    const progress = Math.round(snapshot.progress * 1000) / 10;
+    if (progress !== hudProgress) gameProgress.style.width = `${(hudProgress = progress)}%`;
+  }
+  // Measured runtime quality: interval = real frame pacing, work = main-thread render cost.
+  if (qualitySetting === "auto" && interval > 0) {
+    const next = governor.sample(interval, performance.now() - start, start);
+    if (next) handleRuntimeQuality(next);
   }
 }
 
@@ -777,7 +843,10 @@ async function togglePause(): Promise<void> {
   pauseButton.ariaLabel = paused ? "계속하기" : "일시정지";
   refreshIcons();
   lastSnapshot = { ...lastSnapshot, paused };
+  // Paused: this single render draws the pause card, holds the MV frame and blanks Skia.
+  // Nothing renders again until resume (the game loop itself is stopped).
   renderAll(lastSnapshot);
+  if (!paused) restartFrameClock();
 }
 
 document.querySelectorAll<HTMLButtonElement>(".settings-open").forEach((button) => {
@@ -796,14 +865,14 @@ volumeInput.addEventListener("input", () => {
 timingInput.addEventListener("input", () => {
   const value = Number(timingInput.value);
   timingValue.textContent = `${value > 0 ? "+" : ""}${value} ms`;
-  localStorage.setItem("mumu-music-v5-offset-ms", String(value));
+  localStorage.setItem(OFFSET_KEY, String(value));
+  audio.setUserOffsetMs(value);
 });
 qualityInput.addEventListener("change", () => {
   qualitySetting = parseQualitySetting(qualityInput.value);
   localStorage.setItem(QUALITY_KEY, qualitySetting);
-  qualityValue.textContent = QUALITY_LABELS[qualitySetting];
-  applyProfile();
-  if (screen === "game" && profile.skia) void skiaEffects.initialize().then(() => { syncEffectOwnership(); syncGameLayout(); });
+  resetQualityCeiling();
+  if (screen === "game" && profile.skia) void skiaEffects.initialize().then(() => { syncEffectOwnership(); syncGameLayout(true); });
 });
 select<HTMLButtonElement>("#resetRecords").addEventListener("click", () => {
   Object.keys(localStorage).filter((key) => key.startsWith("mumu-music-")).forEach((key) => localStorage.removeItem(key));
@@ -812,10 +881,10 @@ select<HTMLButtonElement>("#resetRecords").addEventListener("click", () => {
   audio.setMasterVolume(0.88);
   timingInput.value = "0";
   timingValue.textContent = "0 ms";
+  audio.setUserOffsetMs(0);
   qualitySetting = "auto";
   qualityInput.value = "auto";
-  qualityValue.textContent = QUALITY_LABELS.auto;
-  applyProfile();
+  resetQualityCeiling();
   audio.playUi("soft");
 });
 
@@ -845,9 +914,15 @@ function scheduleResize(): void {
 window.addEventListener("resize", scheduleResize);
 window.addEventListener("orientationchange", scheduleResize);
 new ResizeObserver(scheduleResize).observe(gameScreen);
-motionQuery.addEventListener("change", applyProfile);
+motionQuery.addEventListener("change", resetQualityCeiling);
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && screen === "game" && lastSnapshot && !lastSnapshot.paused) void togglePause();
+  if (document.hidden) {
+    // Hidden tab: pause so audio, the game loop, MV and Skia all stop until the student returns.
+    if (screen === "game" && lastSnapshot && !lastSnapshot.paused) void togglePause();
+    return;
+  }
+  restartFrameClock();
+  if (screen === "game") scheduleResize();
 });
 
 const storedVolumeValue = localStorage.getItem("mumu-music-v4-volume");
@@ -855,11 +930,11 @@ const storedVolume = storedVolumeValue === null ? 88 : Number(storedVolumeValue)
 volumeInput.value = String(storedVolume);
 volumeValue.textContent = `${storedVolume}%`;
 audio.setMasterVolume(storedVolume / 100);
-const storedTiming = Number(localStorage.getItem("mumu-music-v5-offset-ms") ?? "0");
+const storedTiming = Number(localStorage.getItem(OFFSET_KEY) ?? "0") || 0;
 timingInput.value = String(storedTiming);
 timingValue.textContent = `${storedTiming > 0 ? "+" : ""}${storedTiming} ms`;
+audio.setUserOffsetMs(storedTiming);
 qualityInput.value = qualitySetting;
-qualityValue.textContent = QUALITY_LABELS[qualitySetting];
 applyProfile();
 renderLibrary();
 applySongPalette(selectedSong);

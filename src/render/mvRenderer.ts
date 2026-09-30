@@ -189,6 +189,37 @@ vec3 sceneColor(int s, vec2 q) {
   return sceneKaleido(q);
 }
 
+float gearMask(vec2 p, float r, float teeth, float rot) {
+  float a = atan(p.y, p.x) + rot;
+  float rim = r * (0.84 + 0.16 * step(0.0, sin(a * teeth)));
+  float d = length(p);
+  return smoothstep(rim, rim - 0.006, d) * smoothstep(r * 0.3, r * 0.3 + 0.006, d);
+}
+
+// Song-specific MV identity layered over every scene.
+vec3 motifLayer(vec2 q, vec3 col) {
+  if (uMotif == 5) {
+    // Cloud Hop: cloud platforms that climb then step down (call and answer) and hop on the beat.
+    for (int i = 0; i < 6; i++) {
+      float fi = float(i);
+      float x = fract(fi / 6.0 + 0.08 - uTime * 0.018 * uMotion);
+      float hop = abs(sin((uBeat * 0.5 + fi * 0.37) * 3.14159)) * 0.035 * uMotion;
+      float y = 0.2 + abs(mod(fi, 6.0) - 3.0) * 0.05 - hop;
+      vec2 d = (q - vec2(x, y)) * vec2(1.0, 2.6);
+      float puff = exp(-dot(d, d) * 220.0) + exp(-dot(d - vec2(0.03, 0.02), d - vec2(0.03, 0.02)) * 300.0);
+      col = mix(col, mix(uColors[0], uColors[i < 3 ? 1 : 2], 0.25), clamp(puff, 0.0, 1.0) * 0.4);
+    }
+  } else if (uMotif == 6) {
+    // Robot Parade: gears that tick forward once per beat, like the repeating ostinato.
+    float tick = floor(uBeat) + smoothstep(0.0, 0.22, fract(uBeat));
+    float rot = tick * 0.5236 * uMotion;
+    col += uColors[3] * gearMask(q - vec2(0.2, 0.22), 0.12, 10.0, rot) * 0.24;
+    col += uColors[1] * gearMask(q - vec2(0.38, 0.13), 0.07, 6.0, -rot * 1.67 + 0.3) * 0.26;
+    col += uColors[2] * gearMask(q - vec2(0.8, 0.82), 0.1, 8.0, rot * 1.25) * 0.2;
+  }
+  return col;
+}
+
 void main() {
   vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
   vec4 panel;
@@ -209,6 +240,7 @@ void main() {
   q += uShake;
   vec3 col = sceneColor(uScene, q);
   if (uBlend < 0.999) col = mix(sceneColor(uPrev, q), col, uBlend);
+  col = motifLayer(q, col);
   col += uColors[2] * exp(-dist / (s * 0.04)) * (0.12 + uPulse * 0.25);
   col += uColors[3] * uFlash * 0.18;
   col *= 1.0 - 0.35 * smoothstep(0.4, 1.2, length(q - 0.5));
@@ -265,7 +297,12 @@ export class MvRenderer {
   private gl: WebGL2RenderingContext | null = null;
   private program: WebGLProgram | null = null;
   private vao: WebGLVertexArrayObject | null = null;
-  private uniforms = new Map<UniformName, WebGLUniformLocation | null>();
+  private uniformLocations = {} as Record<UniformName, WebGLUniformLocation | null>;
+  /** Song colors/geometry need uploading (new program or new song). */
+  private staticDirty = true;
+  private motifColors = new Float32Array(15);
+  private motifNight = new Float32Array(3);
+  private readonly melodyBuffer = new Float32Array(MAX_MELODY * 2);
   private flat: CanvasRenderingContext2D | null = null;
   private initialized = false;
   private motif: SongMotif = songMotif("neon-run");
@@ -308,6 +345,9 @@ export class MvRenderer {
 
   setSong(song: Song): void {
     this.motif = songMotif(song.id);
+    this.motifColors = new Float32Array(this.motif.colors.flatMap(hexToRgb));
+    this.motifNight = new Float32Array(hexToRgb(this.motif.night));
+    this.staticDirty = true;
     this.beatsPerBar = song.beatsPerBar;
     this.lastDownbeatBar = -1;
     this.lastFrame = null;
@@ -403,8 +443,10 @@ export class MvRenderer {
       this.gl = gl;
       this.program = program;
       this.vao = gl.createVertexArray();
-      this.uniforms.clear();
-      UNIFORMS.forEach((name) => this.uniforms.set(name, gl.getUniformLocation(program, name)));
+      const locations = {} as Record<UniformName, WebGLUniformLocation | null>;
+      UNIFORMS.forEach((name) => { locations[name] = gl.getUniformLocation(program, name); });
+      this.uniformLocations = locations;
+      this.staticDirty = true;
       return true;
     } catch (error) {
       console.warn("MV WebGL2를 시작하지 못해 Canvas 2D로 전환합니다.", error);
@@ -418,7 +460,7 @@ export class MvRenderer {
     const gl = this.gl;
     const layout = this.layout;
     if (!gl || !this.program || !layout || gl.isContextLost()) return;
-    const u = (name: UniformName) => this.uniforms.get(name) ?? null;
+    const u = this.uniformLocations;
     const scale = this.scale;
     const stage = layout.stage;
     const motion = this.reducedMotion ? 0.25 : 1;
@@ -427,31 +469,39 @@ export class MvRenderer {
     gl.viewport(0, 0, this.glCanvas.width, this.glCanvas.height);
     gl.useProgram(this.program);
     gl.bindVertexArray(this.vao);
-    gl.uniform2f(u("uRes"), this.glCanvas.width, this.glCanvas.height);
-    gl.uniform4f(u("uStage"), stage.x * scale, stage.y * scale, stage.width * scale, stage.height * scale);
-    gl.uniform1i(u("uAxis"), stage.x > 0 ? 0 : 1);
-    gl.uniform1f(u("uTime"), frame.songTime);
-    gl.uniform1f(u("uBeat"), Math.max(0, frame.beat));
-    gl.uniform1f(u("uPulse"), frame.scene === "listen" ? frame.beatPulse * 0.3 : frame.beatPulse);
-    gl.uniform1f(u("uEnergy"), frame.energy);
-    gl.uniform1f(u("uBlend"), frame.sceneBlend);
-    gl.uniform1f(u("uFlash"), this.flash);
-    gl.uniform1f(u("uMotion"), motion);
-    gl.uniform1i(u("uScene"), frame.sceneIndex);
-    gl.uniform1i(u("uPrev"), MV_SCENES.indexOf(frame.previousScene));
-    gl.uniform1i(u("uMotif"), this.motif.id);
-    gl.uniform3fv(u("uColors"), new Float32Array(this.motif.colors.flatMap(hexToRgb)));
-    gl.uniform3fv(u("uNight"), new Float32Array(hexToRgb(this.motif.night)));
-    gl.uniform4fv(u("uTowers"), TOWER_DATA.rects);
-    gl.uniform1fv(u("uTowerLayer"), TOWER_DATA.layers);
-    gl.uniform1i(u("uTowerCount"), TOWER_DATA.count);
-    gl.uniform1f(u("uHorizon"), stageGeometry.mv.horizonY);
-    gl.uniform3f(u("uRing"), this.ring.k, this.ring.near, this.ring.spacing);
-    const melody = new Float32Array(MAX_MELODY * 2);
-    frame.melody.slice(0, MAX_MELODY).forEach((point, index) => melody.set([point.until, point.pitch], index * 2));
-    gl.uniform2fv(u("uMelody"), melody);
-    gl.uniform1i(u("uMelodyCount"), Math.min(MAX_MELODY, frame.melody.length));
-    gl.uniform2f(u("uShake"), Math.sin(frame.songTime * 37) * shake, Math.cos(frame.songTime * 29) * shake);
+    // Uniform values persist in the program, so song/geometry constants are uploaded only when they change.
+    if (this.staticDirty) {
+      this.staticDirty = false;
+      gl.uniform1i(u.uMotif, this.motif.id);
+      gl.uniform3fv(u.uColors, this.motifColors);
+      gl.uniform3fv(u.uNight, this.motifNight);
+      gl.uniform4fv(u.uTowers, TOWER_DATA.rects);
+      gl.uniform1fv(u.uTowerLayer, TOWER_DATA.layers);
+      gl.uniform1i(u.uTowerCount, TOWER_DATA.count);
+      gl.uniform1f(u.uHorizon, stageGeometry.mv.horizonY);
+      gl.uniform3f(u.uRing, this.ring.k, this.ring.near, this.ring.spacing);
+    }
+    gl.uniform2f(u.uRes, this.glCanvas.width, this.glCanvas.height);
+    gl.uniform4f(u.uStage, stage.x * scale, stage.y * scale, stage.width * scale, stage.height * scale);
+    gl.uniform1i(u.uAxis, stage.x > 0 ? 0 : 1);
+    gl.uniform1f(u.uTime, frame.songTime);
+    gl.uniform1f(u.uBeat, Math.max(0, frame.beat));
+    gl.uniform1f(u.uPulse, frame.scene === "listen" ? frame.beatPulse * 0.3 : frame.beatPulse);
+    gl.uniform1f(u.uEnergy, frame.energy);
+    gl.uniform1f(u.uBlend, frame.sceneBlend);
+    gl.uniform1f(u.uFlash, this.flash);
+    gl.uniform1f(u.uMotion, motion);
+    gl.uniform1i(u.uScene, frame.sceneIndex);
+    gl.uniform1i(u.uPrev, MV_SCENES.indexOf(frame.previousScene));
+    const melody = this.melodyBuffer;
+    const melodyCount = Math.min(MAX_MELODY, frame.melody.length);
+    for (let index = 0; index < melodyCount; index += 1) {
+      melody[index * 2] = frame.melody[index].until;
+      melody[index * 2 + 1] = frame.melody[index].pitch;
+    }
+    gl.uniform2fv(u.uMelody, melody);
+    gl.uniform1i(u.uMelodyCount, melodyCount);
+    gl.uniform2f(u.uShake, Math.sin(frame.songTime * 37) * shake, Math.cos(frame.songTime * 29) * shake);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
@@ -598,5 +648,49 @@ export function drawFlatScene(
       break;
     }
   }
+  drawFlatMotif(ctx, frame, motif, px, py, size, beat);
   ctx.globalAlpha = 1;
+}
+
+/** Canvas 2D version of the song-specific motif layer (clouds / gears). */
+function drawFlatMotif(
+  ctx: CanvasRenderingContext2D,
+  frame: VisualFrame,
+  motif: SongMotif,
+  px: (nx: number) => number,
+  py: (ny: number) => number,
+  size: number,
+  beat: number,
+): void {
+  if (motif.id === 5) {
+    ctx.fillStyle = motif.colors[0];
+    for (let index = 0; index < 6; index += 1) {
+      const x = (index / 6 + 0.08 - frame.songTime * 0.018 + 10) % 1;
+      const hop = Math.abs(Math.sin((beat * 0.5 + index * 0.37) * Math.PI)) * 0.035;
+      const y = 0.2 + Math.abs(index - 3) * 0.05 - hop;
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.ellipse(px(x), py(y), size * 0.06, size * 0.022, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (motif.id === 6) {
+    const tick = Math.floor(beat) + Math.min(1, (beat % 1) / 0.22);
+    const rotation = tick * 0.5236;
+    const gears: Array<[number, number, number, number, string]> = [
+      [0.2, 0.22, 0.12, 10, motif.colors[3]],
+      [0.38, 0.13, 0.07, 6, motif.colors[1]],
+      [0.8, 0.82, 0.1, 8, motif.colors[2]],
+    ];
+    ctx.lineWidth = Math.max(2, size * 0.012);
+    gears.forEach(([x, y, radius, teeth, color], index) => {
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.35;
+      ctx.setLineDash([Math.max(2, size * radius * 0.5 / teeth), Math.max(2, size * radius * 0.5 / teeth)]);
+      ctx.lineDashOffset = rotation * size * radius * (index === 1 ? -1.67 : 1);
+      ctx.beginPath();
+      ctx.arc(px(x), py(y), size * radius * 0.9, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
 }

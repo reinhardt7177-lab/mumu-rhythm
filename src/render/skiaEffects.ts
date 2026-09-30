@@ -1,4 +1,5 @@
 import type { GameSnapshot } from "../engine/game";
+import type { RuntimeNote } from "../types";
 import type { LaneLayout } from "./stageLayout";
 import wasmUrl from "canvaskit-wasm/bin/canvaskit.wasm?url";
 
@@ -20,6 +21,21 @@ const colors = [
   [111, 220, 106],
   [111, 155, 255],
 ] as const;
+
+/** Lane colors as 0..1 floats for Paint.setColorComponents (no Float32Array per call). */
+const unitColors = colors.map(([red, green, blue]) => [red / 255, green / 255, blue / 255] as const);
+
+const isActiveHold = (note: RuntimeNote): boolean => note.holding && !note.completed;
+
+/** Fills a reusable CanvasKit RRect (rect + four equal corner radii) in place. */
+function setRRect(target: Float32Array, x: number, y: number, width: number, height: number, radius: number): Float32Array {
+  target[0] = x;
+  target[1] = y;
+  target[2] = x + width;
+  target[3] = y + height;
+  for (let index = 4; index < 12; index += 1) target[index] = radius;
+  return target;
+}
 
 /**
  * Lazy CanvasKit (Skia WASM) layer for the stage's premium effects only:
@@ -44,6 +60,11 @@ export class SkiaEffectsRenderer {
   private laneBlur: any = null;
   private holdBlur: any = null;
   private particleBlur: any = null;
+  /** One Paint for the whole session instead of one per frame. */
+  private paint: any = null;
+  private readonly rrect = new Float32Array(12);
+  /** True once the surface was cleared and nothing has been drawn since (idle frames skip the GPU). */
+  private blank = false;
 
   /** Called with true once Skia is drawing, false when it stops (failure / context loss). */
   onActiveChange: (active: boolean) => void = () => {};
@@ -112,6 +133,7 @@ export class SkiaEffectsRenderer {
       }
       this.surface = this.kit.MakeOnScreenGLSurface(this.grContext, pixelWidth, pixelHeight, this.kit.ColorSpace.SRGB);
       if (!this.surface) throw new Error("Skia surface creation failed.");
+      this.blank = false;
     } catch (error) {
       this.disable(error, "Skia 표면을 만들지 못해 기본 효과로 계속합니다.");
     }
@@ -134,41 +156,54 @@ export class SkiaEffectsRenderer {
 
   clear(): void {
     this.particles = [];
+    this.blank = false;
   }
 
   render(snapshot: GameSnapshot): void {
     const layout = this.layout;
     if (!this.kit || !this.surface || this.failed || !layout) return;
+    const now = performance.now();
+    const delta = snapshot.paused ? 0 : Math.min(0.04, (now - this.lastFrame) / 1000);
+    this.lastFrame = now;
+    // Paused: blank the layer once so the pause card reads cleanly, then stop touching the GPU.
+    const busy = !snapshot.paused && (this.particles.length > 0 || snapshot.lanePulse.some((pulse) => pulse > 0.02) || snapshot.notes.some(isActiveHold));
+    if (!busy) {
+      if (this.blank) return;
+    }
     try {
-      const now = performance.now();
-      const delta = snapshot.paused ? 0 : Math.min(0.04, (now - this.lastFrame) / 1000);
-      this.lastFrame = now;
       const kit = this.kit;
       const canvas = this.surface.getCanvas();
-      canvas.clear(kit.Color4f(0, 0, 0, 0));
+      canvas.clear(kit.TRANSPARENT);
+      if (!busy) {
+        this.surface.flush();
+        this.blank = true;
+        return;
+      }
+      this.blank = false;
       canvas.save();
       canvas.scale(this.density, this.density);
       const { top, hitY, lanes } = layout;
-      const paint = new kit.Paint();
+      const paint = this.paint ?? (this.paint = new kit.Paint());
       paint.setAntiAlias(true);
+      const rrect = this.rrect;
 
       paint.setMaskFilter(this.laneBlur);
       snapshot.lanePulse.forEach((pulse, lane) => {
         if (pulse <= 0.02) return;
         const metric = lanes[lane];
-        const [red, green, blue] = colors[lane];
-        paint.setColor(kit.Color(red, green, blue, Math.min(0.3, pulse * 0.26)));
-        canvas.drawRRect(kit.RRectXY(kit.XYWHRect(metric.left + 4, top, metric.width - 8, hitY - top), 10, 10), paint);
+        const [red, green, blue] = unitColors[lane];
+        paint.setColorComponents(red, green, blue, Math.min(0.3, pulse * 0.26));
+        canvas.drawRRect(setRRect(rrect, metric.left + 4, top, metric.width - 8, hitY - top, 10), paint);
       });
 
       paint.setMaskFilter(this.holdBlur);
       for (const note of snapshot.notes) {
-        if (!note.holding || note.completed) continue;
+        if (!isActiveHold(note)) continue;
         const metric = lanes[note.lane];
-        const [red, green, blue] = colors[note.lane];
+        const [red, green, blue] = unitColors[note.lane];
         const fillHeight = (hitY - top) * Math.max(0.05, note.holdProgress) * 0.6;
-        paint.setColor(kit.Color(red, green, blue, 0.2 + note.holdProgress * 0.2));
-        canvas.drawRRect(kit.RRectXY(kit.XYWHRect(metric.left + metric.width * 0.2, hitY - fillHeight, metric.width * 0.6, fillHeight), 8, 8), paint);
+        paint.setColorComponents(red, green, blue, 0.2 + note.holdProgress * 0.2);
+        canvas.drawRRect(setRRect(rrect, metric.left + metric.width * 0.2, hitY - fillHeight, metric.width * 0.6, fillHeight, 8), paint);
       }
 
       paint.setMaskFilter(this.particleBlur);
@@ -181,14 +216,13 @@ export class SkiaEffectsRenderer {
         const distance = particle.speed * particle.age;
         const x = metric.center + Math.cos(particle.angle) * distance;
         const y = hitY + Math.sin(particle.angle) * distance + progress * progress * 60;
-        const [red, green, blue] = colors[particle.lane];
-        paint.setColor(kit.Color(red, green, blue, 1 - progress));
+        const [red, green, blue] = unitColors[particle.lane];
+        paint.setColorComponents(red, green, blue, 1 - progress);
         canvas.drawCircle(x, y, particle.size * (1 - progress * 0.5), paint);
         this.particles[write++] = particle;
       }
       this.particles.length = write;
       paint.setMaskFilter(null);
-      paint.delete();
       canvas.restore();
       this.surface.flush();
     } catch (error) {
@@ -200,6 +234,8 @@ export class SkiaEffectsRenderer {
     const wasActive = this.active;
     this.failed = true;
     this.element.dataset.renderer = "fallback";
+    this.paint?.delete?.();
+    this.paint = null;
     this.surface?.delete?.();
     this.surface = null;
     this.laneBlur?.delete?.();

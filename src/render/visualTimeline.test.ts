@@ -60,6 +60,16 @@ describe("VisualTimeline.frameAt", () => {
     expect(timeline.frameAt(9.37)).toEqual(timeline.frameAt(9.37));
   });
 
+  it("can refill a reused frame object with identical values", () => {
+    const reused = timeline.frameAt(3.1);
+    const melody = reused.melody;
+    const again = timeline.frameAt(8.2, reused);
+    expect(again).toBe(reused);
+    expect(again.melody).toBe(melody);
+    expect(again).toEqual(timeline.frameAt(8.2));
+    expect(timeline.frameAt(19.9, reused).melody.length).toBe(timeline.frameAt(19.9).melody.length);
+  });
+
   it("switches scenes at section boundaries and cross-fades over two beats", () => {
     const start = timeline.frameAt(4.0); // beat 8
     expect(start.scene).toBe("city");

@@ -89,6 +89,17 @@ export class StageRenderer {
   private reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   private particleScale = 1;
   private drawFallbackFx = true;
+  /** Pooled hit areas: `hitAreaCount` entries are live for the current frame. */
+  private hitAreaCount = 0;
+  /** Notes are sorted by beat; everything before this index is already judged. */
+  private firstVisible = 0;
+  private cursorNotes: RuntimeNote[] | null = null;
+  // Per-frame style strings are built once per layout/song instead of every frame.
+  private rungStyles: string[] = [];
+  private ringStyles: string[][] = [];
+  private listenStyles: [string, string] = ["", ""];
+  private barLabels: string[] = [];
+  private layoutKey = "";
 
   constructor(private canvas: HTMLCanvasElement, song: Song) {
     const context = canvas.getContext("2d", { alpha: false });
@@ -103,7 +114,12 @@ export class StageRenderer {
 
   /** Sizes the canvas to the integer 9:16 stage rect (CSS px) with a DPR cap. */
   setLayout(width: number, height: number, hudHeight: number, dprCap: number): void {
-    this.density = Math.max(1, Math.min(dprCap, window.devicePixelRatio || 1));
+    const density = Math.max(1, Math.min(dprCap, window.devicePixelRatio || 1));
+    const key = `${width}x${height}|${hudHeight}|${density}`;
+    // Resize observers fire repeatedly with identical sizes; rebuilding sprites is the expensive part.
+    if (key === this.layoutKey && this.backLayer) return;
+    this.layoutKey = key;
+    this.density = density;
     this.layout = computeLaneLayout(width, height, hudHeight);
     const pixelWidth = Math.max(1, Math.round(width * this.density));
     const pixelHeight = Math.max(1, Math.round(height * this.density));
@@ -129,6 +145,7 @@ export class StageRenderer {
 
   setSong(song: Song): void {
     this.song = song;
+    this.cursorNotes = null;
     if (this.backLayer) this.buildCaches();
   }
 
@@ -138,7 +155,8 @@ export class StageRenderer {
     const y = clientY - rect.top;
     let best: NoteHitArea | null = null;
     let bestDistance = Infinity;
-    for (const item of this.noteHitAreas) {
+    for (let index = 0; index < this.hitAreaCount; index += 1) {
+      const item = this.noteHitAreas[index];
       if (x < item.left - 8 || x > item.right + 8 || y < item.top - 12 || y > item.bottom + 12) continue;
       const distance = Math.abs(y - item.centerY);
       if (distance < bestDistance) {
@@ -151,7 +169,10 @@ export class StageRenderer {
 
   pop(noteId: string, lane: number): void {
     if (!this.drawFallbackFx) return;
-    const area = this.noteHitAreas.find((item) => item.id === noteId);
+    let area: NoteHitArea | undefined;
+    for (let index = 0; index < this.hitAreaCount; index += 1) {
+      if (this.noteHitAreas[index].id === noteId) area = this.noteHitAreas[index];
+    }
     const metric = this.layout.lanes[lane];
     if (!metric) return;
     const originX = area?.centerX ?? metric.center;
@@ -174,7 +195,8 @@ export class StageRenderer {
 
   clearEffects(): void {
     this.particles = [];
-    this.noteHitAreas = [];
+    this.hitAreaCount = 0;
+    this.cursorNotes = null;
   }
 
   render(state: RenderState): void {
@@ -193,7 +215,7 @@ export class StageRenderer {
     this.drawNotes(state);
     if (this.drawFallbackFx) this.drawParticles(delta);
     if (state.section.mode === "listen") {
-      ctx.fillStyle = rgba(this.song.palette.accent, state.focusHint ? 0.05 : 0.03);
+      ctx.fillStyle = this.listenStyles[state.focusHint ? 0 : 1];
       ctx.fillRect(this.layout.left, this.layout.top, this.layout.right - this.layout.left, this.layout.bottom - this.layout.top);
     }
     if (state.paused) this.drawPause();
@@ -212,6 +234,11 @@ export class StageRenderer {
     this.accentSprites = LANE_COLORS.map((color) => this.buildNoteSprite(noteW, noteH, color, true, scale));
     this.tailSprites = LANE_COLORS.map((color) => this.buildNoteSprite(noteW * 0.84, Math.max(8, noteH * 0.55), color, false, scale));
     this.ribbonSprites = LANE_COLORS.map((color) => this.buildRibbonSprite(color));
+    const rungs = stageGeometry.stage.rungs;
+    this.rungStyles = rungs.map((_, index) => `rgba(160, 190, 255, ${(0.05 + (1 - index / rungs.length) * 0.16).toFixed(3)})`);
+    const rings = stageGeometry.stage.rings;
+    this.ringStyles = rings.map((_, index) => LANE_COLORS.map((color) => rgba(color, 0.06 + (1 - index / rings.length) * 0.16)));
+    this.listenStyles = [rgba(this.song.palette.accent, 0.05), rgba(this.song.palette.accent, 0.03)];
   }
 
   private buildBackLayer(width: number, height: number, scale: number): HTMLCanvasElement {
@@ -365,8 +392,7 @@ export class StageRenderer {
       const y = (far.y + (near.y - far.y) * travel) * height;
       const left = (far.left + (near.left - far.left) * travel) * width;
       const right = (far.right + (near.right - far.right) * travel) * width;
-      const alpha = 0.05 + (1 - index / rungs.length) * 0.16;
-      ctx.fillStyle = `rgba(160, 190, 255, ${alpha.toFixed(3)})`;
+      ctx.fillStyle = this.rungStyles[index];
       ctx.fillRect(left, y, right - left, 1);
     }
 
@@ -375,8 +401,7 @@ export class StageRenderer {
     for (let index = rings.length - 1; index >= 1; index -= 1) {
       const far = rings[index].points;
       const near = rings[index - 1].points;
-      const fade = 1 - index / rings.length;
-      ctx.strokeStyle = rgba(LANE_COLORS[(index + Math.floor(beat / 2)) % 5], 0.06 + fade * 0.16);
+      ctx.strokeStyle = this.ringStyles[index][(index + Math.floor(beat / 2)) % 5];
       ctx.beginPath();
       for (let point = 0; point < far.length; point += 2) {
         const x = (far[point] + (near[point] - far[point]) * ringTravel) * width;
@@ -396,9 +421,11 @@ export class StageRenderer {
     this.layout.lanes.forEach((lane, index) => {
       const pulse = state.lanePulse[index] ?? 0;
       if (pulse < 0.02) return;
-      ctx.fillStyle = rgba(LANE_COLORS[index], pulse * 0.16);
+      ctx.globalAlpha = Math.min(1, pulse * 0.16);
+      ctx.fillStyle = LANE_COLORS[index];
       ctx.fillRect(lane.left, top, lane.width, hitY - top);
     });
+    ctx.globalAlpha = 1;
   }
 
   private drawBeatLines(state: RenderState): void {
@@ -420,7 +447,9 @@ export class StageRenderer {
       ctx.fillRect(left, Math.round(y), right - left, bar ? 1.5 : 1);
       if (bar && y > top + 16) {
         ctx.fillStyle = "rgba(255,255,255,0.4)";
-        ctx.fillText(String(Math.max(1, Math.floor(beat / this.song.beatsPerBar) + 1)).padStart(2, "0"), left + 4, y - 3);
+        const barNumber = Math.max(1, Math.floor(beat / this.song.beatsPerBar) + 1);
+        const label = this.barLabels[barNumber] ?? (this.barLabels[barNumber] = String(barNumber).padStart(2, "0"));
+        ctx.fillText(label, left + 4, y - 3);
       }
     }
   }
@@ -431,8 +460,15 @@ export class StageRenderer {
     const secondsPerBeat = 60 / this.song.bpm;
     const approach = this.song.approachSeconds ?? 3.2;
     const { noteWidth: width, noteHeight: height, top, hitY, bottom } = layout;
-    this.noteHitAreas = [];
-    for (const note of state.notes) {
+    this.hitAreaCount = 0;
+    const notes = state.notes;
+    if (this.cursorNotes !== notes) {
+      this.cursorNotes = notes;
+      this.firstVisible = 0;
+    }
+    while (this.firstVisible < notes.length && (notes[this.firstVisible].missed || notes[this.firstVisible].completed)) this.firstVisible += 1;
+    for (let index = this.firstVisible; index < notes.length; index += 1) {
+      const note = notes[index];
       if (note.missed || (note.hit && note.completed)) continue;
       const metric = layout.lanes[note.lane];
       if (!metric) continue;
@@ -440,7 +476,8 @@ export class StageRenderer {
       const until = noteTime - state.songTime;
       const endUntil = until + note.durationBeats * secondsPerBeat;
       const isHold = note.durationBeats >= HOLD_NOTE_MIN_BEATS;
-      if (until > approach + 0.08) continue;
+      // Sorted by beat, so every later note is still above the stage.
+      if (until > approach + 0.08) break;
       if (isHold ? endUntil < -0.25 : until < -0.3) continue;
 
       const rawHeadY = noteY(layout, until, approach);
@@ -474,16 +511,18 @@ export class StageRenderer {
 
       const areaTop = clamp(headY - height / 2, top, bottom);
       const areaBottom = clamp(headY + height / 2, top, bottom);
-      this.noteHitAreas.push({
-        id: note.id,
-        lane: note.lane,
-        left: metric.center - width / 2,
-        right: metric.center + width / 2,
-        top: areaTop,
-        bottom: areaBottom,
-        centerX: metric.center,
-        centerY: (areaTop + areaBottom) / 2,
+      const area = this.noteHitAreas[this.hitAreaCount] ?? (this.noteHitAreas[this.hitAreaCount] = {
+        id: "", lane: 0, left: 0, right: 0, top: 0, bottom: 0, centerX: 0, centerY: 0,
       });
+      this.hitAreaCount += 1;
+      area.id = note.id;
+      area.lane = note.lane;
+      area.left = metric.center - width / 2;
+      area.right = metric.center + width / 2;
+      area.top = areaTop;
+      area.bottom = areaBottom;
+      area.centerX = metric.center;
+      area.centerY = (areaTop + areaBottom) / 2;
     }
     ctx.globalAlpha = 1;
   }

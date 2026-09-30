@@ -50,6 +50,10 @@ export class RhythmGame {
   private lanePulse = [0, 0, 0, 0, 0];
   private lastFrameTime = performance.now();
   private currentSectionId = "";
+  /** Notes before this index are all completed; notes are sorted by beat. */
+  private firstPending = 0;
+  /** Reused every frame so the render loop does not allocate a snapshot per frame. */
+  private snapshot: GameSnapshot | null = null;
 
   constructor(
     private audio: AudioEngine,
@@ -59,14 +63,18 @@ export class RhythmGame {
   async start(song: Song): Promise<void> {
     this.stop();
     this.song = song;
-    this.notes = song.melody.map((note) => ({
-      ...note,
-      hit: false,
-      missed: false,
-      completed: false,
-      holding: false,
-      holdProgress: 0,
-    }));
+    this.notes = song.melody
+      .map((note) => ({
+        ...note,
+        hit: false,
+        missed: false,
+        completed: false,
+        holding: false,
+        holdProgress: 0,
+      }))
+      .sort((a, b) => a.beat - b.beat);
+    this.firstPending = 0;
+    this.snapshot = null;
     this.score = 0;
     this.combo = 0;
     this.maxCombo = 0;
@@ -90,8 +98,18 @@ export class RhythmGame {
   async togglePause(): Promise<boolean> {
     if (!this.running) return false;
     this.paused = !this.paused;
-    if (this.paused) await this.audio.suspend();
-    else await this.audio.resume();
+    if (this.paused) {
+      // No frame loop while paused: the caller draws one paused frame and everything idles.
+      cancelAnimationFrame(this.frameId);
+      await this.audio.suspend();
+    } else {
+      await this.audio.resume();
+      if (this.running && !this.paused) {
+        cancelAnimationFrame(this.frameId);
+        this.lastFrameTime = performance.now();
+        this.frameId = requestAnimationFrame(this.tick);
+      }
+    }
     return this.paused;
   }
 
@@ -194,11 +212,9 @@ export class RhythmGame {
     const now = performance.now();
     const delta = Math.min(0.05, (now - this.lastFrameTime) / 1000);
     this.lastFrameTime = now;
-    if (this.paused) {
-      this.frameId = requestAnimationFrame(this.tick);
-      return;
-    }
-    this.lanePulse = this.lanePulse.map((value) => Math.max(0, value - delta * 4.8));
+    if (this.paused) return;
+    const pulse = this.lanePulse;
+    for (let lane = 0; lane < pulse.length; lane += 1) pulse[lane] = Math.max(0, pulse[lane] - delta * 4.8);
 
     const songTime = this.songTime();
     const secondsPerBeat = 60 / this.song.bpm;
@@ -210,9 +226,14 @@ export class RhythmGame {
       this.callbacks.onSection(section);
     }
 
-    this.notes.forEach((note) => {
-      if (note.completed) return;
+    const notes = this.notes;
+    while (this.firstPending < notes.length && notes[this.firstPending].completed) this.firstPending += 1;
+    for (let index = this.firstPending; index < notes.length; index += 1) {
+      const note = notes[index];
+      if (note.completed) continue;
       const noteTime = note.beat * secondsPerBeat;
+      // Sorted by beat: nothing later can be missed or holding yet.
+      if (noteTime > songTime + 1) break;
       const endTime = (note.beat + note.durationBeats) * secondsPerBeat;
       if (note.hit && note.durationBeats >= HOLD_NOTE_MIN_BEATS) {
         note.holdProgress = Math.max(0, Math.min(1, (songTime - noteTime) / Math.max(0.01, endTime - noteTime)));
@@ -222,25 +243,27 @@ export class RhythmGame {
         } else if (note.holdReleasedAt !== undefined && songTime - note.holdReleasedAt > HOLD_RECONNECT_SECONDS) {
           this.missNote(note);
         }
-        return;
+        continue;
       }
       if (!note.hit && songTime > noteTime + 0.2) this.missNote(note);
-    });
+    }
 
     const duration = this.song.totalBeats * secondsPerBeat;
     const progress = Math.max(0, Math.min(1, songTime / duration));
-    this.callbacks.onFrame({
-      song: this.song,
-      songTime,
-      beat,
-      notes: this.notes,
-      section,
-      score: this.score,
-      combo: this.combo,
-      progress,
-      lanePulse: this.lanePulse,
-      paused: this.paused,
+    const snapshot = this.snapshot ?? (this.snapshot = {
+      song: this.song, songTime, beat, notes, section, score: 0, combo: 0, progress, lanePulse: this.lanePulse, paused: false,
     });
+    snapshot.song = this.song;
+    snapshot.songTime = songTime;
+    snapshot.beat = beat;
+    snapshot.notes = notes;
+    snapshot.section = section;
+    snapshot.score = this.score;
+    snapshot.combo = this.combo;
+    snapshot.progress = progress;
+    snapshot.lanePulse = this.lanePulse;
+    snapshot.paused = this.paused;
+    this.callbacks.onFrame(snapshot);
 
     if (songTime >= duration + 0.25) {
       this.finish();

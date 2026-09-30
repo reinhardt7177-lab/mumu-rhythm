@@ -2,6 +2,8 @@ import type { Song } from "../types";
 
 type TrackedSource = AudioBufferSourceNode | OscillatorNode;
 
+export const OFFSET_KEY = "mumu-music-v5-offset-ms";
+
 export class AudioEngine {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -14,6 +16,13 @@ export class AudioEngine {
   private scheduled = new Set<TrackedSource>();
   private masterLevel = 0.88;
   private frozenHeardTime: number | null = null;
+  /** Classroom speaker offset. Cached: heardTimeAt runs every frame and on every input. */
+  private userOffsetSeconds = (Number(localStorage.getItem(OFFSET_KEY)) || 0) / 1000;
+
+  /** Updates the speaker-latency correction (the caller persists it). */
+  setUserOffsetMs(value: number): void {
+    this.userOffsetSeconds = (Number.isFinite(value) ? value : 0) / 1000;
+  }
 
   get ready(): boolean {
     return this.context !== null && this.context.state === "running";
@@ -29,7 +38,7 @@ export class AudioEngine {
 
   heardTimeAt(performanceTime: number): number {
     if (!this.context) return performanceTime / 1000;
-    const userOffset = Number(localStorage.getItem("mumu-music-v5-offset-ms")) / 1000 || 0;
+    const userOffset = this.userOffsetSeconds;
     if (this.frozenHeardTime !== null) return this.frozenHeardTime;
     const timestamp = this.context.getOutputTimestamp?.();
     const contextTime = timestamp?.contextTime;
