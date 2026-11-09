@@ -25,6 +25,8 @@
 ## Current Scope
 
 - 실제 연주 클래식 4곡과 오리지널 신스 3곡
+- 쉬움(보이는 바 직접 터치)과 도전(박자 판정), 모드별 최고 점수
+- 구름 점프의 신스와 벨 가락 미리 듣기
 - 마우스, 멀티 터치, `A S D J K` 키보드 입력
 - 넓은 가로 노트 바와 긴 노트 바
 - PERFECT/GREAT/GOOD 판정, 노트 수집률, 점수, 콤보
@@ -66,7 +68,7 @@
 - 좌우 WebGL2 뮤직비디오(Canvas 2D·CSS 폴백), 오디오 게임 시간 동기화
 - 출력 지연을 보정한 Web Audio 시계와 무음정 입력 효과
 - Vitest 판정·stageLayout·visualTimeline·자동 품질·곡 콘텐츠 순수 테스트
-- Blender 5.x 헤드리스 숫자 geometry 익스포터 (이미지 에셋 없음)
+- Blender 5.x 헤드리스 숫자 geometry 익스포터와 곡별 생성 WebP 표지
 - NumPy 결정론적 신스 합성 + FFmpeg OGG/M4A 제작
 - FFmpeg 실제 연주 편집과 librosa 기반 온셋·음역 분석
 - 선택한 곡의 OGG만 우선 로드하고 M4A로 대체

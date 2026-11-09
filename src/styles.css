@@ -1735,3 +1735,74 @@ svg {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Music-world presentation. The stage and controls remain live, accessible UI. */
+.library-screen {
+  color: #16313d;
+  background: #eaf7fb;
+}
+
+.topbar { border-color: #c7e4ea; }
+.brand-mark { color: white; background: #06aaca; }
+.topbar-label span { color: #448294; }
+.library-layout {
+  display: block;
+  width: min(1500px, calc(100% - 64px));
+  min-height: 0;
+  padding: 34px 0 22px;
+}
+.library-intro {
+  display: flex;
+  flex-direction: row;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0;
+}
+.library-intro .eyebrow, .library-intro > p:nth-of-type(2), .program-facts { display: none; }
+.library-intro h1 { color: #18333f; font-size: 32px; line-height: 1.2; }
+.carousel-controls { margin: 0; }
+.program-board { padding: 0; border: 0; }
+.program-heading { margin: 14px 0; }
+.program-heading .eyebrow { display: none; }
+.program-heading h2 { color: #597987; font-size: 15px; font-weight: 700; }
+.song-carousel { grid-auto-columns: clamp(270px, 31vw, 420px); gap: 20px; padding: 5px 5px 24px; }
+.song-card { border-color: #d5e9ec; border-radius: 8px; box-shadow: 0 12px 30px rgba(36, 101, 115, .12); }
+.song-card:hover { border-color: #00a9c9; box-shadow: 0 18px 35px rgba(18, 119, 141, .2); }
+.song-art-wrap { aspect-ratio: 5 / 4; background: #d5f1f4; }
+.song-art-wrap::after { background: linear-gradient(180deg, rgba(8, 28, 35, .10), transparent 35%, rgba(8, 28, 35, .38)); }
+.song-cover { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 360ms ease; }
+.song-card:hover .song-cover { transform: scale(1.035); }
+.song-card-copy { min-height: 157px; padding: 17px 18px; }
+.song-card-copy > strong { font-size: 23px; }
+.song-card-copy > small { color: #087e92; }
+.library-footer { border-color: #c7e4ea; color: #65838a; }
+.mission-screen, .result-screen, .game-screen { background-size: cover; background-position: center; }
+.mission-screen .screen-art, .result-screen .screen-art { opacity: 0; pointer-events: none; }
+.game-screen .mv-layer { opacity: .25; }
+.game-screen .mv-caption { text-shadow: 0 2px 8px rgba(0, 0, 0, .7); }
+.listening-brief, .listening-check { border-radius: 8px; }
+.mode-picker { margin: 18px 0; }
+.mode-picker > span { display: block; margin-bottom: 8px; color: rgba(255,255,255,.8); font-size: 12px; font-weight: 800; }
+.mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 8px; background: rgba(255,255,255,.12); }
+.mode-options button { min-height: 44px; padding: 6px 8px; border-radius: 6px; color: #fff; background: transparent; font-size: 13px; font-weight: 800; cursor: pointer; }
+.mode-options button[aria-pressed="true"] { color: #102f3d; background: #92e8f2; }
+.listen-examples { margin: 12px 0; }
+.listen-examples > span { display: block; margin-bottom: 8px; color: rgba(255,255,255,.8); font-size: 12px; font-weight: 800; }
+.listen-examples > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.listen-examples button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 12px; border: 1px solid rgba(255,255,255,.35); border-radius: 6px; color: white; background: rgba(255,255,255,.08); font-size: 12px; font-weight: 800; cursor: pointer; }
+.listen-examples button[aria-pressed="true"] { color: #102f3d; background: #92e8f2; }
+.listen-examples svg { width: 15px; height: 15px; }
+
+@media (max-width: 780px) {
+  .library-layout { width: 100%; padding: 22px 0; }
+  .library-intro { padding: 0 20px; }
+  .library-intro h1 { font-size: 25px; }
+  .program-board { margin-top: 0; padding-top: 0; border: 0; }
+  .program-heading { margin: 10px 0 16px; }
+  .song-carousel { grid-auto-columns: min(78vw, 340px); gap: 14px; padding: 3px 20px 20px; }
+  .song-card-copy { min-height: 150px; }
+  .mission-layout { padding-bottom: 185px; }
+  .mode-picker { margin: 14px 0; }
+  .mission-dock { position: fixed; z-index: 12; }
+}

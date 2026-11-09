@@ -5,6 +5,8 @@ import wasmUrl from "canvaskit-wasm/bin/canvaskit.wasm?url";
 
 interface BurstParticle {
   lane: number;
+  x: number;
+  y: number;
   angle: number;
   speed: number;
   age: number;
@@ -139,12 +141,14 @@ export class SkiaEffectsRenderer {
     }
   }
 
-  burst(lane: number): void {
+  burst(lane: number, position?: { x: number; y: number } | null): void {
     if (!this.active) return;
     const amount = Math.round((this.reducedMotion ? 5 : 18) * Math.max(0.3, this.particleScale));
     for (let index = 0; index < amount; index += 1) {
       this.particles.push({
         lane,
+        x: position?.x ?? this.layout?.lanes[lane].center ?? 0,
+        y: position?.y ?? this.layout?.hitY ?? 0,
         angle: -Math.PI + Math.random() * Math.PI,
         speed: 70 + Math.random() * 220,
         age: 0,
@@ -212,10 +216,9 @@ export class SkiaEffectsRenderer {
         particle.age += delta;
         if (particle.age >= particle.life) continue;
         const progress = particle.age / particle.life;
-        const metric = lanes[particle.lane];
         const distance = particle.speed * particle.age;
-        const x = metric.center + Math.cos(particle.angle) * distance;
-        const y = hitY + Math.sin(particle.angle) * distance + progress * progress * 60;
+        const x = particle.x + Math.cos(particle.angle) * distance;
+        const y = particle.y + Math.sin(particle.angle) * distance + progress * progress * 60;
         const [red, green, blue] = unitColors[particle.lane];
         paint.setColorComponents(red, green, blue, 1 - progress);
         canvas.drawCircle(x, y, particle.size * (1 - progress * 0.5), paint);

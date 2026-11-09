@@ -28,7 +28,7 @@ import { SkiaEffectsRenderer } from "./render/skiaEffects";
 import { drawSongArt } from "./render/songArt";
 import { computeViewportLayout, type ViewportLayout } from "./render/stageLayout";
 import { VisualTimeline, type MvScene, type VisualFrame } from "./render/visualTimeline";
-import type { GameResult, ScreenName, Song, SongSection } from "./types";
+import type { GameResult, PlayMode, ScreenName, Song, SongSection } from "./types";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("앱을 시작할 수 없습니다.");
@@ -57,8 +57,8 @@ app.innerHTML = `
       <div class="library-layout">
         <section class="library-intro">
           <p class="eyebrow">초등 음악 감상 활동</p>
-          <h1 id="libraryTitle">음악을 듣고<br />바를 터뜨려요</h1>
-          <p>실제 클래식 연주와 오리지널 신스 트랙을 들으며 비트 라인의 노트를 터뜨리고 소리의 층과 가락을 발견합니다.</p>
+          <h1 id="libraryTitle">오늘의 음악 여행</h1>
+          <p>마음에 드는 음악을 골라 나만의 리듬 여행을 시작해요.</p>
           <dl class="program-facts">
             <div><dt>${songs.length}</dt><dd>뮤직 스테이지</dd></div>
             <div><dt>5</dt><dd>음높이 레인</dd></div>
@@ -105,6 +105,20 @@ app.innerHTML = `
           <p class="eyebrow">오늘의 귀 미션</p>
           <h3 id="missionTitle"></h3>
           <p id="missionDescription"></p>
+          <div class="mode-picker" role="group" aria-label="플레이 방식">
+            <span>플레이 방식</span>
+            <div class="mode-options">
+              <button type="button" data-mode="explore" aria-pressed="true">쉬움 · 터뜨리기</button>
+              <button type="button" data-mode="challenge" aria-pressed="false">도전 · 박 맞추기</button>
+            </div>
+          </div>
+          <div id="listenExamples" class="listen-examples" hidden>
+            <span>가락 미리 듣기</span>
+            <div>
+              <button type="button" data-sample="cloud-lead" aria-pressed="false"><i data-lucide="volume-2"></i> 묻는 신스</button>
+              <button type="button" data-sample="cloud-bell" aria-pressed="false"><i data-lucide="volume-2"></i> 대답하는 벨</button>
+            </div>
+          </div>
           <dl>
             <div><dt>집중해서 들을 것</dt><dd id="missionFocus"></dd></div>
             <div><dt>등장 악기</dt><dd id="missionInstruments"></dd></div>
@@ -214,8 +228,8 @@ app.innerHTML = `
           <select id="qualityInput">
             <option value="auto">자동</option>
             <option value="high">높음 · MV 최고 화질</option>
-            <option value="mid">보통 · MV 45fps</option>
-            <option value="low">낮음 · MV 30fps, Skia 끔</option>
+            <option value="mid">보통 · 균형 잡힌 화면</option>
+            <option value="low">낮음 · 가벼운 화면</option>
           </select>
         </label>
         <button id="resetRecords" class="text-button" type="button">이 기기의 기록 초기화</button>
@@ -311,6 +325,18 @@ const coarseQuery = window.matchMedia("(pointer: coarse)");
 
 const audio = new AudioEngine();
 let selectedSong: Song = songs[0];
+let playMode: PlayMode = "explore";
+const samplePlayer = new Audio();
+let playingSample = "";
+let sampleRequest = 0;
+function stopSample(): void {
+  sampleRequest += 1;
+  samplePlayer.pause();
+  samplePlayer.currentTime = 0;
+  playingSample = "";
+  document.querySelectorAll<HTMLButtonElement>("[data-sample]").forEach((button) => button.setAttribute("aria-pressed", "false"));
+}
+samplePlayer.addEventListener("ended", () => { if (samplePlayer.ended) stopSample(); });
 let latestResult: GameResult | null = null;
 let screen: ScreenName = "library";
 let feedbackTimer = 0;
@@ -414,7 +440,7 @@ function formatTime(seconds: number): string {
 }
 
 function bestScoreKey(songId: string): string {
-  return `mumu-music-v4-best-${songId}`;
+  return `mumu-music-v4-best-${songId}${playMode === "explore" ? "-explore" : ""}`;
 }
 
 function getBest(songId: string): number {
@@ -432,6 +458,15 @@ function showScreen(next: ScreenName): void {
   if (next !== "game") rotateNotice.hidden = true;
 }
 
+function artworkFor(song: Song): string {
+  const themes: Record<string, string> = {
+    "neon-run": "neon", "cloud-hop": "cloud", "robot-parade": "robot",
+    "turkish-march": "concert", "can-can": "cancan", "william-tell": "william", "hungarian-dance": "hungarian",
+  };
+  const theme = themes[song.id] ?? "concert";
+  return `${import.meta.env.BASE_URL}assets/art/v8/${theme}.webp`;
+}
+
 function renderLibrary(): void {
   const totalSeconds = songs.reduce((sum, song) => sum + songDurationSeconds(song), 0);
   select<HTMLElement>("#programDuration").textContent = `${songs.length}곡 · 약 ${Math.round(totalSeconds / 60)}분`;
@@ -439,6 +474,7 @@ function renderLibrary(): void {
     <button class="song-card" type="button" data-song-index="${index}" style="--song-accent:${song.palette.accent};--song-deep:${song.palette.deep}">
       <span class="song-art-wrap">
         <canvas class="song-art" data-song-index="${index}" aria-hidden="true"></canvas>
+        <img class="song-cover" src="${artworkFor(song)}" alt="" loading="lazy" decoding="async" onerror="this.hidden=true" />
         <span class="song-number">${song.number}</span>
         <span class="play-mark" aria-hidden="true"><i data-lucide="play"></i></span>
         <span class="difficulty-badge">${song.difficulty}</span>
@@ -473,8 +509,13 @@ function applySongPalette(song: Song): void {
 }
 
 function openMission(song: Song): void {
+  stopSample();
   audio.stop();
   selectedSong = song;
+  select<HTMLElement>("#listenExamples").hidden = song.id !== "cloud-hop";
+  select<HTMLElement>("#missionScreen").style.backgroundImage = `linear-gradient(90deg, rgba(6, 22, 31, .84), rgba(6, 22, 31, .40)), url("${artworkFor(song)}")`;
+  select<HTMLElement>("#resultScreen").style.backgroundImage = `linear-gradient(90deg, rgba(6, 22, 31, .86), rgba(6, 22, 31, .56)), url("${artworkFor(song)}")`;
+  gameScreen.style.backgroundImage = `linear-gradient(rgba(9, 30, 38, .32), rgba(9, 30, 38, .58)), url("${artworkFor(song)}")`;
   applySongPalette(song);
   missionTrackMeta.textContent = `${song.number} · ${song.beatsPerBar}박 · ${song.bpm} BPM · ${formatTime(songDurationSeconds(song))}`;
   missionEyebrow.textContent = song.mission.eyebrow;
@@ -503,6 +544,7 @@ function openMission(song: Song): void {
 }
 
 async function previewSong(): Promise<void> {
+  stopSample();
   if (previewing) {
     audio.stop();
     window.clearTimeout(previewTimer);
@@ -557,6 +599,7 @@ function prepareGameChrome(song: Song): void {
 }
 
 async function startSelectedSong(): Promise<void> {
+  stopSample();
   startButton.disabled = true;
   previewButton.disabled = true;
   startButton.innerHTML = `<span>음원 준비 중</span>`;
@@ -575,13 +618,13 @@ async function startSelectedSong(): Promise<void> {
     showScreen("game");
     mv.initialize();
     syncGameLayout(true);
-    await game.start(selectedSong);
+    await game.start(selectedSong, playMode);
     restartFrameClock();
     // CanvasKit is only fetched once a game is actually running.
     if (profile.skia) void skiaEffects.initialize().then(() => { syncEffectOwnership(); syncGameLayout(true); });
     // Re-measure once the HUD fonts have laid out.
     requestAnimationFrame(() => syncGameLayout(true));
-    showFeedback("짧은 바는 톡, 긴 바는 꾹!", "hint");
+    showFeedback(playMode === "explore" ? "보이는 바를 톡, 긴 바는 꾹!" : "바가 아래에 닿을 때 눌러요!", "hint");
     if (viewportLayout.mode === "rotate") void pauseForRotation();
   } catch (error) {
     console.error(error);
@@ -706,7 +749,7 @@ function handleJudge(event: JudgeEvent): void {
     if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
   });
   renderer.pop(event.noteId, event.lane);
-  skiaEffects.burst(event.lane);
+  skiaEffects.burst(event.lane, renderer.hitPosition(event.noteId));
   const message = event.combo > 0 && event.combo % 10 === 0 ? `${event.combo} COMBO` : event.judge;
   showFeedback(message, event.judge.toLowerCase());
 }
@@ -890,7 +933,34 @@ select<HTMLButtonElement>("#resetRecords").addEventListener("click", () => {
 
 select<HTMLButtonElement>("#songPrev").addEventListener("click", () => songGrid.scrollBy({ left: -songGrid.clientWidth * 0.7, behavior: "smooth" }));
 select<HTMLButtonElement>("#songNext").addEventListener("click", () => songGrid.scrollBy({ left: songGrid.clientWidth * 0.7, behavior: "smooth" }));
-select<HTMLButtonElement>("#missionBack").addEventListener("click", () => { audio.stop(); window.clearTimeout(previewTimer); previewing = false; showScreen("library"); });
+select<HTMLButtonElement>("#missionBack").addEventListener("click", () => { stopSample(); audio.stop(); window.clearTimeout(previewTimer); previewing = false; showScreen("library"); });
+document.querySelectorAll<HTMLButtonElement>("[data-sample]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const sample = button.dataset.sample!;
+    if (playingSample === sample) { stopSample(); return; }
+    stopSample();
+    audio.stop();
+    window.clearTimeout(previewTimer);
+    previewing = false;
+    previewButton.innerHTML = `<i data-lucide="volume-2"></i><span>12초 미리 듣기</span>`;
+    refreshIcons();
+    const extension = samplePlayer.canPlayType('audio/ogg; codecs="opus"') ? "ogg" : "m4a";
+    samplePlayer.src = `${import.meta.env.BASE_URL}assets/audio/v8/${sample}.${extension}`;
+    playingSample = sample;
+    const request = sampleRequest;
+    button.setAttribute("aria-pressed", "true");
+    try { await samplePlayer.play(); }
+    catch { if (request === sampleRequest) { stopSample(); missionAudioStatus.textContent = "악기 소리를 재생하지 못했습니다."; } }
+  });
+});
+document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((button) => {
+  button.addEventListener("click", () => {
+    playMode = button.dataset.mode === "challenge" ? "challenge" : "explore";
+    document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((item) => {
+      item.setAttribute("aria-pressed", String(item.dataset.mode === playMode));
+    });
+  });
+});
 previewButton.addEventListener("click", () => { void previewSong(); });
 startButton.addEventListener("click", () => { void startSelectedSong(); });
 pauseButton.addEventListener("click", () => { void togglePause(); });

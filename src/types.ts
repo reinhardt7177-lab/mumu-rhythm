@@ -1,4 +1,5 @@
 export type ScreenName = "library" | "mission" | "game" | "result";
+export type PlayMode = "explore" | "challenge";
 
 export const HOLD_NOTE_MIN_BEATS = 1.75;
 

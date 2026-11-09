@@ -5,6 +5,11 @@ dist/
 playwright-report/
 test-results/
 tmp/
+output/
+.env
+.env.*
+!.env.example
+!.env.sample
 __pycache__/
 *.py[cod]
 *.log

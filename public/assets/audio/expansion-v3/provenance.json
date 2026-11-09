@@ -1,0 +1,178 @@
+{
+  "bach-prelude": {
+    "title": "Prelude in C major, BWV 846",
+    "composer": "Johann Sebastian Bach",
+    "performer": "Kimiko Ishizaka",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "evidence": "The exact audio file is marked CC0 1.0. The description and embedded audio author identify Kimiko Ishizaka, recorded/released in 2015.",
+    "offset": 0.4,
+    "duration": 68,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kimiko_Ishizaka_-_Bach_-_Well-Tempered_Clavier%2C_Book_1_-_01_Prelude_No._1_in_C_major%2C_BWV_846.ogg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Kimiko_Ishizaka_-_Bach_-_Well-Tempered_Clavier%2C_Book_1_-_01_Prelude_No._1_in_C_major%2C_BWV_846.ogg",
+    "revisionUrl": "https://commons.wikimedia.org/w/index.php?oldid=642970982",
+    "sourceSha1": "520967d5e00d780e1e9ff6344dbbf0bf414530c1",
+    "sourceSha256": "abce13d492fbc909db3a00b27c66774220441bb31903f93cf2aef2d4084d93d2",
+    "verifiedOn": "2026-11-09",
+    "chartType": "rhythmic-onset",
+    "changes": "excerpt, 60ms fade-in, 1.8s fade-out, -16 LUFS normalization, 8-beat silent count-in, encoding",
+    "sha256": {
+      "ogg": "16e6d22ac5dd15a5034aa225db9e0dc8c824d7e4c4ab5a7becf301a66a1bc606",
+      "m4a": "929946eb0731fb2ab0820f6ec36c380fd71de1aabc2eff399ae8befcba6c2e4c"
+    }
+  },
+  "beethoven-fifth": {
+    "title": "Symphony No. 5 in C minor, Op. 67 - I. Allegro con brio",
+    "composer": "Ludwig van Beethoven",
+    "performer": "Skidmore College Orchestra",
+    "license": "Public-domain dedication + attribution permission",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/Template:Attribution",
+    "evidence": "The separate Recording section names Skidmore College orchestra as the worldwide PD releaser. The same section also carries unrestricted use with attribution. Credit is retained to satisfy both notices.",
+    "offset": 0.4,
+    "duration": 74,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ludwig_van_Beethoven_-_symphony_no._5_in_c_minor%2C_op._67_-_i._allegro_con_brio.ogg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Ludwig_van_Beethoven_-_symphony_no._5_in_c_minor%2C_op._67_-_i._allegro_con_brio.ogg",
+    "revisionUrl": "https://commons.wikimedia.org/w/index.php?oldid=658946491",
+    "sourceSha1": "d5e4ddcb1c4f7d08bca0540c46a0fdb9d6d7a404",
+    "sourceSha256": "663cfa62707be850a51ec8cd7b51b95595a9ee010f3eefea16e1dd46d54a9d95",
+    "verifiedOn": "2026-11-09",
+    "chartType": "rhythmic-onset",
+    "changes": "excerpt, 60ms fade-in, 1.8s fade-out, -16 LUFS normalization, 8-beat silent count-in, encoding",
+    "sha256": {
+      "ogg": "3a942e2deb09df426139c6df63ab3ef996debacef4144871380d3fda6dd9b685",
+      "m4a": "677c94fce241bb4fd2459834b8091b1d1d356e7e523180a796da0722d4d41767"
+    }
+  },
+  "morning-mood": {
+    "title": "Peer Gynt Suite No. 1, Op. 46 - I. Morning Mood",
+    "composer": "Edvard Grieg",
+    "performer": "Czech National Symphony Orchestra / Musopen Symphony Orchestra",
+    "license": "Public domain (Musopen worldwide dedication)",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/Template:PD-author",
+    "evidence": "The file description identifies the Czech National Symphony Orchestra for the Musopen Kickstarter Project; the file license explicitly states a worldwide release by Musopen with unconditional-use fallback.",
+    "offset": 0.2,
+    "duration": 70,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Musopen_-_Morning.ogg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Musopen_-_Morning.ogg",
+    "revisionUrl": "https://commons.wikimedia.org/w/index.php?oldid=1160867408",
+    "sourceSha1": "84b855cba2c412c9697895beedfc44d48046931c",
+    "sourceSha256": "3207072ffef9f65f9a4a78c2ddc5afdd1c5b4c61b83ab092da3d6a87852e4996",
+    "verifiedOn": "2026-11-09",
+    "chartType": "rhythmic-onset",
+    "changes": "excerpt, 60ms fade-in, 1.8s fade-out, -16 LUFS normalization, 8-beat silent count-in, encoding",
+    "sha256": {
+      "ogg": "7038866c8ff0ff3afdf62e62cf8bded303da5c8af68cadbc0e446fa00d267e4d",
+      "m4a": "d20ed6b939aaf94ecf9df6de166678c91a24e2eb7a7e2f1789c2c55f3cc94cb6"
+    }
+  },
+  "mountain-king": {
+    "title": "Peer Gynt Suite No. 1, Op. 46 - IV. In the Hall of the Mountain King",
+    "composer": "Edvard Grieg",
+    "performer": "Czech National Symphony Orchestra / Musopen Symphony Orchestra",
+    "license": "Public domain (Musopen worldwide dedication)",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/Template:PD-author",
+    "evidence": "The exact file identifies the Czech National Symphony Orchestra for the Musopen Kickstarter Project and explicitly releases this recording worldwide by Musopen, not merely the score.",
+    "offset": 55,
+    "duration": 76,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Musopen_-_In_the_Hall_Of_The_Mountain_King.ogg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Musopen_-_In_the_Hall_Of_The_Mountain_King.ogg",
+    "revisionUrl": "https://commons.wikimedia.org/w/index.php?oldid=1121876400",
+    "sourceSha1": "e40c1fc81eef25cdc58e2807c2569e3b915f4bd3",
+    "sourceSha256": "3bfa7424d3a148f1482a44688b77eb9138a7cea6cff7474799f1329181ab3342",
+    "verifiedOn": "2026-11-09",
+    "chartType": "rhythmic-onset",
+    "changes": "excerpt, 60ms fade-in, 1.8s fade-out, -16 LUFS normalization, 8-beat silent count-in, encoding",
+    "sha256": {
+      "ogg": "9ca8793c170c5b0a59b0de746f31e473349d7e49465e41763b79aaf43fc71a91",
+      "m4a": "49c17e963a2edd368af8170c8111e744a570f6dcdedee5f1f454691c162f321a"
+    }
+  },
+  "borodin-scherzo": {
+    "title": "String Quartet No. 1 in A major - III. Scherzo. Prestissimo",
+    "composer": "Alexander Borodin",
+    "performer": "Musopen String Quartet",
+    "license": "Public domain (Musopen worldwide dedication)",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/Template:PD-author",
+    "evidence": "The FLAC file identifies Musopen String Quartet, 2012. Its separate Recording license is a worldwide public-domain dedication by Musopen with unconditional-use fallback.",
+    "offset": 0.2,
+    "duration": 70,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Borodin_-_String_Quartet_No._1_in_A_major_-_III._Scherzo._Prestissimo_%28Musopen_String_Quartet%29.flac",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Borodin_-_String_Quartet_No._1_in_A_major_-_III._Scherzo._Prestissimo_%28Musopen_String_Quartet%29.flac",
+    "revisionUrl": "https://commons.wikimedia.org/w/index.php?oldid=963505016",
+    "sourceSha1": "50740365f2f724a01201b0601a9cbc08b613f843",
+    "sourceSha256": "72065126cd6e23cde69901e9bc07f36bf39c97571ef537f8a4e683abcb4799d1",
+    "verifiedOn": "2026-11-09",
+    "chartType": "rhythmic-onset",
+    "changes": "excerpt, 60ms fade-in, 1.8s fade-out, -16 LUFS normalization, 8-beat silent count-in, encoding",
+    "sha256": {
+      "ogg": "9f912c80deda65b1fb4e052ac69174c3d77aa6b2f6ecebf6154ae1dee9424318",
+      "m4a": "4d124ec84e3689dac2ef8cb4f177c5bfa9db5321ec1a4b1f25c5f10516a85c64"
+    }
+  },
+  "brahms-tragic": {
+    "title": "Tragic Overture, Op. 81",
+    "composer": "Johannes Brahms",
+    "performer": "Czech National Symphony Orchestra / Musopen Symphony Orchestra",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "evidence": "The exact audio file is CC0 1.0. Its description author field is unknown, but upload history identifies Musopen Symphony Orchestra and the embedded audio Author names Czech National Symphony Orchestra; its linked FLAC counterpart confirms the project.",
+    "offset": 0.2,
+    "duration": 74,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Brahms%2C_Tragic_Overture.ogg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/6/65/Brahms%2C_Tragic_Overture.ogg",
+    "revisionUrl": "https://commons.wikimedia.org/w/index.php?oldid=955928518",
+    "sourceSha1": "da85ce4b22d2eac79d3266c48ec714551191ce76",
+    "sourceSha256": "1fb9d21330d20c8387c5b1b82fe633f7dba7f064630e59a539d722069c3a78cd",
+    "verifiedOn": "2026-11-09",
+    "chartType": "rhythmic-onset",
+    "changes": "excerpt, 60ms fade-in, 1.8s fade-out, -16 LUFS normalization, 8-beat silent count-in, encoding",
+    "sha256": {
+      "ogg": "f82899d5dc708b5340ec6d23f352bdcf00fee6ecda2233b83d7b49f4356e4db5",
+      "m4a": "0245e37fd6145fd0c9e79de1222497fef8538032d4128e8f0a0f1eea38bda4ea"
+    }
+  },
+  "tchaikovsky-march": {
+    "title": "Symphony No. 6 in B minor, Op. 74 - III. Allegro molto vivace (march excerpt)",
+    "composer": "Pyotr Ilyich Tchaikovsky",
+    "performer": "Musopen Symphony Orchestra",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "evidence": "The exact file's Licensing section explicitly separates Recording: CC0 1.0 from Musical composition: PD. Upload history identifies Musopen Symphony Orchestra; the linked FLAC is from the Musopen Kickstarter project.",
+    "offset": 410,
+    "duration": 74,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tchaikovsky%2C_Symphony_No._6_in_B_minor%2C_Op._74%2C_%27Pathetique%27_-_III._Allegro_molto_vivace.ogg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c4/Tchaikovsky%2C_Symphony_No._6_in_B_minor%2C_Op._74%2C_%27Pathetique%27_-_III._Allegro_molto_vivace.ogg",
+    "revisionUrl": "https://commons.wikimedia.org/w/index.php?oldid=1104797571",
+    "sourceSha1": "28a897fa040fc8a38117b1eb0e5d97bd84bbc0f4",
+    "sourceSha256": "5521fce12ed23349d8635242f9bc483a759cdc56b11450a330ad7e33502d2cd0",
+    "verifiedOn": "2026-11-09",
+    "chartType": "rhythmic-onset",
+    "changes": "excerpt, 60ms fade-in, 1.8s fade-out, -16 LUFS normalization, 8-beat silent count-in, encoding",
+    "sha256": {
+      "ogg": "b3e4a5f77a8232df1015393b3723b275187a00f0dd00f5574a405b7373548fdd",
+      "m4a": "f2201c9e6819edda5d78bb79d647b365853cef09b9eba45aac04535528c20e4f"
+    }
+  },
+  "bach-fugue": {
+    "title": "Fugue No. 2 in C minor, BWV 847",
+    "composer": "Johann Sebastian Bach",
+    "performer": "Kimiko Ishizaka",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "evidence": "The exact audio file is explicitly CC0 1.0. The description and embedded audio author identify pianist Kimiko Ishizaka and the 2015 Open Well-Tempered Clavier release. This is a distinct work from the C-major prelude.",
+    "offset": 0.2,
+    "duration": 70,
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kimiko_Ishizaka_-_Bach_-_Well-Tempered_Clavier%2C_Book_1_-_04_Fugue_No._2_in_C_minor%2C_BWV_847.ogg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Kimiko_Ishizaka_-_Bach_-_Well-Tempered_Clavier%2C_Book_1_-_04_Fugue_No._2_in_C_minor%2C_BWV_847.ogg",
+    "revisionUrl": "https://commons.wikimedia.org/w/index.php?oldid=1018321687",
+    "sourceSha1": "b80b0ba0ea6fe440b900975790d9610df657526b",
+    "sourceSha256": "cf87e1ceaead74e859901298d69c0f0fea73c7bda9c6b62b0b689db37af25ba7",
+    "verifiedOn": "2026-11-09",
+    "chartType": "rhythmic-onset",
+    "changes": "excerpt, 60ms fade-in, 1.8s fade-out, -16 LUFS normalization, 8-beat silent count-in, encoding",
+    "sha256": {
+      "ogg": "0ccad1c255d6d6790cbcb4b9809afa9cebe22f77402546e125fa57e34b332445",
+      "m4a": "317644a211622d898b0960b692ff8437006072c65ed2f2dd88db8a438f15ea7e"
+    }
+  }
+}

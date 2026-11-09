@@ -1,10 +1,10 @@
 # Visual Assets (V7: code-drawn)
 
-V7부터 저장소와 `public/`에는 이미지 파일(webp/png/jpg/jpeg/svg)이 없다. 모든 화면은 런타임에 코드로 그린다.
+V8은 곡마다 생성한 WebP 표지와 코드 그래픽을 함께 사용한다. 표지와 무대 배경은 `public/assets/art/v8/`에 있고, 노트·판정·텍스트와 UI는 코드로 그린다.
 
 | 영역 | 렌더러 | 파일 |
 | --- | --- | --- |
-| 곡 카드·미션·결과 아트 | Canvas 2D 프로시저럴 모티프 | `src/render/songArt.ts` |
+| 곡 카드·미션·결과 아트 | 곡별 생성 WebP, 카드의 Canvas 2D 폴백 | `public/assets/art/v8/`, `src/render/songArt.ts` |
 | 중앙 9:16 노트 스테이지 | Canvas 2D (스프라이트 캐시) | `src/engine/renderer.ts` |
 | 레인 광원·홀드 에너지·타격 파편 | CanvasKit(Skia) 지연 로드, 실패 시 Canvas 2D | `src/render/skiaEffects.ts` |
 | 좌우(또는 상하) 뮤직비디오 | WebGL2 셰이더 → Canvas 2D → CSS 그라디언트 | `src/render/mvRenderer.ts` |

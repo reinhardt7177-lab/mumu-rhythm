@@ -1,7 +1,7 @@
 {
   "name": "mumu-listening-rhythm",
   "private": true,
-  "version": "7.1.0",
+  "version": "8.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "build:music": "python tools/music/build_synth_tracks.py",
+    "build:listening": "python tools/music/build_listening_samples.py",
     "build:art": "powershell -ExecutionPolicy Bypass -File tools/art/blender/build.ps1"
   },
   "devDependencies": {

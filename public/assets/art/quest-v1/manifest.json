@@ -1,0 +1,36 @@
+{
+  "forest": {
+    "width": 960,
+    "height": 640
+  },
+  "bard": {
+    "columns": 4,
+    "rows": 2,
+    "frameSize": 128,
+    "anchor": {
+      "x": 64,
+      "y": 120
+    },
+    "frames": 8
+  },
+  "slime": {
+    "columns": 4,
+    "rows": 1,
+    "frameSize": 128,
+    "anchor": {
+      "x": 64,
+      "y": 120
+    },
+    "frames": 4
+  },
+  "enemies": {
+    "columns": 3,
+    "rows": 3,
+    "frameSize": 128,
+    "anchor": {
+      "x": 64,
+      "y": 120
+    },
+    "frames": 9
+  }
+}

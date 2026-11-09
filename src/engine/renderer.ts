@@ -167,6 +167,14 @@ export class StageRenderer {
     return best?.id ?? null;
   }
 
+  hitPosition(noteId: string): { x: number; y: number } | null {
+    for (let index = 0; index < this.hitAreaCount; index += 1) {
+      const area = this.noteHitAreas[index];
+      if (area.id === noteId) return { x: area.centerX, y: area.centerY };
+    }
+    return null;
+  }
+
   pop(noteId: string, lane: number): void {
     if (!this.drawFallbackFx) return;
     let area: NoteHitArea | undefined;

@@ -1,0 +1,96 @@
+{
+  "source": "exec-d1243619-8da2-4d8a-b014-7092c06932f0.png",
+  "columns": 4,
+  "rows": 2,
+  "cell": 128,
+  "frames": [
+    {
+      "frame": 0,
+      "left": 43,
+      "top": 33,
+      "width": 54,
+      "height": 87,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 1,
+      "left": 38,
+      "top": 37,
+      "width": 58,
+      "height": 83,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 2,
+      "left": 39,
+      "top": 37,
+      "width": 79,
+      "height": 83,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 3,
+      "left": 35,
+      "top": 34,
+      "width": 70,
+      "height": 86,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 4,
+      "left": 36,
+      "top": 27,
+      "width": 56,
+      "height": 93,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 5,
+      "left": 26,
+      "top": 36,
+      "width": 89,
+      "height": 84,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 6,
+      "left": 40,
+      "top": 36,
+      "width": 49,
+      "height": 84,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 7,
+      "left": 30,
+      "top": 27,
+      "width": 79,
+      "height": 93,
+      "pivot": [
+        64,
+        120
+      ]
+    }
+  ]
+}

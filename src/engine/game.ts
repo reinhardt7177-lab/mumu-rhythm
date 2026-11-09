@@ -1,6 +1,6 @@
 import { sectionAt } from "../content/songs";
-import { judgeDelta, judgeScore } from "../core/judge";
-import { HOLD_NOTE_MIN_BEATS, type GameResult, type JudgeName, type RuntimeNote, type Song, type SongSection } from "../types";
+import { DEFAULT_APPROACH_SECONDS, JUDGE_WINDOWS, judgeInput, judgeScore } from "../core/judge";
+import { HOLD_NOTE_MIN_BEATS, type GameResult, type JudgeName, type PlayMode, type RuntimeNote, type Song, type SongSection } from "../types";
 import { AudioEngine } from "./audio";
 
 export interface GameSnapshot {
@@ -22,6 +22,8 @@ export interface JudgeEvent {
   lane: number;
   score: number;
   combo: number;
+  hold?: boolean;
+  songTime?: number;
 }
 
 export type PressResult = { kind: "popped" | "holding"; noteId: string; judge: Exclude<JudgeName, "MISS"> } | null;
@@ -54,15 +56,17 @@ export class RhythmGame {
   private firstPending = 0;
   /** Reused every frame so the render loop does not allocate a snapshot per frame. */
   private snapshot: GameSnapshot | null = null;
+  private mode: PlayMode = "explore";
 
   constructor(
     private audio: AudioEngine,
     private callbacks: GameCallbacks,
   ) {}
 
-  async start(song: Song): Promise<void> {
+  async start(song: Song, mode: PlayMode = "explore"): Promise<void> {
     this.stop();
     this.song = song;
+    this.mode = mode;
     this.notes = song.melody
       .map((note) => ({
         ...note,
@@ -116,19 +120,21 @@ export class RhythmGame {
   pressNote(noteId: string, performanceTime = performance.now()): PressResult {
     if (!this.running || this.paused || !this.song) return null;
     const note = this.notes.find((item) => item.id === noteId && !item.completed && !item.missed);
-    return note ? this.pressCandidate(note, performanceTime) : null;
+    return note ? this.pressCandidate(note, this.inputSongTime(performanceTime)) : null;
   }
 
   pressLane(lane: number, performanceTime = performance.now()): PressResult {
     if (!this.running || this.paused || !this.song) return null;
     const inputTime = this.inputSongTime(performanceTime);
     const secondsPerBeat = 60 / this.song.bpm;
-    const candidate = this.notes
-      .filter((note) => note.lane === lane && !note.completed && !note.missed)
+    const available = this.notes.filter((note) => note.lane === lane && !note.completed && !note.missed);
+    const reconnect = available.find((note) => this.canReconnect(note, inputTime));
+    const candidate = reconnect ?? available
+      .filter((note) => !note.hit)
       .map((note) => ({ note, delta: inputTime - note.beat * secondsPerBeat }))
-      .filter(({ note, delta }) => (note.hit && note.holdReleasedAt !== undefined) || judgeDelta(delta) !== null)
+      .filter(({ delta }) => judgeInput(delta, this.mode, this.song!.approachSeconds ?? DEFAULT_APPROACH_SECONDS) !== null)
       .sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))[0]?.note;
-    return candidate ? this.pressCandidate(candidate, performanceTime) : null;
+    return candidate ? this.pressCandidate(candidate, inputTime) : null;
   }
 
   releaseNote(noteId: string, performanceTime = performance.now()): boolean {
@@ -136,6 +142,7 @@ export class RhythmGame {
     const note = this.notes.find((item) => item.id === noteId && item.holding && !item.completed);
     if (!note) return false;
     const inputTime = this.inputSongTime(performanceTime);
+    if (!Number.isFinite(inputTime)) return false;
     const endTime = (note.beat + note.durationBeats) * (60 / this.song.bpm);
     note.holding = false;
     if (inputTime >= endTime - HOLD_TAIL_GRACE_SECONDS) {
@@ -146,11 +153,14 @@ export class RhythmGame {
     return true;
   }
 
-  private pressCandidate(note: RuntimeNote, performanceTime: number): PressResult {
-    if (!this.song) return null;
-    const inputTime = this.inputSongTime(performanceTime);
-    if (note.hit && note.durationBeats >= HOLD_NOTE_MIN_BEATS && note.holdReleasedAt !== undefined) {
-      if (inputTime - note.holdReleasedAt > HOLD_RECONNECT_SECONDS) return null;
+  private canReconnect(note: RuntimeNote, inputTime: number): boolean {
+    return note.hit && note.durationBeats >= HOLD_NOTE_MIN_BEATS && note.holdReleasedAt !== undefined
+      && inputTime >= note.holdReleasedAt && inputTime <= note.holdReleasedAt + HOLD_RECONNECT_SECONDS;
+  }
+
+  private pressCandidate(note: RuntimeNote, inputTime: number): PressResult {
+    if (!this.song || !Number.isFinite(inputTime)) return null;
+    if (this.canReconnect(note, inputTime)) {
       note.holding = true;
       note.holdReleasedAt = undefined;
       this.lanePulse[note.lane] = 1;
@@ -159,7 +169,7 @@ export class RhythmGame {
 
     if (note.hit) return null;
     const noteTime = note.beat * (60 / this.song.bpm);
-    const judge = judgeDelta(inputTime - noteTime);
+    const judge = judgeInput(inputTime - noteTime, this.mode, this.song.approachSeconds ?? DEFAULT_APPROACH_SECONDS);
     if (!judge) return null;
     this.lanePulse[note.lane] = 1;
 
@@ -194,7 +204,7 @@ export class RhythmGame {
     const accentBonus = note.accent ? 120 : 0;
     this.score += judgeScore(judge) + holdBonus + accentBonus + Math.min(420, this.combo * 6);
     this.audio.playPop(note.lane, Boolean(note.accent));
-    this.callbacks.onJudge({ judge, noteId: note.id, lane: note.lane, score: this.score, combo: this.combo });
+    this.callbacks.onJudge({ judge, noteId: note.id, lane: note.lane, score: this.score, combo: this.combo,hold:note.durationBeats>=HOLD_NOTE_MIN_BEATS,songTime:note.judgedAt });
   }
 
   private missNote(note: RuntimeNote): void {
@@ -202,9 +212,11 @@ export class RhythmGame {
     note.missed = true;
     note.completed = true;
     note.holding = false;
+    note.holdStartedAt = undefined;
+    note.holdReleasedAt = undefined;
     this.combo = 0;
     this.counts.miss += 1;
-    this.callbacks.onJudge({ judge: "MISS", noteId: note.id, lane: note.lane, score: this.score, combo: 0 });
+    this.callbacks.onJudge({ judge: "MISS", noteId: note.id, lane: note.lane, score: this.score, combo: 0,songTime:this.songTime() });
   }
 
   private tick = (): void => {
@@ -232,20 +244,20 @@ export class RhythmGame {
       const note = notes[index];
       if (note.completed) continue;
       const noteTime = note.beat * secondsPerBeat;
-      // Sorted by beat: nothing later can be missed or holding yet.
-      if (noteTime > songTime + 1) break;
+      // Explore can grab later holds before earlier unhit notes enter the window.
+      if (noteTime > songTime + 1 && !note.hit) continue;
       const endTime = (note.beat + note.durationBeats) * secondsPerBeat;
       if (note.hit && note.durationBeats >= HOLD_NOTE_MIN_BEATS) {
         note.holdProgress = Math.max(0, Math.min(1, (songTime - noteTime) / Math.max(0.01, endTime - noteTime)));
         if (note.holding) {
           this.lanePulse[note.lane] = Math.max(this.lanePulse[note.lane], 0.38 + note.holdProgress * 0.5);
-          if (songTime >= endTime - HOLD_TAIL_GRACE_SECONDS) this.completeNote(note, note.headJudge ?? "GOOD");
-        } else if (note.holdReleasedAt !== undefined && songTime - note.holdReleasedAt > HOLD_RECONNECT_SECONDS) {
+          if (songTime >= endTime) this.completeNote(note, note.headJudge ?? "GOOD");
+        } else if (note.holdReleasedAt !== undefined && songTime > note.holdReleasedAt + HOLD_RECONNECT_SECONDS) {
           this.missNote(note);
         }
         continue;
       }
-      if (!note.hit && songTime > noteTime + 0.2) this.missNote(note);
+      if (!note.hit && songTime > noteTime + JUDGE_WINDOWS.lateGood) this.missNote(note);
     }
 
     const duration = this.song.totalBeats * secondsPerBeat;

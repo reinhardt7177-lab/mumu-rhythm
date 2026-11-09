@@ -1,5 +1,27 @@
 # Third-party Assets
 
+## Current Fullscreen V3 Library
+
+The current library exposes 14 titles: six trusted existing tracks and eight newly cleared acoustic recordings. This is ten additional selections beyond the earlier four-world library. New recordings, exact recording-license evidence, revision URLs, performers and edit notices are documented in `docs/music-expansion-v3.md` and `public/assets/audio/expansion-v3/provenance.json`; the in-game info dialog displays the selected recording's credit and license links.
+
+The old Hungarian Dance derivative below is retained only for the legacy studio; it is **excluded from the current quest catalog** because the exact recording release could not be reliably cleared. Do not describe it as a newly cleared recording or re-expose it without evidence.
+
+All current heroes and enemies use the four era-specific generated image atlases in `public/assets/art/actors-v3/`. There are four heroes and sixteen enemies. Sources, prompts and normalization notes: `public/assets/art/actors-v3/PRODUCTION.md`.
+
+## Note Knights pixel effects
+
+World attacks V7 adds three newly generated eight-pose hero atlases in `public/assets/art/world-attacks-v7/{present,future,fantasy}/hero.png`. Source IDs, complete built-in generation prompts and normalization are in `public/assets/art/world-attacks-v7/PRODUCTION.md`. Twelve pixelfx palette derivatives in `public/assets/pixelfx-v5/{present,future,fantasy}/` use the same pinned source and MIT notice as the existing sheets. New projectile paths, equalizers, speaker shapes, orbital arrays, harp strings and star effects are original Canvas code. Backgrounds, enemies, recordings and song credits are reused unchanged.
+
+The theater V6 upgrade adds a newly generated transparent eight-pose conductor atlas at `public/assets/art/theater-v6/conductor.png`. Its built-in generation prompt, source and normalization process are retained in that folder's `PRODUCTION.md`. Four golden pixelfx palette derivatives are at `public/assets/pixelfx-v5/theater/`, under the same upstream MIT license as the V5 sheets. Existing enemy casts, recordings and other eras are unchanged by this upgrade.
+
+The V5 feedback player additionally uses `impacts/hit-spark`, `impacts/crit-hit`, `arcane/rune-circle`, `lightning/zap-hit`, `arcane/mana-burst`, and `spawn/poof` from the same pixelfx commit below. These are offline-rendered sprite sheets, with original palettes changed to cyan and magenta for distinct judgment feedback. Provenance, reproduction and the complete license are bundled in `public/assets/pixelfx-v5/PRODUCTION.md` and `public/assets/pixelfx-v5/LICENSE.txt`. No pixelfx runtime dependency is downloaded by the browser. Character sprites now use the generated era-specific atlases in `public/assets/art/actors-v3/`; the musical projectiles remain original code drawings.
+
+Bemuse and osu!mania were analyzed as design references only. No reference-game source, artwork, skin or music is bundled into this application. Actual bounded Bemuse REA evidence and separately labeled official source comparisons are documented in `docs/references-rhythm-fx-v5.md`; reference acquisitions and analyzer output remain in ignored `tmp/references-v5/`.
+
+The pixel adventure originally used rendered `holy/smite` and `ui/level-up` sheets from [pixelfx](https://github.com/patch-gg/pixelfx), upstream commit `a84159688af3ca37a4be05a0d422b94451b2e24e`. Copyright 2026 Patch and Hugo Duprez, MIT. The full license is shipped at `public/assets/pixelfx/LICENSE.txt`. V5 retains `ui/level-up` for encounter transitions and replaces smite with tier-specific feedback.
+
+The first playable chapter uses the Can-Can recording documented below. Its source page was checked on 2026-11-09 and explicitly lists public-domain dedication, redistribution and modification. Additional recordings must be checked individually; a public-domain composition alone does not establish permission for a recording.
+
 ## Performance recordings
 
 The game uses edited excerpts of real performances of public-domain compositions. Source files are downloaded to the ignored `tmp/` directory; only the classroom-length OGG derivatives are distributed.
@@ -35,7 +57,15 @@ All four derivatives add a short gameplay lead-in and apply fades, filtering, pe
 
 ## Artwork
 
-The application ships no image files. Song artwork, the note stage and the music-video panels are drawn at runtime with Canvas 2D, CanvasKit and WebGL2 code written for this project (see `ASSET_PROMPTS.md`).
+The four-world redesign adds theater, rooftop and orbital backgrounds in `public/assets/art/worlds-v2/`, plus a shared ghost/golem/demon atlas at `public/assets/art/quest-v1/enemies.png`. Art is newly AI-generated and locally normalized; prompts and provenance are in `public/assets/art/worlds-v2/PRODUCTION.md`. Existing forest, bard and slime are reused.
+
+The redesign bundles NeoDunggeunmo from the [official webfont repository](https://github.com/neodgm/neodgm-webfont). Copyright (c) 2021-2026 Eunbin Jeong (Dalgona.), reserved font name NeoDunggeunmo. The font is distributed under SIL OFL 1.1; full notice and license are bundled in `public/assets/fonts/NEODGM-LICENSE.txt` and accessible from game credits.
+
+The Note Knights forest quality slice uses newly AI-generated art in `public/assets/art/quest-v1/`: a forest background, an eight-frame bard sheet and a four-frame slime sheet. The built-in image tool generated complete sheets; local processing preserves alpha and normalizes the shared scale and bottom-center anchor. Prompts and processing notes are in `public/assets/art/quest-v1/PRODUCTION.md`; originals are retained under `output/note-knights/source/`. Later encounters now use the shared generated monster atlas from the four-world redesign.
+
+Note Knights uses `holy/smite` and `ui/level-up` sprite effects from pixelfx, under the MIT license. Copyright (c) 2026 Patch and Hugo Duprez. The license is distributed at `public/assets/pixelfx/LICENSE.txt`.
+
+The V8 application includes original AI-generated song artwork in `public/assets/art/v8/`. The note stage and music-video panels are drawn at runtime with Canvas 2D, CanvasKit and WebGL2 (see `ASSET_PROMPTS.md`).
 
 Stage depth is designed in Blender 5.x by `tools/art/blender/export_stage_geometry.py`, which exports numeric camera-projected geometry to `src/content/stageGeometry.generated.ts`. Blender is used as an offline authoring tool and is not distributed with the application; no rendered images are produced.
 

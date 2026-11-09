@@ -30,9 +30,9 @@ export interface DeviceHints {
 }
 
 const PRESETS: Record<QualityLevel, Omit<QualityProfile, "level">> = {
-  high: { stageDpr: 2, mvDpr: 1.5, mvScale: 1, mvFrameMs: 0, skia: true, particles: 1, flashesPerSecond: 3 },
-  mid: { stageDpr: 2, mvDpr: 1, mvScale: 0.75, mvFrameMs: 1000 / 45, skia: true, particles: 0.65, flashesPerSecond: 3 },
-  low: { stageDpr: 1.5, mvDpr: 1, mvScale: 0.5, mvFrameMs: 1000 / 30, skia: false, particles: 0.35, flashesPerSecond: 2 },
+  high: { stageDpr: 2, mvDpr: 1.5, mvScale: 1, mvFrameMs: 1000 / 30, skia: true, particles: 1, flashesPerSecond: 3 },
+  mid: { stageDpr: 2, mvDpr: 1, mvScale: 0.75, mvFrameMs: 1000 / 24, skia: true, particles: 0.65, flashesPerSecond: 3 },
+  low: { stageDpr: 1.5, mvDpr: 1, mvScale: 0.5, mvFrameMs: 1000 / 15, skia: false, particles: 0.35, flashesPerSecond: 2 },
 };
 
 export function autoQualityLevel(hints: DeviceHints): QualityLevel {
