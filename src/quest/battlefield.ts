@@ -8,6 +8,8 @@ import{THEATER_FX,theaterAttack}from'./theaterAttack';
 import{TheaterRenderer}from'./theaterRenderer';
 import{WorldRenderer}from'./worldRenderer';
 import{worldTheme,worldAttack,type ThemeWorld}from'./worldAttack';
+import{BossRenderer}from'./bossRenderer';
+import type{BossWorld}from'./boss';
 
 interface Frame { x: number; y: number; w: number; h: number }
 interface Atlas { frames: Record<string, { frame: Frame }> }
@@ -28,6 +30,8 @@ export class Battlefield {
   private fx=new PixelEffects();
   private theater=new TheaterRenderer();
   private themed=new WorldRenderer();
+  private sovereign=new BossRenderer();
+  get bossCue(){return this.sovereign.cue;}
   private themeReady:Promise<unknown>=Promise.resolve();
   private holding=false;
   private holdAt=0;
@@ -45,7 +49,7 @@ export class Battlefield {
     canvas.width = 480;
     canvas.height = 320;
     this.ctx = canvas.getContext('2d')!;
-    this.baseReady = Promise.allSettled([...this.actors.values(),...this.backgrounds.values()].map(image => image.decode()).concat(this.fx.ready.then(()=>{}),this.theater.ready.then(()=>{}),this.themed.ready.then(()=>{})));
+    this.baseReady = Promise.allSettled([...this.actors.values(),...this.backgrounds.values()].map(image => image.decode()).concat(this.fx.ready.then(()=>{}),this.theater.ready.then(()=>{}),this.themed.ready.then(()=>{}),this.sovereign.ready.then(()=>{})));
     void this.loadFrames('/assets/pixelfx/ui/level-up/level-up.json').then(frames => { this.levelFrames = frames; });
   }
 
@@ -64,6 +68,7 @@ export class Battlefield {
     this.lastStage = 0;
     this.levelAt = -10;
     this.holding=false;this.holdAt=0;this.bossAt=undefined;this.encore=undefined;
+    this.sovereign.reset();
   }
 
   setWorld(world: MusicalWorld) {
@@ -82,6 +87,7 @@ export class Battlefield {
   }
 
   impact(attacks: MusicalAttack[]) {
+    this.sovereign.impact(attacks);
     this.impacts.push(...attacks);
     for(const attack of attacks)if(attack.kind==='boss')this.bossAt=attack.at;
     if (this.impacts.length > 32) this.impacts.splice(0, this.impacts.length - 32);
@@ -141,7 +147,7 @@ export class Battlefield {
     for (let i = 0; i < 40; i++) this.rect(i * 37 % 480, 260 + i * 19 % 48, 12, 2, '#254449');
   }
 
-  draw(time: number, combat: Combat) {
+  draw(time: number, combat: Combat,beat=time*2) {
     const c = this.ctx, stage = combat.stage;
     const theme=worldTheme(this.world.id),themeId=theme?this.world.id as ThemeWorld:undefined;
     const placement=sceneActors(this.world.id,stage),feet=placement.enemy.y,heroFeet=placement.hero.y;
@@ -186,11 +192,12 @@ export class Battlefield {
     const theaterHero=this.world.id==='past'&&this.theater.hero(c,time,latestCast,this.holding,{x:hx,y:heroFeet},this.reduced);
     const themedHero=themeId&&this.themed.hero(c,themeId,time,latestCast,this.holding,{x:hx,y:heroFeet},this.reduced);
     if(!theaterHero&&!themedHero&&actors)this.sprite(actors,heroFrame(this.holding ? .12 : castAge,time,this.reduced),4,hx+(casting?2:0),heroFeet,128);
-    if (combat.hp > 0) {
+    const sovereignDrawn=stage===3&&this.sovereign.draw(c,this.world.id as BossWorld,time,beat,combat,{x:ex,y:feet},{x:hx,y:heroFeet},this.reduced);
+    if (combat.hp > 0&&!sovereignDrawn) {
       if(actors)this.sprite(actors,enemyFrame(stage,hit),4,ex,feet,stage===3?160:128);
       c.globalAlpha = 1;
-    } else {
-      if(actors&&last?.defeated&&hurtAge<.2){c.globalAlpha=Math.max(0,1-hurtAge/.2);this.sprite(actors,enemyFrame(stage,true),4,ex,feet,stage===3?160:128);c.globalAlpha=1;}
+    } else if(combat.hp<=0) {
+      if(!sovereignDrawn&&actors&&last?.defeated&&hurtAge<.2){c.globalAlpha=Math.max(0,1-hurtAge/.2);this.sprite(actors,enemyFrame(stage,true),4,ex,feet,stage===3?160:128);c.globalAlpha=1;}
       if(hurtAge>.3)this.note(ex-9,feet-38+(this.reduced?0:Math.sin(time*3)*3),'#ffe291',2);
     }
 

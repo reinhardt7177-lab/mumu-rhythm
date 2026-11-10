@@ -1,0 +1,96 @@
+{
+  "source": "exec-6e03578f-dbfc-4216-9b3c-d2efb57679f8.png",
+  "columns": 4,
+  "rows": 2,
+  "cell": 128,
+  "frames": [
+    {
+      "frame": 0,
+      "left": 21,
+      "top": 16,
+      "width": 95,
+      "height": 104,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 1,
+      "left": 23,
+      "top": 14,
+      "width": 95,
+      "height": 106,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 2,
+      "left": 22,
+      "top": 19,
+      "width": 95,
+      "height": 101,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 3,
+      "left": 9,
+      "top": 17,
+      "width": 112,
+      "height": 103,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 4,
+      "left": 9,
+      "top": 14,
+      "width": 111,
+      "height": 106,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 5,
+      "left": 8,
+      "top": 19,
+      "width": 106,
+      "height": 101,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 6,
+      "left": 14,
+      "top": 28,
+      "width": 102,
+      "height": 92,
+      "pivot": [
+        64,
+        120
+      ]
+    },
+    {
+      "frame": 7,
+      "left": 16,
+      "top": 31,
+      "width": 102,
+      "height": 89,
+      "pivot": [
+        64,
+        120
+      ]
+    }
+  ]
+}

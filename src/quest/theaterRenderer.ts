@@ -19,6 +19,9 @@ export class TheaterRenderer{
   const frame=theaterPose(age,profile,holding,!!attack?.hold);
   const offset=!reduced&&age>=.08&&age<.28?(profile.accent?4:2):0;
   const r=spriteRect({x:anchor.x+offset,y:anchor.y},128);
+  if(profile.cadence&&!reduced&&age>=.08&&age<.28){
+   for(let echo=2;echo>0;echo--){c.globalAlpha=.15/echo;c.drawImage(this.image,frame%4*128,Math.floor(frame/4)*128,128,128,Math.round(r.x-echo*10),Math.round(r.y),128,128)}c.globalAlpha=1;
+  }
   c.drawImage(this.image,frame%4*128,Math.floor(frame/4)*128,128,128,Math.round(r.x),Math.round(r.y),128,128);return true;
  }
  charge(c:CanvasRenderingContext2D,time:number,anchor:Point,reduced:boolean){
@@ -84,6 +87,12 @@ export class TheaterRenderer{
   }
   if(profile.accent){
    for(let line=0;line<5;line++)pixel(c,anchor.x-48,anchor.y-72+line*8,96,1,'#ffe5a5');
+  }
+  if(profile.cadence){
+   const expansion=reduced?1:Math.min(1,age/.12);
+   for(let staff=0;staff<5;staff++)pixel(c,anchor.x-78*expansion,anchor.y-84+staff*12,156*expansion,2,staff%2?'#ffbe8d':'#fff0bc');
+   for(let i=0;i<7;i++){const angle=i/7*Math.PI*2,reach=35+(reduced?0:age*70);note(c,anchor.x+Math.cos(angle)*reach,anchor.y-48+Math.sin(angle)*reach*.7,i%2?'#ffbd91':'#fff1bc',1.1)}
+   if(!profile.finale){c.textAlign='center';c.font='13px NeoPixel,monospace';c.strokeStyle='#251c29';c.lineWidth=4;c.strokeText('황금 카덴차',240,titleY);c.fillStyle='#ffe3a1';c.fillText('황금 카덴차',240,titleY)}
   }
   if(profile.finale&&attack.kind!=='boss'){
    c.textAlign='center';c.font='14px NeoPixel,monospace';c.lineWidth=4;c.strokeStyle='#251c29';const title=`${attack.combo} COMBO · GRAND FINALE`;c.strokeText(title,240,titleY);c.fillStyle='#fff0bf';c.fillText(title,240,titleY);

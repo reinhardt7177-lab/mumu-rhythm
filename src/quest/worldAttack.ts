@@ -7,12 +7,13 @@ export const WORLD_THEMES={
 export type ThemeWorld=keyof typeof WORLD_THEMES;
 export type WorldTheme=typeof WORLD_THEMES[ThemeWorld];
 export function worldTheme(id:string):WorldTheme|undefined{return Object.hasOwn(WORLD_THEMES,id)?WORLD_THEMES[id as ThemeWorld]:undefined;}
-export function worldAttack(id:ThemeWorld,combo:number){const base=theaterAttack(combo),theme=WORLD_THEMES[id];return{...base,name:base.finale?theme.finale:theme.names[base.tier]};}
+export function worldAttack(id:ThemeWorld,combo:number){const base=theaterAttack(combo),theme=WORLD_THEMES[id];return{...base,name:base.finale?theme.finale:base.cadence?`${theme.names[base.tier]} · 카덴차`:theme.names[base.tier]};}
 export function worldFlightPoint(id:ThemeWorld,p:number,voice:number,profile:TheaterAttack,from:{x:number;y:number},to:{x:number;y:number}){
  if(p<=0)return{...from};if(p>=1)return{...to};
  const rank=voice-(profile.voices-1)/2,arc=Math.sin(p*Math.PI),stagger=Math.max(0,Math.min(1,p+rank*.045*arc));
  const offset=id==='present'?Math.sin(p*Math.PI*3+rank*.8)*arc*(12+profile.tier*3)+rank*arc*16
   :id==='future'?Math.cos(p*Math.PI*2+voice*1.4)*arc*(14+profile.tier*7)+rank*arc*13
   :-arc*(22+Math.abs(rank)*17)+Math.sin(p*Math.PI*2)*rank*9;
- return{x:from.x+(to.x-from.x)*stagger,y:from.y+(to.y-from.y)*p+offset};
+ const phrase=profile.phrase===1?Math.sin(p*Math.PI*2)*(10+Math.abs(rank)*6):profile.phrase===2?-arc*(16+Math.abs(rank)*9):0;
+ return{x:from.x+(to.x-from.x)*stagger,y:from.y+(to.y-from.y)*p+offset+phrase};
 }

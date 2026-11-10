@@ -24,4 +24,9 @@ describe('three distinct world attack identities',()=>{
   const paths=Object.keys(WORLD_THEMES).map(id=>JSON.stringify(worldFlightPoint(id as keyof typeof WORLD_THEMES,.4,0,worldAttack(id as keyof typeof WORLD_THEMES,24),from,to)));
   expect(new Set(paths).size).toBe(3);
  });
+ it.each(['present','future','fantasy']as const)('%s rotates three phrases inside the same tier',id=>{
+  const from={x:150,y:180},to={x:340,y:160};
+  expect(new Set([24,32,40].map(combo=>JSON.stringify(worldFlightPoint(id,.4,0,worldAttack(id,combo),from,to)))).size).toBe(3);
+  expect(worldAttack(id,32).name).toContain('카덴차');
+ });
 });

@@ -12,7 +12,7 @@ for(let i=0;i<8;i++){
  if(!count)throw new Error('Empty pose '+i);frames.push({data,info,x0,y0,w:x1-x0+1,h:y1-y0+1,foot:foot/count-x0});
 }
 const reach=64-Number(arg('--margin')??10);
-const scale=Math.min(88/frames[0].h,reach/Math.max(...frames.map(f=>f.foot)),reach/Math.max(...frames.map(f=>f.w-f.foot))),pieces=[],manifest=[];
+const scale=Math.min(Number(arg('--height')??88)/frames[0].h,reach/Math.max(...frames.map(f=>f.foot)),reach/Math.max(...frames.map(f=>f.w-f.foot))),pieces=[],manifest=[];
 for(const[i,f]of frames.entries()){
  const w=Math.round(f.w*scale),h=Math.round(f.h*scale),left=Math.round(64-f.foot*scale),top=120-h;
  const input=await sharp(f.data,{raw:f.info}).extract({left:f.x0,top:f.y0,width:f.w,height:f.h}).resize(w,h,{kernel:'nearest'}).png().toBuffer();pieces.push({input,left:i%4*128+left,top:Math.floor(i/4)*128+top});manifest.push({frame:i,left,top,width:w,height:h,pivot:[64,120]});

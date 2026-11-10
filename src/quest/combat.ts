@@ -18,6 +18,16 @@ export interface MusicalAttack {
   defeated?: boolean;
 }
 export class Combat {
+  private bossHp:number;
+  private budgetFor?: (power:number,progress:number)=>number;
+  private observedDamage=0;
+  private observedJudges=0;
+  constructor(budget:number|((power:number,progress:number)=>number)=ENEMIES[3].hp){
+    this.bossHp=typeof budget==='number'&&Number.isFinite(budget)?Math.max(1,Math.round(budget)):ENEMIES[3].hp;
+    if(typeof budget==='function')this.budgetFor=budget;
+  }
+  get maxHp(){return this.stage===3?this.bossHp:ENEMIES[this.stage].hp;}
+  get expectedDamagePerNote(){return this.observedJudges>=8?this.observedDamage/this.observedJudges:16.5;}
   private pending: MusicalAttack[] = [];
   stage = 0;
   hp = ENEMIES[0].hp;
@@ -31,7 +41,8 @@ export class Combat {
     this.progress = progress;
     if (this.hp <= 0 && this.stage < 3 && progress >= (this.stage + 1) * .24) {
       this.stage++;
-      this.hp = ENEMIES[this.stage].hp;
+      if(this.stage===3&&this.budgetFor){const hp=this.budgetFor(this.expectedDamagePerNote,progress);if(Number.isFinite(hp))this.bossHp=Math.max(1,Math.round(hp));}
+      this.hp = this.maxHp;
     }
   }
   private prepare(perfect: boolean, combo: number) {
@@ -48,11 +59,13 @@ export class Combat {
     if (this.hp === 0) { this.kills++; if (this.stage === 3) this.won = true; }
   }
   hit(perfect: boolean, combo: number) {
+    this.observe(perfect,combo);
     const damage = this.prepare(perfect, combo);
     if (damage) this.apply(damage);
     return damage;
   }
   launch(perfect: boolean, combo: number, time: number, hold=false): MusicalAttack | null {
+    this.observe(perfect,combo);
     const damage = this.prepare(perfect, combo);
     if (!damage) return null;
     const attack = {time, at: time + FLIGHT_SECONDS, target: this.stage, damage, skill: combo > 0 && combo % 8 === 0,kind:feedbackKind(perfect,combo,hold),combo,hold};
@@ -75,5 +88,6 @@ export class Combat {
     return impacts;
   }
   finish() { return this.advance(Infinity, this.progress); }
-  miss() { this.combo = 0; this.harmony = Math.max(0, this.harmony - 3); }
+  private observe(perfect:boolean,combo:number){this.observedJudges++;this.observedDamage+=combo>0&&combo%8===0?48:perfect?18:12;}
+  miss() { this.observedJudges++;this.combo = 0; this.harmony = Math.max(0, this.harmony - 3); }
 }

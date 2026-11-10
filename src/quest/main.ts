@@ -4,19 +4,23 @@ import { songDurationSeconds } from '../content/songs';
 import { AudioEngine } from '../engine/audio';
 import { RhythmGame, type GameSnapshot, type JudgeEvent } from '../engine/game';
 import type { PlayMode, Song } from '../types';
-import { Combat, ENEMIES } from './combat';
+import { Combat } from './combat';
 import { Battlefield } from './battlefield';
-import { WORLDS, songForWorld, questionsFor, type MusicalWorld } from './worlds';
+import { WORLDS, songForWorld, type MusicalWorld } from './worlds';
 import { NoteTrack } from './noteTrack';
 import { renderApp } from './view';
 import { MUSIC_LIBRARY, librarySong } from './catalog';
 import {previewScene,spriteRect} from './sceneLayout';
 import{holdForInput}from'./laneInput';
+import{BOSS_THEMES,bossBudget,type BossWorld}from'./boss';
+import{learningFor,type GradeBand}from'./learning';
+import{HudWriter}from'./hudWriter';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=renderApp();
 const icons={Pause,Play,Info,LayoutGrid,ArrowRight,RotateCcw,X,Headphones,Music2,Maximize,Minimize};
 createIcons({icons});
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
+const hud=new HudWriter(id=>document.getElementById(id));
 const briefing=el<HTMLDialogElement>('briefing'),paused=el<HTMLDialogElement>('paused'),results=el<HTMLDialogElement>('results');
 const audio=new AudioEngine();
 const battlefield=new Battlefield(el<HTMLCanvasElement>('world'));
@@ -26,14 +30,17 @@ const track=new NoteTrack(notes,laneButtons,el('judge'));
 const pressed=new Map<string,string>();
 let world=WORLDS[0],song=songForWorld(world.id),combat=new Combat();
 let snapshot:GameSnapshot|null=null,running=false,starting=false,mode:PlayMode='challenge';
-let questions=questionsFor(song);
+let grade:GradeBand='3-4';
+let learning=learningFor(song.id,grade);
+let questions=learning.questions;
 let filterWorld:string|null=null;
 let finaleFrame=0;
+let journeyStage=-1;
 
 const duration=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 function selectWorld(next:MusicalWorld,nextSong:Song=songForWorld(next.id)) {
   if(running||starting)return;
-  world=next;song=nextSong;questions=questionsFor(song);
+  world=next;song=nextSong;setLearning();
   const root=el('app');
   root.style.setProperty('--accent',world.accent);root.style.setProperty('--world-surface',world.surface);
   root.style.setProperty('--actor-sheet',`url('${world.actors}')`);
@@ -53,6 +60,7 @@ function selectWorld(next:MusicalWorld,nextSong:Song=songForWorld(next.id)) {
   el('allSongs').setAttribute('aria-pressed',String(filterWorld===null));
   track.setTheme(world.id);battlefield.setWorld(world);battlefield.draw(0,combat);
   el('journey').innerHTML=world.stops.map((stop,i)=>`<span data-stop="${i}">${String(i+1).padStart(2,'0')} ${stop}</span>`).join('');
+  journeyStage=-1;
   el('libraryCount').textContent=`${MUSIC_LIBRARY.length}곡`;
   el('songList').innerHTML=MUSIC_LIBRARY.filter(item=>!filterWorld||item.worldId===filterWorld).map(({song:item},i)=>`<button class="song-row" data-song="${item.id}" aria-pressed="${item.id===song.id}"><span class="song-number">${String(i+1).padStart(2,'0')}</span><span class="song-row-text"><strong>${item.title}</strong><small>${item.featuredInstrument}</small></span><span class="song-duration">${duration(songDurationSeconds(item))}</span></button>`).join('');
   document.querySelectorAll<HTMLButtonElement>('[data-song]').forEach(button=>button.onclick=()=>{const item=librarySong(button.dataset.song!);selectWorld(WORLDS.find(w=>w.id===item.worldId)!,item.song);});
@@ -68,25 +76,55 @@ function openBriefing() {
   el('briefFocus').textContent=song.listeningPoint;
   el('briefEra').textContent=world.era+' / '+world.title;
   el('briefArt').style.backgroundImage=`url('${world.background}')`;
+  setLearning();
   el('loading').textContent='';briefing.showModal();
 }
+
+function conceptNotes(id:string){
+  const list=el(id);list.replaceChildren();
+  for(const concept of learning.concepts){
+    const term=document.createElement('dt'),body=document.createElement('dd');
+    term.textContent=concept.title;body.textContent=concept.body;list.append(term,body);
+  }
+}
+function setLearning(){
+  learning=learningFor(song.id,grade);questions=learning.questions;
+  conceptNotes('briefConcepts');
+  document.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.grade===grade)));
+}
+function prepareQuiz(){
+  conceptNotes('resultConcepts');
+  el('lesson').textContent=`초등 ${grade==='3-4'?'3~4':'5~6'}학년 · ${questions.length}문제`;
+  const quiz=el('quiz');quiz.replaceChildren();
+  questions.forEach((q,i)=>{
+    const field=document.createElement('fieldset'),legend=document.createElement('legend');
+    legend.textContent=`${i+1}. ${q.q}`;field.append(legend);
+    q.a.forEach((a,j)=>{
+      const label=document.createElement('label'),input=document.createElement('input'),text=document.createElement('span');
+      input.type='radio';input.name=`q${i}`;input.value=String(j);text.textContent=a;label.append(input,text);field.append(label);
+    });
+    const feedback=document.createElement('p');feedback.id=`feedback${i}`;feedback.className='question-feedback';feedback.hidden=true;
+    field.setAttribute('aria-describedby',feedback.id);field.append(feedback);quiz.append(field);
+  });
+  const source=el<HTMLAnchorElement>('curriculumSource');source.href=learning.sourceUrls[0];
+  el('explanation').textContent='';
+}
+function showResults(){results.showModal();results.scrollTop=0;}
 
 function draw(s:GameSnapshot) {
   track.draw(s,mode);
   battlefield.setHolding(s.notes.some(note=>note.holding&&!note.completed),s.songTime);
-  battlefield.impact(combat.advance(s.songTime,s.progress));battlefield.draw(s.songTime,combat);
-  el('score').textContent=s.score.toLocaleString();el('combo').textContent=String(s.combo);
-  el<HTMLProgressElement>('progress').value=s.progress;el('time').textContent=duration(Math.max(0,s.songTime));
-  const enemy=ENEMIES[combat.stage];
-  el('enemyName').textContent=world.enemyNames[combat.stage];el('location').textContent=world.stops[combat.stage];
-  el('hpLabel').textContent=`${combat.hp} / ${enemy.hp}`;
-  el<HTMLProgressElement>('enemyHp').max=enemy.hp;el<HTMLProgressElement>('enemyHp').value=combat.hp;
-  el<HTMLProgressElement>('harmony').value=combat.harmony;
-  el('skill').textContent=battlefield.attackName(s.combo);el('kills').textContent=`${combat.kills} / 4`;
-  el('stageCount').textContent=`${combat.stage+1} / 4`;
-  el('chapterLabel').textContent=combat.won?'모든 소리를 되찾았어요':world.era+' / '+world.title;
-  el('story').textContent=combat.won?'이 세계에 다시 음악이 흐릅니다.':combat.hp<=0?'다음 악장의 문이 열리고 있어요.':combat.stage===0?world.atmosphere:song.listeningPoint;
-  document.querySelectorAll('[data-stop]').forEach((n,i)=>n.classList.toggle('active',i===combat.stage));
+  battlefield.impact(combat.advance(s.songTime,s.progress));battlefield.draw(s.songTime,combat,s.beat);
+  hud.text('score',s.score.toLocaleString());hud.text('combo',s.combo);
+  hud.progress('progress',s.progress);hud.text('time',duration(Math.max(0,s.songTime)));
+  hud.text('enemyName',combat.stage===3?BOSS_THEMES[world.id as BossWorld].name:world.enemyNames[combat.stage]);hud.text('location',world.stops[combat.stage]);
+  hud.text('hpLabel',`${combat.hp} / ${combat.maxHp}`);hud.progress('enemyHp',combat.hp,combat.maxHp);
+  hud.text('bossCue',combat.stage===3?battlefield.bossCue:'');hud.progress('harmony',combat.harmony);
+  hud.text('skill',battlefield.attackName(s.combo));hud.text('kills',`${combat.kills} / 4`);
+  hud.text('stageCount',`${combat.stage+1} / 4`);
+  hud.text('chapterLabel',combat.won?'모든 소리를 되찾았어요':world.era+' / '+world.title);
+  hud.text('story',combat.won?'이 세계에 다시 음악이 흐릅니다.':combat.hp<=0?'다음 악장의 문이 열리고 있어요.':combat.stage===0?world.atmosphere:song.listeningPoint);
+  if(journeyStage!==combat.stage){journeyStage=combat.stage;document.querySelectorAll('[data-stop]').forEach((n,i)=>n.classList.toggle('active',i===combat.stage));}
 }
 
 function judge(e:JudgeEvent) {
@@ -108,20 +146,18 @@ const game=new RhythmGame(audio,{
     el('ending').textContent=combat.won?'이 세계의 음악을 되찾았어요!':'소리를 모으는 작은 모험';
     el('endingTag').textContent=song.title+' / '+world.era;
     el('stats').textContent=`수집률 ${r.accuracy}% · 최고 콤보 ${r.maxCombo} · 처치 ${combat.kills}/4`;
-    el('lesson').textContent=song.listeningPoint+'. 같은 가락이 다시 나오면 반복, 강하게 연주하라는 표시는 포르테(f)예요.';
-    el('quiz').innerHTML=questions.map((q,i)=>`<fieldset><legend>${i+1}. ${q.q}</legend>${q.a.map((a,j)=>`<label><input type="radio" name="q${i}" value="${j}">${a}</label>`).join('')}</fieldset>`).join('');
-    el('explanation').textContent='';
+    prepareQuiz();
     const time=snapshot?.songTime??0,remaining=battlefield.finaleRemaining(time);
     if(remaining>0){
       const began=performance.now();
       const finishVisual=()=>{
         const elapsed=(performance.now()-began)/1000;
         battlefield.draw(time+elapsed,combat);
-        if(elapsed>=remaining){finaleFrame=0;results.showModal();}
+        if(elapsed>=remaining){finaleFrame=0;showResults();}
         else finaleFrame=requestAnimationFrame(finishVisual);
       };
       finaleFrame=requestAnimationFrame(finishVisual);
-    }else results.showModal();
+    }else showResults();
   },
 });
 
@@ -131,7 +167,8 @@ async function start() {
   el<HTMLButtonElement>('start').disabled=true;el<HTMLButtonElement>('closeBriefing').disabled=true;
   el('loading').textContent='음악을 준비하고 있어요…';
   try {
-    combat=new Combat();snapshot=null;pressed.clear();track.reset();battlefield.setWorld(world);
+    const encounterSong=song,encounterMode=mode;
+    combat=new Combat((power,progress)=>bossBudget(encounterSong,encounterMode,power,progress,snapshot?.notes));snapshot=null;journeyStage=-1;pressed.clear();track.reset();battlefield.setWorld(world);
     await Promise.all([battlefield.ready,track.ready]);
     await game.start(song,mode);running=true;
     briefing.close();results.close();paused.close();
@@ -178,6 +215,7 @@ for(const id of ['home','leavePause','resultHome'])el(id).onclick=home;
 document.querySelectorAll<HTMLButtonElement>('[data-world]').forEach(b=>b.onclick=()=>{filterWorld=b.dataset.world!;selectWorld(WORLDS.find(w=>w.id===filterWorld)!);});
 el('allSongs').onclick=()=>{filterWorld=null;selectWorld(world,song);};
 document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode==='challenge'?'challenge':'explore';document.querySelectorAll('[data-mode]').forEach(n=>n.setAttribute('aria-pressed',String(n===b)));});
+document.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach(b=>b.onclick=()=>{grade=b.dataset.grade==='5-6'?'5-6':'3-4';setLearning();});
 function inputAllowed(){return running&&!starting&&!snapshot?.paused&&!document.querySelector('dialog[open]');}
 function ownHold(key:string,lane:number,result:ReturnType<RhythmGame['pressLane']>,noteId?:string){
   const id=holdForInput(result,snapshot?.notes??[],lane,noteId);if(id)pressed.set(key,id);
@@ -216,9 +254,19 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!
 window.addEventListener('blur',releaseAll);
 el('answer').onclick=()=>{
   const answers=questions.map((_,i)=>document.querySelector<HTMLInputElement>(`input[name="q${i}"]:checked`));
-  if(answers.some(x=>!x)){el('explanation').textContent='세 문제를 모두 골라 주세요.';return;}
-  const count=answers.filter((x,i)=>Number(x!.value)===questions[i].correct).length;
-  el('explanation').textContent=`${count}/3 정답! `+questions.map(q=>q.why).join(' ');
+  if(answers.some(x=>!x)){
+    el('explanation').textContent=`${questions.length}문제의 답을 모두 골라 주세요.`;
+    answers.forEach((answer,i)=>el(`feedback${i}`).parentElement!.setAttribute('aria-invalid',String(!answer)));return;
+  }
+  let count=0;
+  questions.forEach((q,i)=>{
+    const correct=Number(answers[i]!.value)===q.correct;if(correct)count++;
+    const feedback=el(`feedback${i}`);feedback.hidden=false;
+    feedback.dataset.correct=String(correct);
+    feedback.textContent=`${correct?'정답이에요.':`다시 생각해 봐요. 정답: ${q.a[q.correct]}.`} ${q.why}`;
+    feedback.parentElement!.removeAttribute('aria-invalid');
+  });
+  el('explanation').textContent=`${count}/${questions.length} 정답 · 각 문제 아래에서 이유를 확인해요.`;
 };
 el('credits').onclick=async()=>{
   if(running&&!snapshot?.paused)await pause();

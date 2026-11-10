@@ -28,6 +28,9 @@ export class WorldRenderer{
   const age=attack?time-attack.time:10,profile=worldAttack(id,attack?.combo??0);
   const frame=theaterPose(age,profile,holding,!!attack?.hold);
   const shift=!reduced&&age>=.08&&age<.28?(profile.accent?4:2):0,r=spriteRect({x:anchor.x+shift,y:anchor.y},128);
+  if(profile.cadence&&!reduced&&age>=.08&&age<.28){
+   for(let echo=2;echo>0;echo--){c.globalAlpha=.15/echo;c.drawImage(image,frame%4*128,Math.floor(frame/4)*128,128,128,Math.round(r.x-echo*10),Math.round(r.y),128,128)}c.globalAlpha=1;
+  }
   c.drawImage(image,frame%4*128,Math.floor(frame/4)*128,128,128,Math.round(r.x),Math.round(r.y),128,128);return true;
  }
  charge(c:CanvasRenderingContext2D,id:ThemeWorld,time:number,anchor:Point,reduced:boolean){
@@ -90,6 +93,20 @@ export class WorldRenderer{
     for(let i=0;i<28;i++){const a=Math.PI+i/27*Math.PI;pixel(c,x+Math.cos(a)*34,y-29+Math.sin(a)*15,3,2,theme.primary)}
     line(c,{x:x-30,y:y+31},{x:x+29,y:y+31},theme.primary,3);
    }
+  }
+  if(profile.cadence){
+   const reach=40+(reduced?0:age*65);
+   if(id==='present'){
+    ring(c,x,y,reach,reach*.65,theme.secondary);
+    for(let i=0;i<9;i++){const h=(18+Math.sin(i*.8+age*5)*14)*(reduced?1:Math.min(1,age/.1));pixel(c,x-52+i*13,anchor.y+8-h,7,h,i%2?theme.primary:theme.secondary)}
+   }else if(id==='future'){
+    const nodes=Array.from({length:6},(_,i)=>({x:x+Math.cos(i/6*Math.PI*2)*reach,y:y+Math.sin(i/6*Math.PI*2)*reach*.75}));
+    for(let i=0;i<nodes.length;i++){line(c,nodes[i],nodes[(i+2)%nodes.length],theme.secondary);glyph(c,id,nodes[i],theme.primary,.8)}
+   }else{
+    for(let i=0;i<7;i++){const a=i/7*Math.PI*2;glyph(c,id,{x:x+Math.cos(a)*reach,y:y+Math.sin(a)*reach*.7},i%2?theme.primary:theme.secondary,.85)}
+    for(let string=0;string<5;string++)line(c,{x:x-53,y:y-26+string*12},{x:x+53,y:y-26+string*12},theme.secondary);
+   }
+   if(!profile.finale){c.textAlign='center';c.font='13px NeoPixel,monospace';c.strokeStyle=theme.shadow;c.lineWidth=4;c.strokeText('카덴차 · 화음 연격',240,titleY);c.fillStyle=theme.primary;c.fillText('카덴차 · 화음 연격',240,titleY)}
   }
   if(profile.finale&&attack.kind!=='boss'){
    c.textAlign='center';c.font='13px NeoPixel,monospace';c.lineWidth=4;c.strokeStyle=theme.shadow;const title=`${attack.combo} COMBO · ${theme.finale}`;c.strokeText(title,240,titleY);c.fillStyle=theme.primary;c.fillText(title,240,titleY);

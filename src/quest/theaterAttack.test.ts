@@ -26,6 +26,14 @@ describe('theater combo choreography',()=>{
   const c=new Combat(),attack=c.launch(true,24,0,true)!;
   expect(attack.kind).toBe('combo');expect(attack.hold).toBe(true);
  });
+ it('changes musical phrases within the same combo tier without moving the target',()=>{
+  const from={x:150,y:180},to={x:350,y:170};
+  const profiles=[24,32,40].map(theaterAttack);
+  expect(profiles.map(p=>p.phrase)).toEqual([0,1,2]);
+  expect(profiles.map(p=>p.cadence)).toEqual([false,true,false]);
+  expect(new Set(profiles.map(p=>JSON.stringify(flightPoint(.4,0,p,from,to)))).size).toBe(3);
+  for(const p of profiles)expect(flightPoint(1,0,p,from,to)).toEqual(to);
+ });
  it('gives a released-hold finale priority over the ordinary strong release pose',()=>{
   expect(theaterPose(.12,theaterAttack(64),false,true)).toBe(7);
   expect(theaterPose(.12,theaterAttack(1),false,true)).toBe(5);
