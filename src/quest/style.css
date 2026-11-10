@@ -36,3 +36,5 @@ dialog{width:560px;max-width:calc(100% - 32px);max-height:92dvh;overflow:auto;pa
 @media(max-width:760px){.notebook-filters label:first-child{flex:0 0 100px;min-width:100px}.notebook-filters label:last-child{flex:1;min-width:0}}
 @media(max-width:400px){.notebook-filters label:first-child{flex-basis:90px;min-width:90px}.notebook-filters select{font-size:12px}}
 .music-cells.music-rows{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}.music-rows span{display:block;min-width:0;max-width:100%;width:100%;border-right:0;text-align:left;white-space:pre;overflow-x:auto;font-size:16px;padding:6px 2px}
+#quiz fieldset{min-inline-size:0}
+.notation{grid-template-columns:minmax(0,1fr)}

@@ -30,7 +30,10 @@ export function visualElement(visual:Visual,zoomable=true){
    const stave=new V.Stave(8,20,width-16);stave.addClef('treble');if(visual.time)stave.addTimeSignature(visual.time);stave.setContext(ctx).draw();
    const notes=visual.notes.map(n=>{const note=new V.StaveNote({keys:engravingKeys(n),duration:n.duration,type:n.rest?'r':'n',dots:n.dots??0,autoStem:true});for(let i=0;i<(n.dots??0);i++)V.Dot.buildAndAttach([note],{all:true});return note;});
    V.Formatter.FormatAndDraw(ctx,stave,notes,{autoBeam:false});
-   const svg=host.querySelector('svg')!;svg.setAttribute('viewBox',`0 0 ${width} 130`);svg.setAttribute('role','img');svg.setAttribute('aria-label',notationLabel(visual));host.dataset.ready='true';
+   const svg=host.querySelector('svg')!;
+   // VexFlow's fixed inline sizes must not override the responsive/zoom CSS.
+   host.style.removeProperty('width');svg.style.removeProperty('width');svg.style.removeProperty('height');
+   svg.setAttribute('viewBox',`0 0 ${width} 130`);svg.setAttribute('role','img');svg.setAttribute('aria-label',notationLabel(visual));host.dataset.ready='true';
   }).catch(()=>{if(host.isConnected){host.textContent='악보를 불러오지 못했어요. 화면을 다시 열어 주세요.';host.dataset.error='true';}});
   if(zoomable){const zoom=document.createElement('button');zoom.type='button';zoom.className='visual-zoom icon';zoom.title='악보 확대';zoom.setAttribute('aria-label','악보 확대');zoom.setAttribute('aria-pressed','false');zoom.append(createElement(ZoomIn));zoom.onclick=()=>{const on=viewport.classList.toggle('zoomed');zoom.replaceChildren(createElement(on?ZoomOut:ZoomIn));zoom.setAttribute('aria-pressed',String(on));zoom.title=on?'악보 축소':'악보 확대';zoom.setAttribute('aria-label',zoom.title);};figure.append(zoom);}
  }
