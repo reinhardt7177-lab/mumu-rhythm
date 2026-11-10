@@ -11,7 +11,7 @@ function staffPosition(key:string){
 export function scoreBeats(notes:readonly ScoreNote[]){return notes.reduce((sum,n)=>sum+beats[n.duration]*(2-2**-(n.dots??0)),0);}
 export function engravingKeys(note:ScoreNote){return note.rest?['r/4']:note.keys??['c/5'];}
 export function notationLabel(visual:Visual){
- if(visual.kind==='labels')return`그림의 순서: ${visual.cells.join(', ')}`;
+ if(visual.kind==='labels')return visual.layout==='rows'?`비교 그림. ${visual.cells.map((cell,i)=>`${i+1}번째 줄: ${cell}`).join('; ')}`:`그림의 순서: ${visual.cells.join(', ')}`;
  return'악보 그림. '+visual.notes.map(n=>(n.rest?({w:'오선 아래에 매달린 네모 쉼표',h:'오선 위에 놓인 네모 쉼표',q:'꺾인 세로 모양 쉼표','8':'둥근 점과 기둥의 쉼표','16':'점 두 개와 기둥의 쉼표'}[n.duration]):`${n.keys&&n.keys.length>1?`동시에 놓인 머리${n.keys.length}개, `:''}${(n.keys??['c/5']).map(staffPosition).join(', ')}, ${n.duration==='w'?'빈 머리, 기둥 없음':n.duration==='h'?'빈 머리, 기둥 있음':`검은 머리, 기둥 있음${n.duration==='8'?', 꼬리1개':n.duration==='16'?', 꼬리2개':''}`}`)+(n.dots?`, 오른쪽 점${n.dots}개`:'')).join('; ');
 }
 let engine:Promise<typeof import('vexflow/bravura')>|undefined;
@@ -19,7 +19,7 @@ function loadEngraver(){return engine??=import('vexflow/bravura').then(async mod
 export function visualElement(visual:Visual,zoomable=true){
  const figure=document.createElement('figure');figure.className='music-visual';
  if(visual.kind==='labels'){
-  const cells=document.createElement('div');cells.className='music-cells';cells.setAttribute('role','img');cells.setAttribute('aria-label',notationLabel(visual));
+  const cells=document.createElement('div');cells.className=visual.layout==='rows'?'music-cells music-rows':'music-cells';cells.setAttribute('role','img');cells.setAttribute('aria-label',notationLabel(visual));
   for(const text of visual.cells){const cell=document.createElement('span');cell.textContent=text;cells.append(cell);}figure.append(cells);
  }else{
   const viewport=document.createElement('div'),host=document.createElement('div');viewport.className='score-viewport';host.className='notation';host.textContent='악보 준비 중';viewport.append(host);figure.append(viewport);

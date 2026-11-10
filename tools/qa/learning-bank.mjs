@@ -4,7 +4,8 @@ import { pathToFileURL } from 'node:url';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright-core');
 const base = process.env.QA_URL || 'http://127.0.0.1:5206';
-const out = 'output/note-knights/learning-120/';
+const tag=process.env.QA_TAG||'';if(tag&&!/^[a-z0-9-]+$/.test(tag))throw Error('Invalid QA tag');
+const out = 'output/note-knights/learning-120/'+(tag?tag+'/':'');
 await mkdir(out, { recursive: true });
 const report = { base, started: new Date().toISOString(), items: [], audio: [], errors: [], layouts: [] };
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--disable-background-timer-throttling'] });
@@ -116,6 +117,16 @@ try {
   const layout = await page.evaluate(() => { const d = document.querySelector('.notebook'), r = d.getBoundingClientRect(); return { width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth, scrollHeight: document.documentElement.scrollHeight, dialog: { x: r.x, y: r.y, right: r.right, bottom: r.bottom }, bodyOverflow: d.querySelector('.notebook-body').scrollWidth > d.querySelector('.notebook-body').clientWidth + 1 }; });
   assert.ok(layout.scrollWidth <= width && layout.scrollHeight <= height && !layout.bodyOverflow); assert.ok(layout.dialog.x >= 0 && layout.dialog.y >= 0 && layout.dialog.right <= width && layout.dialog.bottom <= height);
   report.layouts.push({ label, ...layout }); await page.screenshot({ path: out + label + '-verified.png' });
+ }
+ // Fixed time-grid comparisons must remain unbroken even on a narrow phone.
+ report.comparisonRows=[];
+ await selects.nth(0).selectOption('5-6');await selects.nth(1).selectOption('gugak');await book.getByRole('tab',{name:'문제',exact:true}).click();
+ while(await book.locator('fieldset').getAttribute('data-question-id')!=='visual-56-gugak-hanbae')await next.click();
+ for(const [width,height]of[[320,740],[390,844],[768,1024]]){
+  await page.setViewportSize({width,height});await page.evaluate(()=>document.fonts.ready);
+  const rows=await book.locator('.music-rows span').evaluateAll(es=>es.map(e=>({x:e.getBoundingClientRect().x,width:e.clientWidth,content:e.scrollWidth,whiteSpace:getComputedStyle(e).whiteSpace})));
+  assert.equal(rows.length,2);assert.ok(rows.every(r=>r.content<=r.width&&r.whiteSpace==='pre'));assert.ok(Math.abs(rows[0].x-rows[1].x)<1);
+  report.comparisonRows.push({width,rows});await page.screenshot({path:out+`hanbae-${width}.png`});
  }
  await book.getByRole('button', { name: '닫기', exact: true }).click();
  assert.equal(await page.locator('dialog[open]').count(), 0);

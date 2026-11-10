@@ -71,13 +71,13 @@ describe('authored listening bank', () => {
 
   it('matches all eight rhythm answers to their actual quarter-unit onset and duration patterns', () => {
     const fixtures = [
-      ['34', 1, [1, 1, 1, 1], '4분음표 네 개'],
-      ['34', 2, [0.5, 0.5, 1, 2], '8분음표 둘, 4분음표 하나, 2분음표 하나'],
+      ['34', 1, [1, 1, 1, 1], '나'],
+      ['34', 2, [0.5, 0.5, 1, 2], '가'],
       ['34', 3, [2, 1, 1], '긴 소리 하나 뒤에 짧은 소리 둘'],
       ['34', 4, [1, 0.5, 0.5, 1, 1], '두 번째 박'],
-      ['56', 1, [1.5, 0.5, 1, 1], '점4분음표, 8분음표, 4분음표 둘'],
+      ['56', 1, [1.5, 0.5, 1, 1], '나'],
       ['56', 2, [0.25, 0.25, 0.25, 0.25, 1, 2], '첫 번째 박'],
-      ['56', 3, [0.5, 1, 0.5, 2], '8분음표, 4분음표, 8분음표, 2분음표'],
+      ['56', 3, [0.5, 1, 0.5, 2], '다'],
       ['56', 4, [1, 0.5, 0.5, 0.5, 0.5, 1], '네 번째 박'],
     ] as const;
     for (const [grade, n, durations, text] of fixtures) {
@@ -102,8 +102,10 @@ describe('authored listening bank', () => {
       ['56', 1, [0, 0.5, 2, 3], [0.5, 0.5, 1, 1], '한 박'],
     ] as const) {
       const q = get(grade, 'rest', n);
-      expect(q.audio![0].events.map(e => e.beat)).toEqual(starts);
-      expect(q.audio![0].events.map(e => e.duration)).toEqual(lengths);
+      const clip=q.audio![0];expect(clip.instrument).toBe('piano');
+      expect(clip.events.slice(0,4).map(e=>e.beat)).toEqual([0,1,2,3]);
+      expect(clip.events.slice(4).map(e => e.beat-4)).toEqual(starts);
+      expect(clip.events.slice(4).map(e => e.duration)).toEqual(lengths);
       expect(answer(q)).toBe(text);
     }
   });
@@ -161,7 +163,7 @@ describe('authored listening bank', () => {
       ['34', 'melody', 1, [60, 62, 64, 65], '차례로 올라간다'],
       ['34', 'melody', 2, [67, 65, 64, 62], '차례로 내려간다'],
       ['56', 'melody', 1, [60, 64, 62, 60], '첫째 음에서 둘째 음으로 갈 때'],
-      ['56', 'melody', 2, [60, 62, 64, 60], '끝음이 처음 음과 같다'],
+      ['56', 'melody', 2, [60, 64, 67, 64, 65, 62, 67, 60], '끝음이 처음 음과 같다'],
     ] as const) {
       const q = get(grade, lesson, n);
       expect(pitches(q.audio![0])).toEqual(notes);
@@ -234,7 +236,7 @@ describe('authored listening bank', () => {
       ['56', 1, ['flute', 'clarinet'], '둘 다 목관악기'],
       ['56', 2, ['violin', 'cello'], '둘 다 현악기'],
       ['56', 3, ['trumpet', 'clarinet'], 'A는 금관악기, B는 목관악기'],
-      ['56', 4, ['piano', 'trumpet', 'piano'], '소리 C'],
+      ['56', 4, ['piano', 'trumpet', 'flute'], 'B와 C'],
     ] as const) {
       const q = get(grade, 'timbre', n);
       expect(q.audio!.map(c => c.instrument)).toEqual(instruments);

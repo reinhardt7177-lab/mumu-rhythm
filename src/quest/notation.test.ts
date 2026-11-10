@@ -1,6 +1,13 @@
-import{describe,it,expect}from'vitest';
-import{scoreBeats,notationLabel,engravingKeys}from'./notation';
+import{describe,it,expect,vi}from'vitest';
+import{scoreBeats,notationLabel,engravingKeys,visualElement}from'./notation';
+import type{Visual}from'./bank/types';
 describe('educational notation semantics',()=>{
+ it('preserves explicit temporal rows rather than squeezing them into parallel narrow cells',()=>{
+  const make=()=>({className:'',children:[]as unknown[],setAttribute(){},append(...children:unknown[]){this.children.push(...children);}});
+  vi.stubGlobal('document',{createElement:make});
+  try{const figure=visualElement({kind:'labels',cells:['앞: 덩 · 쿵','뒤: 덩 쿵'],layout:'rows'}as Visual)as unknown as ReturnType<typeof make>;expect((figure.children[0]as ReturnType<typeof make>).className).toBe('music-cells music-rows');}
+  finally{vi.unstubAllGlobals();}
+ });
  it('uses the engraver rest sentinel so whole rests hang from the correct line',()=>{expect(engravingKeys({duration:'w',rest:true})).toEqual(['r/4']);expect(engravingKeys({duration:'h',rest:true})).toEqual(['r/4']);});
  it('counts durations and rests using quarter-note units, including dots',()=>{
   expect(scoreBeats([{duration:'q'},{duration:'q',rest:true},{duration:'h'}])).toBe(4);

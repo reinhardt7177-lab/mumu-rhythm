@@ -2,7 +2,7 @@ export type GradeBand='3-4'|'5-6';
 export type InstrumentId='piano'|'flute'|'violin'|'trumpet'|'clarinet'|'cello';
 export type LessonId='pulse'|'rhythm'|'rest'|'duration'|'pitch'|'melody'|'dynamics'|'tempo'|'timbre'|'harmony'|'form'|'gugak';
 export interface ScoreNote{keys?:string[];duration:'w'|'h'|'q'|'8'|'16';rest?:boolean;dots?:number}
-export type Visual={kind:'score';notes:ScoreNote[];time?:string;caption?:string}|{kind:'labels';cells:string[];caption?:string};
+export type Visual={kind:'score';notes:ScoreNote[];time?:string;caption?:string}|{kind:'labels';cells:string[];caption?:string;layout?:'rows'};
 export interface SoundEvent{beat:number;duration:number;midi:number|number[];velocity?:number}
 export interface ListeningClip{id:string;instrument:InstrumentId;bpm:number;events:SoundEvent[];label?:string}
 export interface Choice{text:string;visual?:Visual}

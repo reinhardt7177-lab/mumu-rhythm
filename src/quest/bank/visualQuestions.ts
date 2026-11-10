@@ -6,12 +6,13 @@ const r = (duration: ScoreNote['duration'], dots?: number): ScoreNote =>
   ({ keys: ['c/5'], duration, rest: true, ...(dots ? { dots } : {}) });
 const score = (notes: ScoreNote[], time?: string): Visual =>
   ({ kind: 'score', notes, ...(time ? { time } : {}) });
-const labels = (cells: string[], caption: string): Visual => ({ kind: 'labels', cells, caption });
+const labels = (cells: string[], caption: string, layout?: 'rows'): Visual =>
+  ({ kind: 'labels', cells, caption, ...(layout ? { layout } : {}) });
 
 export const VISUAL_QUESTIONS: BankQuestion[] = [
   {
     id: 'visual-34-duration-equivalent', lessonId: 'duration', grade: '3-4', kind: 'visual',
-    prompt: '위의 2분음표 하나와 전체 길이가 같은 악보를 골라 보세요. 빠르기는 모두 같아요.',
+    prompt: '위 음표와 전체 길이가 같은 악보를 골라 보세요. 빠르기는 모두 같아요.',
     visual: score([n('h')]),
     choices: [
       { text: '가', visual: score([n('q')]) },
@@ -54,7 +55,7 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
   },
   {
     id: 'visual-34-rest-length', lessonId: 'rest', grade: '3-4', kind: 'visual',
-    prompt: '이 기호는 2분쉼표예요. 4분음표를 한 박으로 정하면 얼마 동안 소리를 쉬어야 할까요?',
+    prompt: '4분음표를 한 박으로 세어요. 이 쉼표에서는 몇 박 동안 소리를 쉬어야 할까요?',
     visual: score([r('h')]),
     choices: [{ text: '반 박' }, { text: '한 박' }, { text: '두 박' }], correct: 2,
     why: '2분쉼표는 2분음표와 같은 길이를 쉬어요. 4분음표가 한 박인 이 연습에서는 두 박 동안 쉬어요.',
@@ -150,23 +151,23 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
     id: 'visual-34-dynamics-symbol', lessonId: 'dynamics', grade: '3-4', kind: 'visual',
     prompt: '악보에 이 셈여림 기호가 보이면 소리의 세기를 어떻게 표현하나요?',
     visual: labels(['p'], '악보의 셈여림 기호'),
-    choices: [{ text: '여리게 연주해요' }, { text: '빠르게 연주해요' }, { text: '더 높은 음으로 연주해요' }], correct: 0,
+    choices: [{ text: '여리게 연주해요' }, { text: '세게 연주해요' }, { text: '점점 여리게 연주해요' }], correct: 0,
     why: 'p는 피아노라고 읽으며 여리게 연주하라는 셈여림 기호예요. 빠르기나 음높이를 바꾸라는 뜻은 아니에요.',
     misconceptions: [
       '맞아요. p에서는 소리의 세기를 여리게 표현해요.',
-      '빠르기는 박이 지나가는 속도예요. p는 속도가 아니라 소리의 세기를 알려 줘요.',
-      '높은 음과 큰 소리는 달라요. p가 나와도 적힌 음높이는 그대로 연주해요.',
+      '세게 연주하는 기호는 f예요. p는 그와 달리 여리게 연주해요.',
+      'p는 여리게 연주할 세기를 알려 줘요. 그 기호만으로 점점 줄이라는 뜻은 아니에요.',
     ],
   },
   {
     id: 'visual-34-dynamics-contrast', lessonId: 'dynamics', grade: '3-4', kind: 'visual',
     prompt: '같은 가락을 같은 빠르기로 두 번 연주해요. 첫째에서 둘째로 갈 때 기호에 맞는 변화는 무엇인가요?',
     visual: labels(['첫째: p', '둘째: f'], '같은 가락의 셈여림 순서'),
-    choices: [{ text: '박이 점점 빨라져요' }, { text: '모든 음이 더 높아져요' }, { text: '여리게 연주하다 세게 연주해요' }], correct: 2,
+    choices: [{ text: '세게 연주하다 여리게 연주해요' }, { text: '두 번 모두 같은 세기로 연주해요' }, { text: '여리게 연주하다 세게 연주해요' }], correct: 2,
     why: 'p는 여리게, f는 세게 연주해요. 가락과 빠르기를 유지하면서 소리의 세기를 대비할 수 있어요.',
     misconceptions: [
-      '세게 연주한다고 빨라질 필요는 없어요. 이 문제에서는 같은 빠르기를 유지해요.',
-      '음높이를 바꾸는 표시가 아니에요. 같은 가락을 다른 세기로 표현해요.',
+      '그 순서는 f에서 p로 갈 때예요. 그림에서는 p가 먼저 나오고 f가 뒤에 나와요.',
+      '가락과 빠르기는 같아도 세기는 달라요. 첫째의 p와 둘째의 f를 구별해요.',
       '맞아요. p에서 f로 바뀌므로 둘째 연주를 더 세게 표현해요.',
     ],
   },
@@ -196,7 +197,7 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
   },
   {
     id: 'visual-34-gugak-cycle', lessonId: 'gugak', grade: '3-4', kind: 'visual',
-    prompt: '덩, 쿵, 덕을 차례대로 되풀이하는 연습용 구음꼴이에요. 빈칸에서 이어 부를 구음은 무엇인가요?',
+    prompt: '그림은 같은 묶음을 되풀이하는 연습용 구음꼴이에요. 빈칸에서 이어 부를 구음은 무엇인가요?',
     visual: labels(['덩', '쿵', '덕', '덩', '쿵', '?'], '구음으로 부르는 반복 연습'),
     choices: [{ text: '덩' }, { text: '덕' }, { text: '쿵' }], correct: 1,
     why: '덩, 쿵, 덕의 순서가 한 묶음으로 반복돼요. 둘째 묶음에서도 쿵 다음에는 덕이 와요. 특정 장단의 이름을 묻는 문제는 아니에요.',
@@ -220,7 +221,7 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
   },
   {
     id: 'visual-56-duration-dot', lessonId: 'duration', grade: '5-6', kind: 'visual',
-    prompt: '4분음표를 한 박으로 정했어요. 위의 점2분음표와 전체 길이가 같은 악보는 무엇인가요?',
+    prompt: '4분음표를 한 박으로 정했어요. 위 음표와 전체 길이가 같은 악보는 무엇인가요? 빠르기는 모두 같아요.',
     visual: score([n('h', 'c/5', 1)]),
     choices: [
       { text: '가', visual: score([n('h')]) },
@@ -236,23 +237,23 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
   },
   {
     id: 'visual-56-duration-subdivide', lessonId: 'duration', grade: '5-6', kind: 'visual',
-    prompt: '위의 4분음표 한 박을 같은 길이의 16분음표들로 나누려 해요. 전체 길이를 유지한 악보를 고르세요.',
+    prompt: '4분음표를 한 박으로 세어요. 위 음표를 같은 길이의 음표 네 개로 나누려 해요. 빠르기와 전체 길이를 유지한 악보를 고르세요.',
     visual: score([n('q')]),
     choices: [
-      { text: '가', visual: score([n('8')]) },
+      { text: '가', visual: score([n('16'), n('16')]) },
       { text: '나', visual: score([n('8'), n('8'), n('8'), n('8')]) },
       { text: '다', visual: score([n('16'), n('16'), n('16'), n('16')]) },
     ], correct: 2,
     why: '16분음표는 4분음표 길이의 4분의 1이에요. 네 개를 고르게 이어 연주하면 원래 한 박의 길이가 돼요.',
     misconceptions: [
-      '8분음표 하나는 반 박뿐이에요. 음표가 하나라는 이유로 길이가 같지는 않아요.',
+      '16분음표 두 개는 반 박이에요. 네 개로 나누는 조건과 원래 한 박의 길이를 모두 확인해요.',
       '8분음표 네 개는 두 박이에요. 개수와 함께 각 음표의 길이도 확인해요.',
       '맞아요. 한 박을 네 부분으로 나누어도 전체 박의 속도는 바뀌지 않아요.',
     ],
   },
   {
     id: 'visual-56-rest-dot', lessonId: 'rest', grade: '5-6', kind: 'visual',
-    prompt: '4분음표가 한 박인 연습이에요. 이 점4분쉼표 하나가 차지하는 쉼의 길이는 얼마인가요?',
+    prompt: '4분음표가 한 박인 연습이에요. 그림의 쉼표 하나가 차지하는 쉼의 길이는 얼마인가요?',
     visual: score([r('q', 1)]),
     choices: [{ text: '한 박 반' }, { text: '한 박' }, { text: '반 박' }], correct: 0,
     why: '쉼표에 붙은 점도 원래 길이의 절반을 더해요. 한 박에 반 박을 더하여 한 박 반 동안 소리를 쉬어요.',
@@ -292,30 +293,30 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
   },
   {
     id: 'visual-56-rhythm-reorder', lessonId: 'rhythm', grade: '5-6', kind: 'visual',
-    prompt: '위 리듬의 둘째 박 쉼을 마지막 박으로 옮겨요. 소리 세 번과 쉼 한 번의 길이는 그대로인 악보를 고르세요.',
+    prompt: '위 리듬에서 쉼표와 마지막 음표의 자리만 서로 바꿔요. 나머지는 그대로 둔 악보를 고르세요. 4분음표를 한 박으로 세어요.',
     visual: score([n('q'), r('q'), n('q'), n('q')], '4/4'),
     choices: [
       { text: '가', visual: score([n('q'), n('q'), n('q'), r('q')], '4/4') },
-      { text: '나', visual: score([n('q'), n('q'), r('q'), n('q')], '4/4') },
-      { text: '다', visual: score([r('q'), n('q'), n('q'), n('q')], '4/4') },
+      { text: '나', visual: score([n('q'), r('q'), n('q'), r('q')], '4/4') },
+      { text: '다', visual: score([r('q'), n('q'), n('q'), r('q')], '4/4') },
     ], correct: 0,
     why: '가는 앞의 세 박에서 소리를 내고 마지막 박을 쉬어요. 소리와 쉼의 총길이는 같아도 놓인 자리를 바꾸면 리듬이 달라져요.',
     misconceptions: [
       '맞아요. 네 박의 길이를 유지하면서 쉬는 자리가 마지막 박으로 바뀌었어요.',
-      '나는 셋째 박을 쉬어요. 마지막 박에 쉼을 둔다는 조건을 다시 살펴보세요.',
-      '다는 첫째 박을 쉬어요. 쉼을 옮길 목적지가 어디인지 확인해요.',
+      '나는 마지막에 쉼을 더했지만 둘째 박의 쉼도 남겨 두었어요. 서로 자리를 바꿔야 해요.',
+      '다는 첫째 박도 쉼으로 바꿨어요. 바꾸기로 한 두 자리 밖의 음표는 그대로 두어요.',
     ],
   },
   {
     id: 'visual-56-pitch-name', lessonId: 'pitch', grade: '5-6', kind: 'visual',
-    prompt: '높은음자리표에서 오선 아래 첫째 덧줄에 놓인 이 음의 음이름은 무엇인가요?',
+    prompt: '높은음자리표에서 그림의 음표가 나타내는 음이름은 무엇인가요?',
     visual: score([n('q', 'c/4')]),
-    choices: [{ text: '라(A)' }, { text: '다(C)' }, { text: '사(G)' }], correct: 1,
+    choices: [{ text: '나(B)' }, { text: '다(C)' }, { text: '라(D)' }], correct: 1,
     why: '높은음자리표에서 아래 첫째 덧줄의 음은 가운데 다(C)예요. 줄과 칸을 아래위로 짚으며 음이름을 확인해요.',
     misconceptions: [
-      '라(A)는 이 덧줄의 음이름이 아니에요. 높은음자리표의 가운데 다 위치를 확인해요.',
+      '나(B)는 가운데 다(C)보다 한 음 아래예요. 지금 음표 머리는 아래 첫째 덧줄 위에 있어요.',
       '맞아요. 높은음자리표 아래 첫째 덧줄이 가운데 다(C)의 자리예요.',
-      '높은음자리표의 둘째 줄은 사(G)예요. 지금 음은 오선 아래 덧줄에 있어요.',
+      '라(D)는 가운데 다(C)보다 한 음 위의 칸에 있어요. 지금 음표 머리는 칸이 아니라 덧줄 위에 있어요.',
     ],
   },
   {
@@ -334,13 +335,13 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
     id: 'visual-56-melody-arch', lessonId: 'melody', grade: '5-6', kind: 'visual',
     prompt: '첫째부터 셋째 음까지 뛰어 올라간 뒤, 마지막에 한 번 내려오는 가락은 어느 것인가요?',
     choices: [
-      { text: '가', visual: score([n('q', 'c/5'), n('q', 'd/5'), n('q', 'e/5'), n('q', 'f/5')], '4/4') },
+      { text: '가', visual: score([n('q', 'c/5'), n('q', 'd/5'), n('q', 'e/5'), n('q', 'd/5')], '4/4') },
       { text: '나', visual: score([n('q', 'g/5'), n('q', 'e/5'), n('q', 'c/5'), n('q', 'e/5')], '4/4') },
       { text: '다', visual: score([n('q', 'c/5'), n('q', 'e/5'), n('q', 'g/5'), n('q', 'e/5')], '4/4') },
     ], correct: 2,
     why: '다는 도에서 미, 미에서 솔로 건너뛰며 올라가고, 마지막에 솔에서 미로 내려와요. 방향과 차례·뛰어가기를 함께 살펴봐요.',
     misconceptions: [
-      '가는 끝까지 차례로 올라가요. 뛰어가기와 마지막 내려오기라는 두 조건이 맞지 않아요.',
+      '가도 올라갔다 내려오지만 앞의 음들은 차례로 움직여요. 뛰어 올라가는 조건이 맞지 않아요.',
       '나는 먼저 내려갔다가 올라가요. 방향이 바뀌는 순서가 반대예요.',
       '맞아요. 앞에서는 뛰어 올라가고 마지막 한 번은 내려오는 가락이에요.',
     ],
@@ -365,17 +366,17 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
     id: 'visual-56-dynamics-crescendo', lessonId: 'dynamics', grade: '5-6', kind: 'visual',
     prompt: '아래 셈여림 계획을 한 가락에 걸쳐 부드럽게 이어 표현해요. 어떤 변화에 귀 기울여야 하나요?',
     visual: labels(['p', '→', 'mf', '→', 'f'], '화살표를 따라 조금씩 변화시키는 셈여림'),
-    choices: [{ text: '박이 조금씩 빨라지는 변화' }, { text: '소리가 조금씩 세지는 변화' }, { text: '음높이가 조금씩 올라가는 변화' }], correct: 1,
+    choices: [{ text: '소리가 조금씩 여려지는 변화' }, { text: '소리가 조금씩 세지는 변화' }, { text: '처음 세기를 그대로 유지하는 변화' }], correct: 1,
     why: 'p에서 mf를 거쳐 f로 가면 여리게 시작해서 점점 세게 표현해요. 이런 세기의 변화를 크레셴도로 나타낼 수 있어요.',
     misconceptions: [
-      '셈여림을 바꿀 때도 빠르기는 유지할 수 있어요. 점점 세게와 점점 빠르게는 달라요.',
+      '점점 여리게 하려면 더 여린 기호 쪽으로 가야 해요. 그림은 p에서 f 쪽으로 가요.',
       '맞아요. 세기의 중간 단계를 거쳐 점점 세게 표현하는 계획이에요.',
-      '이 기호들은 음높이를 정하지 않아요. 적힌 가락의 높이는 그대로 두어요.',
+      'p, mf, f는 서로 다른 세기예요. 처음 세기를 유지하지 않고 조금씩 바꾸어 표현해요.',
     ],
   },
   {
     id: 'visual-56-dynamics-plan', lessonId: 'dynamics', grade: '5-6', kind: 'visual',
-    prompt: 'mf로 시작한 가락을 점점 여리게 하여 p로 마치려 해요. 같은 빠르기를 유지할 때 알맞은 셈여림 계획은 무엇인가요?',
+    prompt: '같은 빠르기를 지키며 화살표를 따라 셈여림을 조금씩 바꿔요. 처음보다 여리게 끝나는 계획을 고르세요.',
     choices: [
       { text: '가', visual: labels(['mf', '→', 'p'], '셈여림 계획 가') },
       { text: '나', visual: labels(['p', '→', 'f'], '셈여림 계획 나') },
@@ -390,32 +391,32 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
   },
   {
     id: 'visual-56-form-return', lessonId: 'form', grade: '5-6', kind: 'visual',
-    prompt: '같은 글자는 같은 가락이에요. a-b-a 구성의 가운데 b만 새로운 가락 c로 바꾸면 어떤 구성이 되나요?',
+    prompt: '같은 글자는 같은 가락이에요. 그림의 처음과 끝은 두고 가운데만 새 가락 c로 바꾸세요. 바꾼 구성은 무엇인가요?',
     visual: labels(['a', 'b', 'a'], '바꾸기 전의 세 부분'),
     choices: [
-      { text: '가', visual: labels(['c', 'b', 'c'], '바꾼 구성 가') },
+      { text: '가', visual: labels(['b', 'c', 'b'], '바꾼 구성 가') },
       { text: '나', visual: labels(['a', 'c', 'a'], '바꾼 구성 나') },
-      { text: '다', visual: labels(['a', 'b', 'c'], '바꾼 구성 다') },
+      { text: '다', visual: labels(['a', 'c', 'b'], '바꾼 구성 다') },
     ], correct: 1,
     why: '가운데 부분만 바꾸면 a-c-a가 돼요. 처음 가락이 마지막에 돌아오는 관계는 유지하면서 가운데의 대비를 새롭게 만들어요.',
     misconceptions: [
-      '가는 가운데가 아니라 처음과 끝을 바꿨어요. 어느 부분을 바꿀지 조건을 확인해요.',
+      '가는 가운데뿐 아니라 처음과 끝도 b로 바꿨어요. 처음과 끝은 원래 그림의 a를 지켜요.',
       '맞아요. 처음과 끝의 a는 남겨 두고 가운데 b만 c로 바꿨어요.',
-      '다는 마지막을 바꿨어요. 처음 가락으로 돌아오는 관계도 사라졌어요.',
+      '다는 가운데와 함께 마지막도 b로 바꿨어요. 처음 가락으로 돌아오는 관계를 지켜야 해요.',
     ],
   },
   {
     id: 'visual-56-form-expand', lessonId: 'form', grade: '5-6', kind: 'visual',
-    prompt: '큰 부분 A는 a-a, B는 b-b로 이루어져요. 큰 부분을 A-B-A 순서로 연주할 때 작은 가락의 순서는 무엇인가요?',
+    prompt: '그림의 큰 부분을 A-B-A 순서로 연주해요. 각 부분을 펼쳤을 때 작은 가락의 순서는 무엇인가요?',
     visual: labels(['A: a + a', 'B: b + b'], '대문자는 큰 부분, 소문자는 작은 가락'),
     choices: [
-      { text: '가', visual: labels(['a', 'b', 'a'], '작은 가락의 순서 가') },
+      { text: '가', visual: labels(['a', 'b', 'a', 'b', 'a', 'b'], '작은 가락의 순서 가') },
       { text: '나', visual: labels(['a', 'a', 'b', 'b', 'b', 'b'], '작은 가락의 순서 나') },
       { text: '다', visual: labels(['a', 'a', 'b', 'b', 'a', 'a'], '작은 가락의 순서 다') },
     ], correct: 2,
     why: '큰 부분 A 하나에는 작은 a가 두 번 들어 있어요. A-B-A를 각각 풀어 쓰면 a-a, b-b, a-a 순서예요.',
     misconceptions: [
-      '대문자 한 부분과 소문자 한 가락을 같은 크기로 보면 안 돼요. 각 큰 부분을 풀어 써요.',
+      '가는 a와 b를 번갈아 놓았어요. 큰 부분마다 어떤 작은 가락 두 개가 들어 있는지 그림을 확인해요.',
       '나는 마지막 큰 부분도 B로 연주한 순서예요. 마지막에는 A가 돌아와야 해요.',
       '맞아요. 큰 부분 세 개를 작은 가락 두 개씩으로 바르게 펼쳤어요.',
     ],
@@ -434,10 +435,10 @@ export const VISUAL_QUESTIONS: BankQuestion[] = [
   },
   {
     id: 'visual-56-gugak-hanbae', lessonId: 'gugak', grade: '5-6', kind: 'visual',
-    prompt: '· 한 칸은 언제나 같은 길이의 기다리는 시간이에요. 같은 구음 순서를 두 줄처럼 연습하면 나중의 한배는 어떻게 바뀌나요?',
-    visual: labels(['처음: 덩 · · 쿵 · · 덕 · ·', '나중: 덩 · 쿵 · 덕 ·'], '구음 사이의 시간 칸을 비교하는 연습 그림'),
+    prompt: '각 구음은 한 박의 시작이에요. ·는 두 줄에서 같은 길이의 시간 눈금이에요. 나중의 한배는 어떻게 달라졌나요?',
+    visual: labels(['처음: 덩 · · 쿵 · · 덕 · ·', '나중: 덩 · 쿵 · 덕 ·'], '구음 사이의 시간 칸을 비교하는 연습 그림', 'rows'),
     choices: [{ text: '더 느려져요' }, { text: '더 빨라져요' }, { text: '빠르기는 같고 세기만 달라져요' }], correct: 1,
-    why: '나중에는 구음 사이에 기다리는 시간 칸이 줄어요. 같은 순서를 더 짧은 시간에 이어 가므로 한배, 곧 빠르기가 빨라져요.',
+    why: '각 구음이 박의 시작이므로 구음 사이가 박의 간격이에요. 나중에는 같은 시간 눈금으로 잰 박의 간격이 짧아져서 한배가 빨라져요.',
     misconceptions: [
       '기다리는 시간이 길어져야 더 느려져요. 나중 줄에서는 기다리는 칸이 줄었어요.',
       '맞아요. 같은 구음 순서의 사이가 짧아져서 더 빠르게 이어져요.',
