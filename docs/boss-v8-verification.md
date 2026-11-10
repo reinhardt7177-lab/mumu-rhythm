@@ -44,3 +44,13 @@ See `docs/music-curriculum-v8.md` for directly verified official MOE2022 source,
 Clean browser playthroughs used immutable `quest-BHEo5NRZ.js` (SHA-256 `21eb327ede305b031b43dc862e5ae05b62bb9bece6b385ac52ef5ca2316e2d4b`). All four representative songs completed at100% collection, enemies4/4 and quizzes5/5. Boss death progress was96.77% past,99.88% present,95.80% future and95.55% fantasy. A boss dying with zero remaining visible heads at the finale is valid, not an early-death regression. Charge/cast can be interrupted by a player's chord break; nominal actions are covered separately by renderer tests and galleries.
 
 Native CDP touch and1024x768/768x1024/390x844 dimension checks passed in this clean run. A first diagnostic run exposed harness state carry-over between songs and input misses while taking many screenshots; those attempts are retained, not presented as clean passes. Final production evidence is recorded under a separate production tag after matching this immutable bundle, without overwriting the local observations.
+
+## Production Result
+
+Game release commit `1e6d62bff27bbc92f4d0f69a55ec8db7db7c6eb9`, Vercel deployment `dpl_GqrKFaXsG5dh8G2d6WzzL8hmv2T1`, production alias `https://mumu-rhythm.vercel.app/`. Deployment was READY and served the same JavaScript, CSS and four boss PNG hashes as the tested local build. Licenses were present; pixelfx text differed only in Windows/server line endings. The existing visit counter remained connected.
+
+The clean production run finished2026-11-10 with all four worlds at100% collection, zero MISS and4/4 enemies. Each grade-banded quiz passed unanswered handling, deliberate4/5 grading with per-item explanation, correction and5/5 grading. Boss death was96.72%,99.94%,95.92% and95.55% respectively. Future's third-phase cast was interrupted by a recorded chord-seal break, not silently marked as an observed cast.
+
+Native CDP touch verified a successful hold, early-release handling and independent simultaneous touch contacts.1024x768,768x1024 and390x844 game/library views had no document overflow. Production screenshots were reviewed. All QA browser sessions closed. Physical-tablet latency, actual loudspeaker output and GPU presentation remain outside this emulated test's claims.
+
+Evidence: `output/note-knights/boss-v8/after/production/{report.json,SUMMARY.md}` and `output/note-knights/boss-v8/release/integrity.json`. The documentation-only completion commit does not change the tested game bundle.
