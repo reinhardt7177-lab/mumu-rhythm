@@ -1,0 +1,53 @@
+NOTATION SOFTWARE AND EMBEDDED FONT NOTICES
+
+VexFlow 5.0.0, loaded through import('vexflow/bravura'), includes VexFlow
+software and three embedded WOFF2 faces. The MIT software license does not
+replace the fonts' SIL Open Font License 1.1. No font has been modified here.
+
+VEXFLOW SOFTWARE - MIT
+Copyright (c) 2023-present VexFlow contributors (see AUTHORS.md).
+Copyright (c) 2010-2022 Mohit Muthanna Cheppudira
+Full notice: /assets/notation-licenses/vexflow-MIT.txt
+Official release source:
+https://github.com/vexflow/vexflow/tree/8879d095b29b14dad1f605e0b24b2f1acf1b1e78
+Official license:
+https://github.com/vexflow/vexflow/blob/8879d095b29b14dad1f605e0b24b2f1acf1b1e78/LICENSE
+
+BRAVURA 1.392 - SIL OPEN FONT LICENSE 1.1
+Copyright Steinberg Media Technologies GmbH; Reserved Font Name "Bravura".
+Full bundled-font notice (2021 copyright, copied from embedded metadata):
+/assets/notation-licenses/bravura-embedded-notice.txt
+Unchanged official VexFlow-fonts distribution notice (2019 copyright):
+/assets/notation-licenses/bravura-OFL-1.1.txt
+Exact matching WOFF2 source:
+https://github.com/vexflow/vexflow-fonts/blob/b2bc3a6070225e4d395966b36de76c36a9429b1c/bravura/bravura.woff2
+Official distribution license:
+https://github.com/vexflow/vexflow-fonts/blob/b2bc3a6070225e4d395966b36de76c36a9429b1c/bravura/LICENSE.txt
+Font author's official repository:
+https://github.com/steinbergmedia/bravura
+
+ACADEMICO REGULAR AND BOLD 0.902 - SIL OPEN FONT LICENSE 1.1
+Copyright Steinberg Media Technologies GmbH; Reserved Font Name "Academico".
+Full bundled Regular notice (2022 copyright):
+/assets/notation-licenses/academico-regular-embedded-notice.txt
+Full bundled Bold copyright notice (2020 copyright):
+/assets/notation-licenses/academico-bold-embedded-notice.txt
+The Bold licensing metadata separately states 2022; its full text matches
+the Regular embedded notice, also retained above. These dates are preserved,
+not silently harmonized. The official distribution notice is also included:
+/assets/notation-licenses/academico-OFL-1.1.txt
+Exact matching WOFF2 sources:
+https://github.com/vexflow/vexflow-fonts/blob/b2bc3a6070225e4d395966b36de76c36a9429b1c/academico/academico.woff2
+https://github.com/vexflow/vexflow-fonts/blob/b2bc3a6070225e4d395966b36de76c36a9429b1c/academico/academico-bold.woff2
+Official distribution license:
+https://github.com/vexflow/vexflow-fonts/blob/b2bc3a6070225e4d395966b36de76c36a9429b1c/academico/LICENSE.txt
+Official distribution provenance (installed by Steinberg Dorico):
+https://github.com/vexflow/vexflow-fonts/blob/b2bc3a6070225e4d395966b36de76c36a9429b1c/academico/README.txt
+
+The OFL notices include the complete permission, conditions, termination,
+and disclaimer. Fonts may be bundled with software subject to those terms;
+retain copyright/license notices and reserved font names. The fonts are not
+relicensed as MIT or CC0. Read the full notices for all conditions.
+
+Detailed asset identification and hashes:
+docs/education/notation-provenance.md in the project source.

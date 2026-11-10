@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "canvaskit-wasm": "^0.42.0",
-    "lucide": "^0.468.0"
+    "lucide": "^0.468.0",
+    "vexflow": "5.0.0"
   }
 }

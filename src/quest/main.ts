@@ -1,5 +1,5 @@
 import './style.css';
-import { createIcons, Pause, Play, Info, LayoutGrid, ArrowRight, RotateCcw, X, Headphones, Music2, Maximize, Minimize } from 'lucide';
+import { createIcons, Pause, Play, Info, LayoutGrid, ArrowRight, RotateCcw, X, Headphones, Music2, Maximize, Minimize,BookOpen } from 'lucide';
 import { songDurationSeconds } from '../content/songs';
 import { AudioEngine } from '../engine/audio';
 import { RhythmGame, type GameSnapshot, type JudgeEvent } from '../engine/game';
@@ -13,16 +13,24 @@ import { MUSIC_LIBRARY, librarySong } from './catalog';
 import {previewScene,spriteRect} from './sceneLayout';
 import{holdForInput}from'./laneInput';
 import{BOSS_THEMES,bossBudget,type BossWorld}from'./boss';
-import{learningFor,type GradeBand}from'./learning';
+import{LESSONS,quizFor}from'./bank';
+import type{GradeBand,LessonId}from'./bank/types';
+import{INSTRUMENT_ASSETS}from'./bank/audioAssets';
+import{QuizAudio}from'./quizAudio';
+import{QuizPanel}from'./quizPanel';
+import{MusicNotebook}from'./musicNotebook';
 import{HudWriter}from'./hudWriter';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=renderApp();
-const icons={Pause,Play,Info,LayoutGrid,ArrowRight,RotateCcw,X,Headphones,Music2,Maximize,Minimize};
+const icons={Pause,Play,Info,LayoutGrid,ArrowRight,RotateCcw,X,Headphones,Music2,Maximize,Minimize,BookOpen};
 createIcons({icons});
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const hud=new HudWriter(id=>document.getElementById(id));
 const briefing=el<HTMLDialogElement>('briefing'),paused=el<HTMLDialogElement>('paused'),results=el<HTMLDialogElement>('results');
 const audio=new AudioEngine();
+const quizAudio=new QuizAudio(INSTRUMENT_ASSETS);
+const notebook=new MusicNotebook(quizAudio);
+const resultQuiz=new QuizPanel(el('quiz'),quizAudio,id=>notebook.open(grade,id));
 const battlefield=new Battlefield(el<HTMLCanvasElement>('world'));
 const notes=el<HTMLCanvasElement>('notes');
 const laneButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-lane]')];
@@ -31,8 +39,7 @@ const pressed=new Map<string,string>();
 let world=WORLDS[0],song=songForWorld(world.id),combat=new Combat();
 let snapshot:GameSnapshot|null=null,running=false,starting=false,mode:PlayMode='challenge';
 let grade:GradeBand='3-4';
-let learning=learningFor(song.id,grade);
-let questions=learning.questions;
+let quizRound=0;
 let filterWorld:string|null=null;
 let finaleFrame=0;
 let journeyStage=-1;
@@ -80,33 +87,23 @@ function openBriefing() {
   el('loading').textContent='';briefing.showModal();
 }
 
-function conceptNotes(id:string){
+function conceptNotes(id:string,lessonIds=new Set<LessonId>(quizFor(song.id,grade).map(q=>q.lessonId))){
   const list=el(id);list.replaceChildren();
-  for(const concept of learning.concepts){
+  for(const concept of LESSONS.filter(l=>lessonIds.has(l.id))){
     const term=document.createElement('dt'),body=document.createElement('dd');
-    term.textContent=concept.title;body.textContent=concept.body;list.append(term,body);
+    term.textContent=concept.title;body.textContent=concept.levels[grade].intro;list.append(term,body);
   }
 }
 function setLearning(){
-  learning=learningFor(song.id,grade);questions=learning.questions;
   conceptNotes('briefConcepts');
   document.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.grade===grade)));
 }
 function prepareQuiz(){
-  conceptNotes('resultConcepts');
+  const questions=quizFor(song.id,grade,quizRound++);
+  conceptNotes('resultConcepts',new Set(questions.map(q=>q.lessonId)));
   el('lesson').textContent=`초등 ${grade==='3-4'?'3~4':'5~6'}학년 · ${questions.length}문제`;
-  const quiz=el('quiz');quiz.replaceChildren();
-  questions.forEach((q,i)=>{
-    const field=document.createElement('fieldset'),legend=document.createElement('legend');
-    legend.textContent=`${i+1}. ${q.q}`;field.append(legend);
-    q.a.forEach((a,j)=>{
-      const label=document.createElement('label'),input=document.createElement('input'),text=document.createElement('span');
-      input.type='radio';input.name=`q${i}`;input.value=String(j);text.textContent=a;label.append(input,text);field.append(label);
-    });
-    const feedback=document.createElement('p');feedback.id=`feedback${i}`;feedback.className='question-feedback';feedback.hidden=true;
-    field.setAttribute('aria-describedby',feedback.id);field.append(feedback);quiz.append(field);
-  });
-  const source=el<HTMLAnchorElement>('curriculumSource');source.href=learning.sourceUrls[0];
+  resultQuiz.render(questions);
+  const source=el<HTMLAnchorElement>('curriculumSource');source.href='https://www.moe.go.kr/boardCnts/viewRenew.do?boardID=141&boardSeq=93458&lev=0&m=0302';
   el('explanation').textContent='';
 }
 function showResults(){results.showModal();results.scrollTop=0;}
@@ -163,6 +160,7 @@ const game=new RhythmGame(audio,{
 
 async function start() {
   if(starting)return;starting=true;
+  quizAudio.stop();notebook.close();
   cancelAnimationFrame(finaleFrame);finaleFrame=0;
   el<HTMLButtonElement>('start').disabled=true;el<HTMLButtonElement>('closeBriefing').disabled=true;
   el('loading').textContent='음악을 준비하고 있어요…';
@@ -196,6 +194,7 @@ async function pause() {
 }
 function home() {
   if(starting)return;
+  quizAudio.stop();notebook.close();
   cancelAnimationFrame(finaleFrame);finaleFrame=0;
   game.stop();running=false;snapshot=null;pressed.clear();track.reset();combat=new Combat();
   [briefing,paused,results].forEach(d=>d.close());
@@ -250,29 +249,21 @@ notes.onpointerdown=e=>{
 function release(e:PointerEvent){releaseInput(String(e.pointerId),e.timeStamp);}
 notes.onpointerup=release;notes.onpointercancel=release;notes.onlostpointercapture=release;
 laneButtons.forEach(b=>{b.onpointerdown=e=>{if(!inputAllowed())return;e.preventDefault();press(Number(b.dataset.lane),`b${e.pointerId}`,e.timeStamp);b.setPointerCapture(e.pointerId);};b.onpointerup=e=>releaseInput(`b${e.pointerId}`,e.timeStamp);b.onpointercancel=b.onpointerup;b.onlostpointercapture=b.onpointerup;});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!snapshot?.paused)void pause();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){quizAudio.stop();if(running&&!snapshot?.paused)void pause();}});
 window.addEventListener('blur',releaseAll);
 el('answer').onclick=()=>{
-  const answers=questions.map((_,i)=>document.querySelector<HTMLInputElement>(`input[name="q${i}"]:checked`));
-  if(answers.some(x=>!x)){
-    el('explanation').textContent=`${questions.length}문제의 답을 모두 골라 주세요.`;
-    answers.forEach((answer,i)=>el(`feedback${i}`).parentElement!.setAttribute('aria-invalid',String(!answer)));return;
-  }
-  let count=0;
-  questions.forEach((q,i)=>{
-    const correct=Number(answers[i]!.value)===q.correct;if(correct)count++;
-    const feedback=el(`feedback${i}`);feedback.hidden=false;
-    feedback.dataset.correct=String(correct);
-    feedback.textContent=`${correct?'정답이에요.':`다시 생각해 봐요. 정답: ${q.a[q.correct]}.`} ${q.why}`;
-    feedback.parentElement!.removeAttribute('aria-invalid');
-  });
-  el('explanation').textContent=`${count}/${questions.length} 정답 · 각 문제 아래에서 이유를 확인해요.`;
+  el('explanation').textContent=resultQuiz.grade();
 };
+el('notebook').onclick=async()=>{if(running&&!snapshot?.paused)await pause();notebook.open(grade);};
+results.addEventListener('close',()=>quizAudio.stop());
 el('credits').onclick=async()=>{
   if(running&&!snapshot?.paused)await pause();
   const info=librarySong(song.id),container=el('musicCredit');container.replaceChildren();
   const text=document.createElement('p');text.textContent=info.credit+' '+info.license+(info.changes?' '+info.changes:'');container.append(text);
   for(const [label,url]of [['녹음 원문',info.sourceUrl],['이용 조건',info.licenseUrl]] as const)if(url){const link=document.createElement('a');link.href=url;link.textContent=label;link.target='_blank';link.rel='noopener';container.append(link,document.createElement('br'));}
+  const sampleCredit=document.createElement('p');sampleCredit.textContent='학습용 악기 소리: '+INSTRUMENT_ASSETS.map(a=>a.credit).filter((s,i,a)=>a.indexOf(s)===i).join(' / ');container.append(sampleCredit);
+  const sampleLink=document.createElement('a');sampleLink.href='/assets/audio/quiz-v1/manifest.json';sampleLink.textContent='학습 음원 원본·이용 조건';sampleLink.target='_blank';sampleLink.rel='noopener';container.append(sampleLink);
+  const notationLink=document.createElement('a');notationLink.href='/assets/notation-licenses/NOTICE.txt';notationLink.textContent='악보 엔진·악보 글꼴 이용 조건';notationLink.target='_blank';notationLink.rel='noopener';container.append(document.createElement('br'),notationLink);
   el<HTMLDialogElement>('creditDialog').showModal();
 };
 document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String((b as HTMLElement).dataset.mode===mode)));
