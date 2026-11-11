@@ -30,6 +30,25 @@ function setup() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("note track geometry", () => {
+  it("accepts a fresh input once, including two different fingers on the same lane", () => {
+    const {track}=setup();
+    expect(track.press(1,"finger-a")).toBe(true);
+    expect(track.press(1,"finger-a")).toBe(false);
+    expect(track.press(1,"finger-b")).toBe(true);
+    track.release("finger-a");
+    expect(track.press(1,"finger-a")).toBe(true);
+  });
+
+  it("draws a shared pixel connector only while both paired heads are pending", () => {
+    const {track,snapshot,rectangles}=setup();
+    snapshot.notes[0].paired=true;
+    snapshot.notes.push({...snapshot.notes[0],id:"paired",lane:3});
+    track.draw(snapshot,"challenge");
+    expect(rectangles.some(r=>r.color==="#fff2b0"&&r.width===144&&r.height===2)).toBe(true);
+    snapshot.notes[0].completed=true;rectangles.length=0;
+    track.draw(snapshot,"challenge");
+    expect(rectangles.some(r=>r.color==="#fff2b0"&&r.width===144)).toBe(false);
+  });
   it("lights an empty pressed lane without a successful judgment or score pulse",()=>{
     const{track,snapshot,rectangles}=setup();snapshot.notes=[];
     track.press(3,'KeyJ');track.draw(snapshot,'challenge');
@@ -45,7 +64,7 @@ describe("note track geometry", () => {
   it("centers the rendered head and its selectable target on the music hitline", () => {
     const { track, snapshot, rectangles } = setup();
     track.draw(snapshot, "challenge");
-    const head = rectangles.find(r => r.color === "#81e6d0" && r.width === 38)!;
+    const head = rectangles.find(r => r.color === "#81e6d0" && r.width === 38 && r.height === 10)!;
     expect(head.x + head.width / 2).toBe(24);
     expect(head.y + head.height / 2).toBe(330);
     expect(track.targetAt(58, 680)).toMatchObject({ id: "tap", x: 24, y: 330 });

@@ -1,10 +1,12 @@
 import './style.css';
-import { createIcons, Pause, Play, Info, LayoutGrid, ArrowRight, RotateCcw, X, Headphones, Music2, Maximize, Minimize,BookOpen } from 'lucide';
+import { createIcons, Pause, Play, Info, LayoutGrid, ArrowRight, RotateCcw, X, Headphones, Music2, Maximize, Minimize,BookOpen,Volume2 } from 'lucide';
 import { songDurationSeconds } from '../content/songs';
+import { doubleScroll } from '../core/scrollSpeed';
+import { CHART_LEVELS, chartForLevel, encounterHealth, musicalLevels, type ChartLevel } from '../content/musicalChart';
 import { AudioEngine } from '../engine/audio';
 import { RhythmGame, type GameSnapshot, type JudgeEvent } from '../engine/game';
 import type { PlayMode, Song } from '../types';
-import { Combat } from './combat';
+import { Combat, MAX_ENERGY } from './combat';
 import { Battlefield } from './battlefield';
 import { WORLDS, songForWorld, type MusicalWorld } from './worlds';
 import { NoteTrack } from './noteTrack';
@@ -22,7 +24,7 @@ import{MusicNotebook}from'./musicNotebook';
 import{HudWriter}from'./hudWriter';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=renderApp();
-const icons={Pause,Play,Info,LayoutGrid,ArrowRight,RotateCcw,X,Headphones,Music2,Maximize,Minimize,BookOpen};
+const icons={Pause,Play,Info,LayoutGrid,ArrowRight,RotateCcw,X,Headphones,Music2,Maximize,Minimize,BookOpen,Volume2};
 createIcons({icons});
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const hud=new HudWriter(id=>document.getElementById(id));
@@ -39,6 +41,11 @@ const pressed=new Map<string,string>();
 let world=WORLDS[0],song=songForWorld(world.id),combat=new Combat();
 let snapshot:GameSnapshot|null=null,running=false,starting=false,mode:PlayMode='challenge';
 let grade:GradeBand='3-4';
+let chartLevel:ChartLevel='pulse';
+const chartLabel:Record<ChartLevel,string>={pulse:'가락',groove:'반주',melody:'합주'};
+const counterDamage:Record<ChartLevel,number>={pulse:6,groove:8,melody:10};
+const inputClickKey='mumu-quest-input-click';
+let inputClick=localStorage.getItem(inputClickKey)!=='off';
 let quizRound=0;
 let filterWorld:string|null=null;
 let finaleFrame=0;
@@ -96,6 +103,7 @@ function conceptNotes(id:string,lessonIds=new Set<LessonId>(quizFor(song.id,grad
 }
 function setLearning(){
   conceptNotes('briefConcepts');
+  el('chartLevels').hidden=!musicalLevels(song);
   document.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.grade===grade)));
 }
 function prepareQuiz(){
@@ -108,6 +116,10 @@ function prepareQuiz(){
 }
 function showResults(){results.showModal();results.scrollTop=0;}
 
+function drawVitals(){
+  hud.text('hpLabel',`${combat.hp} / ${combat.maxHp}`);hud.progress('enemyHp',combat.hp,combat.maxHp);
+  hud.text('energyLabel',`${combat.energy} / ${MAX_ENERGY}`);hud.progress('heroEnergy',combat.energy,MAX_ENERGY);
+}
 function draw(s:GameSnapshot) {
   track.draw(s,mode);
   battlefield.setHolding(s.notes.some(note=>note.holding&&!note.completed),s.songTime);
@@ -115,8 +127,8 @@ function draw(s:GameSnapshot) {
   hud.text('score',s.score.toLocaleString());hud.text('combo',s.combo);
   hud.progress('progress',s.progress);hud.text('time',duration(Math.max(0,s.songTime)));
   hud.text('enemyName',combat.stage===3?BOSS_THEMES[world.id as BossWorld].name:world.enemyNames[combat.stage]);hud.text('location',world.stops[combat.stage]);
-  hud.text('hpLabel',`${combat.hp} / ${combat.maxHp}`);hud.progress('enemyHp',combat.hp,combat.maxHp);
-  hud.text('bossCue',combat.stage===3?battlefield.bossCue:'');hud.progress('harmony',combat.harmony);
+  drawVitals();
+  hud.text('bossCue',combat.stage===3?battlefield.bossCue:'');
   hud.text('skill',battlefield.attackName(s.combo));hud.text('kills',`${combat.kills} / 4`);
   hud.text('stageCount',`${combat.stage+1} / 4`);
   hud.text('chapterLabel',combat.won?'모든 소리를 되찾았어요':world.era+' / '+world.title);
@@ -126,7 +138,7 @@ function draw(s:GameSnapshot) {
 
 function judge(e:JudgeEvent) {
   const time=e.songTime??snapshot?.songTime??0;
-  if(e.judge==='MISS'){combat.miss();track.feedback(e,time);return;}
+  if(e.judge==='MISS'){combat.miss(time,musicalLevels(song)?counterDamage[chartLevel]:8);track.feedback(e,time);return;}
   const attack=combat.launch(e.judge==='PERFECT',e.combo,time,!!e.hold);
   if(attack)battlefield.attack(attack);
   else battlefield.celebrate(e.combo,time);
@@ -142,7 +154,7 @@ const game=new RhythmGame(audio,{
     battlefield.setHolding(false,snapshot?.songTime??0);
     el('ending').textContent=combat.won?'이 세계의 음악을 되찾았어요!':'소리를 모으는 작은 모험';
     el('endingTag').textContent=song.title+' / '+world.era;
-    el('stats').textContent=`수집률 ${r.accuracy}% · 최고 콤보 ${r.maxCombo} · 처치 ${combat.kills}/4`;
+    el('stats').textContent=`수집률 ${r.accuracy}% · 최고 콤보 ${r.maxCombo} · 처치 ${combat.kills}/4 · 남은 에너지 ${combat.energy}`;
     prepareQuiz();
     const time=snapshot?.songTime??0,remaining=battlefield.finaleRemaining(time);
     if(remaining>0){
@@ -165,13 +177,14 @@ async function start() {
   el<HTMLButtonElement>('start').disabled=true;el<HTMLButtonElement>('closeBriefing').disabled=true;
   el('loading').textContent='음악을 준비하고 있어요…';
   try {
-    const encounterSong=song,encounterMode=mode;
-    combat=new Combat((power,progress)=>bossBudget(encounterSong,encounterMode,power,progress,snapshot?.notes));snapshot=null;journeyStage=-1;pressed.clear();track.reset();battlefield.setWorld(world);
+    const encounterSong=doubleScroll(chartForLevel(song,chartLevel)),encounterMode=mode;
+    combat=new Combat((power,progress)=>bossBudget(encounterSong,encounterMode,power,progress,snapshot?.notes),encounterHealth(encounterSong));snapshot=null;journeyStage=-1;pressed.clear();track.reset();battlefield.setWorld(world);
     await Promise.all([battlefield.ready,track.ready]);
-    await game.start(song,mode);running=true;
+    await game.start(encounterSong,encounterMode);running=true;
+    drawVitals();
     briefing.close();results.close();paused.close();
     el('library').hidden=true;el('arena').hidden=false;document.querySelector<HTMLElement>('.quest')!.dataset.screen='game';
-    el('headerChapter').textContent=world.title;el('playingTitle').textContent='♪ '+song.title;
+    el('headerChapter').textContent=world.title;el('playingTitle').textContent='♪ '+song.title+(musicalLevels(song)?' · '+chartLabel[chartLevel]:'');
     el('modeLabel').textContent=mode==='explore'?'바를 터뜨려요':'박 맞추기';
     el<HTMLButtonElement>('pause').disabled=false;el<HTMLButtonElement>('home').disabled=false;
   } catch {
@@ -210,16 +223,30 @@ briefing.oncancel=e=>{if(starting)e.preventDefault();};
 paused.oncancel=e=>{e.preventDefault();void pause();};
 el('start').onclick=()=>void start();el('pause').onclick=()=>void pause();el('resume').onclick=()=>void pause();
 el('restartPause').onclick=()=>void start();el('again').onclick=()=>{results.close();home();openBriefing();};
+el('inputClick').setAttribute('aria-pressed',String(inputClick));
+el('inputClick').onclick=()=>{
+ inputClick=!inputClick;localStorage.setItem(inputClickKey,inputClick?'on':'off');
+ el('inputClick').setAttribute('aria-pressed',String(inputClick));
+};
 for(const id of ['home','leavePause','resultHome'])el(id).onclick=home;
 document.querySelectorAll<HTMLButtonElement>('[data-world]').forEach(b=>b.onclick=()=>{filterWorld=b.dataset.world!;selectWorld(WORLDS.find(w=>w.id===filterWorld)!);});
 el('allSongs').onclick=()=>{filterWorld=null;selectWorld(world,song);};
 document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode==='challenge'?'challenge':'explore';document.querySelectorAll('[data-mode]').forEach(n=>n.setAttribute('aria-pressed',String(n===b)));});
 document.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach(b=>b.onclick=()=>{grade=b.dataset.grade==='5-6'?'5-6':'3-4';setLearning();});
+for(const level of CHART_LEVELS){
+ const button=document.querySelector<HTMLButtonElement>(`[data-chart-level="${level}"]`)!;
+ button.onclick=()=>{if(starting)return;chartLevel=level;document.querySelectorAll('[data-chart-level]').forEach(n=>n.setAttribute('aria-pressed',String(n===button)));};
+}
 function inputAllowed(){return running&&!starting&&!snapshot?.paused&&!document.querySelector('dialog[open]');}
 function ownHold(key:string,lane:number,result:ReturnType<RhythmGame['pressLane']>,noteId?:string){
   const id=holdForInput(result,snapshot?.notes??[],lane,noteId);if(id)pressed.set(key,id);
 }
-function press(lane:number,key:string,time:number){if(!inputAllowed())return;track.press(lane,key);ownHold(key,lane,game.pressLane(lane,time));}
+function beginInput(lane:number,key:string){
+ if(!track.press(lane,key))return false;
+ if(inputClick)audio.playKeyClick();
+ return true;
+}
+function press(lane:number,key:string,time:number){if(!inputAllowed()||!beginInput(lane,key))return;ownHold(key,lane,game.pressLane(lane,time));}
 function releaseInput(key:string,time:number){
   track.release(key);const id=pressed.get(key);pressed.delete(key);
   if(id&&![...pressed.values()].includes(id))game.releaseNote(id,time);
@@ -241,7 +268,8 @@ notes.onpointerdown=e=>{
   }
   const rect=notes.getBoundingClientRect(),lane=Math.floor((e.clientX-rect.left)/rect.width*5);
   if(lane<0||lane>=5)return;
-  track.press(lane,String(e.pointerId));notes.setPointerCapture(e.pointerId);
+  if(!beginInput(lane,String(e.pointerId)))return;
+  notes.setPointerCapture(e.pointerId);
   const target=track.targetAt(e.clientX,e.clientY);if(!target)return;
   const hit=game.pressNote(target.id,e.timeStamp);
   ownHold(String(e.pointerId),lane,hit,target.id);

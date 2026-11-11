@@ -104,7 +104,20 @@ export class AudioEngine {
     return songStartTime;
   }
 
-  playPop(lane: number, accent: boolean): void {
+  playKeyClick(): void {
+    if (!this.context || !this.ready || !this.effectsBus || !this.popNoise) return;
+    const now = this.context.currentTime;
+    const click = this.track(this.context.createBufferSource());
+    const gain = this.context.createGain();
+    click.buffer = this.popNoise;
+    gain.gain.setValueAtTime(0.16, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.028);
+    click.connect(gain);
+    gain.connect(this.effectsBus);
+    click.start(now, 0, 0.028);
+  }
+
+  playPop(lane: number, accent: boolean, midi?: number): void {
     if (!this.ready || !this.effectsBus || !this.context || !this.popNoise) return;
     const now = this.context.currentTime + 0.002;
     const source = this.track(this.context.createBufferSource());
@@ -122,6 +135,18 @@ export class AudioEngine {
     gain.connect(this.effectsBus);
     source.start(now);
     source.stop(now + 0.15);
+    if (midi !== undefined) {
+      const tone = this.track(this.context.createOscillator());
+      const envelope = this.context.createGain();
+      tone.frequency.setValueAtTime(440 * 2 ** ((midi - 69) / 12), now);
+      envelope.gain.setValueAtTime(0.0001, now);
+      envelope.gain.exponentialRampToValueAtTime(accent ? 0.055 : 0.038, now + 0.006);
+      envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+      tone.connect(envelope);
+      envelope.connect(this.effectsBus);
+      tone.start(now);
+      tone.stop(now + 0.085);
+    }
   }
 
   playUi(kind: "select" | "success" | "soft"): void {

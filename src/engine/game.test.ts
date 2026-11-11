@@ -22,10 +22,30 @@ function setup() {
   const onFrame = vi.fn<(snapshot: GameSnapshot) => void>();
   const game = new RhythmGame(clock as unknown as AudioEngine, { onJudge, onFrame, onSection: vi.fn(), onComplete: vi.fn() });
   const frame = (time: number) => { clock.gameNow = time; nextFrame(time * 1000); };
-  return { game, onJudge, onFrame, frame };
+  return { game, onJudge, onFrame, frame, pop: clock.playPop };
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("musical hit response", () => {
+  const pitched: Song = { ...song, melody: song.melody.map(n => ({ ...n, musicalRole: "lead" })) };
+  it("responds immediately with the scored pitch and does not replay it on the hold tail", async () => {
+    const { game, pop, frame } = setup();
+    await game.start(pitched, "challenge");
+    game.pressNote("tap", 3000);
+    expect(pop).toHaveBeenLastCalledWith(0, false, 60);
+    game.pressNote("hold", 5000);
+    expect(pop).toHaveBeenLastCalledWith(1, false, 64);
+    frame(6);
+    expect(pop).toHaveBeenLastCalledWith(1, false, undefined);
+  });
+  it("uses percussion rather than an out-of-time pitch for early explore hits", async () => {
+    const { game, pop } = setup();
+    await game.start(pitched, "explore");
+    game.pressNote("tap", 1000);
+    expect(pop).toHaveBeenLastCalledWith(0, false, undefined);
+  });
+});
 
 describe("direct note input", () => {
   it("accepts an early visible tap in explore, but not challenge", async () => {

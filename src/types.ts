@@ -11,6 +11,8 @@ export interface MelodyNote {
   lane: number;
   phrase: string;
   accent?: boolean;
+  musicalRole?: "lead" | "bass";
+  paired?: boolean;
 }
 
 export interface SongSection {

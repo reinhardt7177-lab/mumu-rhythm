@@ -17,7 +17,7 @@ function observe() {
    const lane = Math.floor(x / 48), color = String(this.fillStyle);
    if (w === 26 && h > 2) bodies.push({ lane, height: h });
    if (w === 38 && h === 10 && colors.includes(color)) a.heads.push({ lane, x: x + 19, y: y + 5, body: bodies.filter(b => b.lane === lane).at(-1)?.height, white: false });
-   if (color === '#ffffff' && h === 2 && a.heads.length) a.heads.at(-1).white = true;
+   if (color === '#ffffff' && (h === 1 || h === 2) && a.heads.length) a.heads.at(-1).white = true;
   }
   return fill.call(this, x, y, w, h);
  };

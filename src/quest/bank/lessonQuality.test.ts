@@ -41,13 +41,25 @@ const teachingGaps: { questionId: string; concepts: RegExp[] }[] = [
   { questionId: 'listen-56-timbre-4', concepts: [/플루트.*금속.*목관/, /피아노.*해머.*줄/, /오르간/] },
   { questionId: 'concept-56-harmony', concepts: [/세로.*함께/] },
   { questionId: 'visual-56-form-expand', concepts: [/A.*a-a/, /B.*b-b/, /A-B-A.*a-a.*b-b.*a-a/] },
-  { questionId: 'concept-34-gugak', concepts: [/장단.*돌아오는.*손짓/] },
+  { questionId: 'concept-34-gugak', concepts: [/장단.*다시 시작.*손짓/] },
   { questionId: 'visual-34-gugak-cycle', concepts: [/구음/, /덩.*쿵.*덕/, /악기 소리.*입/] },
   { questionId: 'concept-56-gugak', concepts: [/앞 음절.*늘.*뒤 음절.*시작.*늦/, /장단.*한배.*지켜/, /원래 말붙임새.*한배만/] },
   { questionId: 'listen-56-rhythm-3', concepts: [/반 박.*한 박.*반 박.*두 박/, /박.*중간/] },
 ];
 
 describe('lesson teaching and performance quality', () => {
+  it('explains the remaining abstract lesson directions in concrete actions', () => {
+    const gugak = LESSONS.find(lesson => lesson.id === 'gugak')!;
+    const lower = gugak.levels['3-4'];
+    expect(lower.intro).toMatch(/끝나고 다시 시작/);
+    expect(lower.intro).toMatch(/힘을 주고 풀/);
+    expect(lower.guide).not.toMatch(/돌아오는 (곳|자리)/);
+    const form = LESSONS.find(lesson => lesson.id === 'form')!.levels['5-6'];
+    expect(form.guide).not.toContain('근거로');
+    expect(LESSONS.find(lesson => lesson.id === 'tempo')!.goals.join(' ')).not.toContain('점진적인');
+    const pitch = LESSONS.find(lesson => lesson.id === 'pitch')!.levels['3-4'];
+    expect(pitch.guide).toMatch(/셋째 줄이 음표 머리 가운데를 지나/);
+  });
   it('preserves the approved lesson IDs and all twenty-four grade-matched activity IDs', () => {
     expect(LESSONS.map(lesson => lesson.id).sort()).toEqual([...lessonIds].sort());
     expect(ACTIVITIES.map(activity => activity.id).sort()).toEqual(

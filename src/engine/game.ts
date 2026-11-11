@@ -179,6 +179,7 @@ export class RhythmGame {
       note.headJudge = judge;
       note.holdStartedAt = inputTime;
       note.holdReleasedAt = undefined;
+      if (note.musicalRole) this.audio.playPop(note.lane, Boolean(note.accent), judge === "GOOD" ? undefined : note.midi);
       return { kind: "holding", noteId: note.id, judge };
     }
 
@@ -203,7 +204,8 @@ export class RhythmGame {
     const holdBonus = note.durationBeats >= HOLD_NOTE_MIN_BEATS ? Math.min(420, Math.round(note.durationBeats * 95)) : 0;
     const accentBonus = note.accent ? 120 : 0;
     this.score += judgeScore(judge) + holdBonus + accentBonus + Math.min(420, this.combo * 6);
-    this.audio.playPop(note.lane, Boolean(note.accent));
+    this.audio.playPop(note.lane, Boolean(note.accent),
+      note.musicalRole && note.durationBeats < HOLD_NOTE_MIN_BEATS && judge !== "GOOD" ? note.midi : undefined);
     this.callbacks.onJudge({ judge, noteId: note.id, lane: note.lane, score: this.score, combo: this.combo,hold:note.durationBeats>=HOLD_NOTE_MIN_BEATS,songTime:note.judgedAt });
   }
 

@@ -150,7 +150,7 @@ describe('all 32 visual questions: musical answer audit', () => {
     ['34-form-group', ['a', 'a', 'b', 'b'], 'a를 두 번 한 뒤 b를 두 번 해요'],
     ['34-gugak-cycle', ['덩', '쿵', '덕', '덩', '쿵', '?'], '덕'],
     ['34-gugak-syllables', ['1박: 봄', '2박: 바·람', '3박: 분', '4박: 다'], '둘째 박'],
-    ['56-gugak-accent', ['> 덩', '쿵', '덕', '쿵'], '첫 칸에 힘을 주고 칸의 간격은 유지해요'],
+    ['56-gugak-accent', ['> 덩', '쿵', '덕', '쿵'], '첫 칸에 힘을 주고 각 칸의 길이는 그대로 둬요'],
   ])('%s: keeps the displayed diagram consistent with the keyed verbal answer', (id, diagram, answer) => {
     const q = question(id as string);
     expect(cells(q.visual)).toEqual(diagram);
@@ -191,6 +191,27 @@ describe('all 32 visual questions: musical answer audit', () => {
 });
 
 describe('visual item educational quality regressions', () => {
+  it('explains supporting music words without revealing the pictured answer', () => {
+    expect(question('34-duration-unit').why).toMatch(/음표 머리.*둥근/);
+    expect(question('34-pitch-higher').why).toMatch(/오선.*다섯 줄/);
+    expect(question('34-gugak-cycle').prompt).toMatch(/구음.*악기 소리를 입으로/);
+    expect(question('34-gugak-cycle').prompt).not.toMatch(/덩|쿵|덕/);
+    expect(question('34-gugak-syllables').visual?.caption).toContain('글자를 나누는 표시');
+    expect(question('56-gugak-hanbae').prompt).toMatch(/한배.*빠르기/);
+  });
+
+  it('keeps all constraints when simplifying multi-step visual tasks', () => {
+    const subdivide = question('56-duration-subdivide').prompt;
+    expect(subdivide).toMatch(/같은 길이.*네 개/);
+    expect(subdivide).toContain('빠르기와 전체 길이');
+    const revise = question('56-melody-revise').prompt;
+    expect(revise).toContain('앞의 세 음은 그대로');
+    expect(revise).toContain('마지막 음만');
+    expect(revise).toMatch(/셋째 음에서.*이웃한 음으로.*내려/);
+    expect(question('56-gugak-accent').prompt).toContain('각 칸의 길이는 같아요');
+    expect(question('56-dynamics-plan').prompt).toContain('같은 빠르기');
+  });
+
   it('56-gugak-hanbae: requests temporal rows instead of equal-width wrapping cells', () => {
     expect(question('56-gugak-hanbae').visual).toMatchObject({
       kind: 'labels', layout: 'rows',

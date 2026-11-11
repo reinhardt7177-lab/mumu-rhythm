@@ -4,13 +4,15 @@ import { pathToFileURL } from 'node:url';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright-core');
 const base = process.env.QA_URL || 'http://127.0.0.1:5206';
+const initialWidth=Number(process.env.QA_WIDTH||1440);
+assert.ok(Number.isInteger(initialWidth)&&initialWidth>=320&&initialWidth<=3840,'Invalid QA width');
 const tag=process.env.QA_TAG||'';if(tag&&!/^[a-z0-9-]+$/.test(tag))throw Error('Invalid QA tag');
 const out = 'output/note-knights/learning-120/'+(tag?tag+'/':'');
 await mkdir(out, { recursive: true });
 const report = { base, started: new Date().toISOString(), items: [], audio: [], errors: [], layouts: [] };
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--disable-background-timer-throttling'] });
 try {
- const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, hasTouch: true });
+ const page = await browser.newPage({ viewport: { width: initialWidth, height: initialWidth<768?844:900 }, hasTouch: true });
  page.on('pageerror', error => report.errors.push(error.message));
  await page.addInitScript(() => {
   window.__voices = [];
@@ -38,6 +40,10 @@ try {
  await page.locator('#notebook').click();
  const book = page.locator('.notebook'), selects = book.locator('select');
  const next = book.getByRole('button', { name: '다음', exact: true });
+ async function fits(id){
+  const dimensions=await book.locator('.notebook-body').evaluate(e=>({width:e.clientWidth,content:e.scrollWidth,pageWidth:document.documentElement.scrollWidth,viewport:innerWidth}));
+  assert.ok(dimensions.content<=dimensions.width+1&&dimensions.pageWidth<=dimensions.viewport,`${id}: ${JSON.stringify(dimensions)}`);
+ }
  async function readyPictures() {
   await page.waitForFunction(() => !document.querySelector('.notebook .notation:not([data-ready=true])'));
   assert.equal(await book.locator('.notation[data-error=true]').count(), 0);
@@ -56,9 +62,21 @@ try {
     await page.waitForFunction(i => document.querySelectorAll('.notebook .sound-row button')[i]?.dataset.state === 'playing', i);
     item.clips.push(clip.id); await play.click(); assert.equal(await play.getAttribute('data-state'), 'idle');
    }
-   await field.locator(`input[value="${q.correct}"]`).check(); await book.getByRole('button', { name: '확인', exact: true }).click();
-   assert.equal(await field.locator('.question-feedback').getAttribute('data-correct'), 'true');
-   assert.ok((await field.locator('.question-feedback').textContent()).includes(q.why));
+   const confirm=book.getByRole('button',{name:'확인',exact:true}),feedback=field.locator('.question-feedback');
+   if(initialWidth<=390){
+    item.wrongChoices=[];
+    for(const i of q.choices.keys()){
+     if(i===q.correct)continue;
+     await field.locator(`input[value="${i}"]`).check();await confirm.click();
+     assert.equal(await feedback.getAttribute('data-correct'),'false');
+     assert.ok((await feedback.textContent()).includes(q.misconceptions[i]),`${q.id}: missing feedback for choice ${i}`);
+     await fits(q.id+'/wrong-'+i);item.wrongChoices.push(i);
+    }
+   }
+   await field.locator(`input[value="${q.correct}"]`).check(); await confirm.click();
+   assert.equal(await feedback.getAttribute('data-correct'), 'true');
+   assert.ok((await feedback.textContent()).includes(q.why));
+   await fits(q.id);
    report.items.push(item);
    if (q.id === 'visual-56-rest-dot' || q.id === 'listen-34-timbre-1') await page.screenshot({ path: out + q.id + '.png' });
    if (index < pool.length - 1) await next.click();
@@ -67,6 +85,7 @@ try {
   await book.getByRole('tab', { name: '배우기', exact: true }).click();
   for (let i = 0; i < bank.lessons.length; i++) {
    await readyPictures(); assert.ok((await book.locator('.notebook-body').innerText()).includes(bank.lessons[i].levels[grade].intro));
+   await fits(bank.lessons[i].id+'/'+grade);
    if (i < bank.lessons.length - 1) await next.click();
   }
   await book.getByRole('tab', { name: '활동', exact: true }).click();
@@ -74,6 +93,7 @@ try {
   for (const [i, activity] of activities.entries()) {
    assert.ok((await book.locator('.notebook-body').innerText()).includes(activity.task));
    assert.ok(await book.locator('input[type=checkbox]').count() >= 2);
+   await fits(activity.id);
    await book.locator('input[type=checkbox]').first().check();
    if (i < activities.length - 1) await next.click();
   }
@@ -128,6 +148,15 @@ try {
   assert.equal(rows.length,2);assert.ok(rows.every(r=>r.content<=r.width&&r.whiteSpace==='pre'));assert.ok(Math.abs(rows[0].x-rows[1].x)<1);
   report.comparisonRows.push({width,rows});await page.screenshot({path:out+`hanbae-${width}.png`});
  }
+ await page.setViewportSize({width:320,height:740});
+ await selects.nth(0).selectOption('3-4');
+ while(await book.locator('fieldset').getAttribute('data-question-id')!=='concept-34-gugak')await next.click();
+ await book.locator('fieldset .lesson-link').click();
+ assert.ok((await book.locator('.notebook-body').innerText()).includes(bank.lessons.find(l=>l.id==='gugak').levels['3-4'].intro));
+ await fits('gugak-linked-lesson');
+ await book.getByRole('button',{name:'돌아가기',exact:true}).click();
+ assert.equal(await book.locator('fieldset').getAttribute('data-question-id'),'concept-34-gugak');
+ report.lessonLinkReturns=true;
  await book.getByRole('button', { name: '닫기', exact: true }).click();
  assert.equal(await page.locator('dialog[open]').count(), 0);
  // Failed and cancelled loads must not become late sound or a scored wrong answer.

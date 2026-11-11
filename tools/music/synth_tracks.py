@@ -223,7 +223,7 @@ ANSWER_F = [(0, .5, 7), (.5, .5, 5), (1, .5, 4), (1.5, .5, 3), (2, 1.5, 1)]
 ENDING = [(0, .5, 5), (.5, .5, 6), (1, .5, 7), (1.5, .5, 8), (2, 5, 8)]
 
 
-def cloud_hop() -> TrackResult:
+def cloud_hop(chart_sources: list[tuple[float, float, int, str]] | None = None) -> TrackResult:
     bpm, lead_beats, bars, tail = 132, 4, 28, 1.8
     total_beats = lead_beats + bars * 4
     mix = Mix(bpm, total_beats, tail, seed=24_132)
@@ -268,6 +268,9 @@ def cloud_hop() -> TrackResult:
         score.add(Event(start, beats, degree_midi(tonic, degree), "bell", 0.12, -0.28))
 
     score.render(mix)
+    if chart_sources is not None:
+        chart_sources.extend((event.beat, event.beats, int(event.midi), "lead")
+                             for event in score.events if event.lane is not None)
 
     for bar in range(bars):
         start = bar_beat(bar)
@@ -283,6 +286,8 @@ def cloud_hop() -> TrackResult:
                 continue
             midi = root + (12 if step % 2 else 0)
             mix.note(start + step * 0.5, 0.42, midi, 0.2 * intensity, "bass", -0.04)
+            if chart_sources is not None:
+                chart_sources.append((start + step * 0.5, 0.42, midi, "bass"))
         kicks = [0, 2] if in_break else [0, 2, 2.5] if bar >= 12 else [0, 2]
         for beat in kicks:
             mix.place(kick_sample * intensity, start + beat)

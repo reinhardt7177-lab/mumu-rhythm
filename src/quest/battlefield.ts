@@ -163,7 +163,10 @@ export class Battlefield {
     const castAge = latestCast ? time - latestCast.time : 10;
     const casting = castAge >= 0 && castAge < .36;
     const recoil = hit && !this.reduced ? Math.round(Math.sin(hurtAge/profile.recovery*Math.PI)*profile.kick) : 0;
-    const hx = placement.hero.x, ex = placement.enemy.x + recoil;
+    const counter=combat.counterattack?.target===stage?combat.counterattack:undefined;
+    const counterAge=counter?.loss===undefined?Infinity:time-counter.at;
+    const stagger=!this.reduced&&counterAge>=0&&counterAge<.18?Math.round(7*Math.sin(counterAge/.18*Math.PI)):0;
+    const hx = placement.hero.x-stagger, ex = placement.enemy.x + recoil;
     c.imageSmoothingEnabled = false;
     c.save();
     if(hit&&profile.shake&&!this.reduced)c.translate(Math.round(Math.sin(hurtAge*83)*profile.shake*(1-hurtAge/profile.recovery)),0);
@@ -216,6 +219,34 @@ export class Battlefield {
       c.globalAlpha = 1;
       this.note(x, y, flight.skill ? '#ffe087' : '#e0ffd4', flight.skill ? 2 : 1);
       if (flight.skill) { this.note(x - 9, y + 17, '#ffb2c6', 1); this.note(x + 8, y - 15, '#b8d6ff', 1); }
+    }
+
+    if(counter&&time>=counter.time){
+      const color='#ff91ab',from=ex-24,to=placement.hero.x,fromY=feet-52,toY=heroFeet-56;
+      if(time<counter.at&&counter.loss===undefined){
+        const p=this.reduced?0:(time-counter.time)/(counter.at-counter.time);
+        const x=from+(to-from)*p,y=fromY+(toY-fromY)*p-Math.sin(p*Math.PI)*17;
+        if(!this.reduced)for(let i=1;i<=4;i++){
+          c.globalAlpha=(5-i)*.15;
+          this.rect(x+i*7,y+i%2*4,5,3,color);
+        }
+        c.globalAlpha=1;
+        this.note(x-2,y+2,'#401d3c',2);
+        this.note(x,y,color,2);
+      }else if(counterAge>=0&&counterAge<.55){
+        c.globalAlpha=1-counterAge/.55;
+        if(counterAge<.22)for(let i=0;i<8;i++){
+          const angle=i*Math.PI/4,r=9+(this.reduced?0:counterAge*100);
+          this.rect(to+Math.cos(angle)*r,toY+Math.sin(angle)*r,4,4,i%2?color:'#ffe2d0');
+        }
+        if(counter.loss){
+          const y=toY-34-(this.reduced?0:counterAge*18);
+          c.font='bold 16px monospace';c.textAlign='center';c.lineWidth=3;
+          c.strokeStyle='#401d3c';c.fillStyle='#ffc2d0';
+          c.strokeText(`-${counter.loss}`,to,y);c.fillText(`-${counter.loss}`,to,y);
+        }
+        c.globalAlpha=1;
+      }
     }
 
     for (const impact of this.impacts) {

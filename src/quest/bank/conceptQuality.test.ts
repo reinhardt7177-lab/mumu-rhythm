@@ -9,6 +9,22 @@ function question(id: string) {
 }
 
 describe('concept question quality regressions', () => {
+  it('uses a concrete listening question instead of abstract reflection language',()=>{
+    const form=question('concept-56-form'),dynamics=question('concept-56-dynamics'),gugak=question('concept-56-gugak');
+    expect(form.prompt).not.toMatch(/판단한 근거|구별할 근거/);
+    expect(dynamics.prompt).not.toMatch(/직접적인|돌아보는 데/);
+    expect(gugak.prompt).toContain('빠르기');
+    expect(gugak.prompt).toContain('음절');
+    expect(gugak.choices[0].text).toMatch(/장단.*전체.*빠르게/);
+  });
+  it('explains a repeating drum pattern in concrete words rather than an unexplained returning place', () => {
+    const q=question('concept-34-gugak');
+    expect(q.prompt).toContain('리듬 한 묶음');
+    expect(q.prompt).toContain('손뼉');
+    expect(q.prompt).not.toMatch(/돌아오는 자리|손짓/);
+    expect(q.choices[q.correct].text).toContain('다시 시작');
+    expect(q.why).toContain('첫 소리');
+  });
   it('preserves one stable concept ID per lesson and grade, with aligned feedback slots', () => {
     expect(CONCEPT_QUESTIONS).toHaveLength(24);
     const expectedIds = LESSONS.flatMap(lesson => ['34', '56'].map(

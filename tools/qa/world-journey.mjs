@@ -12,13 +12,16 @@ const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const report={base,profile,started:new Date().toISOString(),worlds:[],errors:[],limitations:['Chrome touch emulation, not a physical mobile device or Safari.','Inputs follow rendered note heads; game clock, score, HP and result state are not modified.','Audio signal verification is not human listening-quality or classroom validation.']};
 const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--disable-background-timer-throttling','--disable-renderer-backgrounding','--disable-backgrounding-occluded-windows']});
 function observe(){
- const a=window.__journeyQA={heads:[],maxHeads:0,judges:{},inputs:[],meters:[],peaks:{}};let bodies=[];
+ const a=window.__journeyQA={heads:[],maxHeads:0,judges:{},inputs:[],meters:[],peaks:{},clicks:0,pair:false};let bodies=[];
+ const bufferStart=AudioBufferSourceNode.prototype.start;
+ AudioBufferSourceNode.prototype.start=function(...args){if(args[2]===.028)a.clicks++;return bufferStart.apply(this,args);};
  const fill=CanvasRenderingContext2D.prototype.fillRect,colors=['#81e6d0','#ff92ad','#ffe39a','#b8e491','#b7b5ff'];
  CanvasRenderingContext2D.prototype.fillRect=function(x,y,w,h){
   if(this.canvas.id==='notes'){
-   if(w===240&&h===360){a.heads=[];bodies=[];}
+   if(w===240&&h===360){a.heads=[];bodies=[];a.pair=false;}
    const lane=Math.floor(x/48),color=String(this.fillStyle);
    if(w===26&&h>2)bodies.push({lane,height:h});
+   if(color==='#fff2b0'&&w>=96&&h===2)a.pair=true;
    if(w===38&&h===10&&colors.includes(color)){a.heads.push({lane,x:x+19,y:y+5,body:bodies.filter(b=>b.lane===lane).at(-1)?.height});a.maxHeads=Math.max(a.maxHeads,a.heads.length);}
   }return fill.call(this,x,y,w,h);
  };
@@ -37,12 +40,13 @@ async function bounds(page,selector){
 }
 async function pictures(page){await page.waitForFunction(()=>!document.querySelector('dialog[open] .notation:not([data-ready=true])'));assert.equal(await page.locator('dialog[open] .notation[data-error=true]').count(),0);const widths=await page.locator('dialog[open] .score-viewport:not(.zoomed)').evaluateAll(es=>es.map(e=>({width:e.clientWidth,svg:e.querySelector('svg')?.getBoundingClientRect().width})));assert.ok(widths.every(w=>w.svg<=w.width+1),JSON.stringify(widths));}
 async function touchPlayer(page,context){
- const cdp=await context.newCDPSession(page),pads=await page.locator('[data-lane]').evaluateAll(es=>es.map((e,lane)=>{const r=e.getBoundingClientRect();return{id:lane+1,x:r.x+r.width/2,y:r.y+r.height/2,radiusX:3,radiusY:3,force:1};}));let held=[];
+ const cdp=await context.newCDPSession(page),pads=await page.locator('[data-lane]').evaluateAll(es=>es.map((e,lane)=>{const r=e.getBoundingClientRect();return{id:lane+1,x:r.x+r.width/2,y:r.y+r.height/2,radiusX:3,radiusY:3,force:1};}));let held=[],maxContacts=0;
  try{while(true){const state=await page.evaluate(()=>({done:document.getElementById('results').open,active:[...new Set(window.__journeyQA.heads.filter(n=>Math.abs(n.y-330)<6).map(n=>n.lane+1))]}));if(state.done)break;
   const remaining=held.filter(id=>state.active.includes(id));if(remaining.length!==held.length){await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:remaining.map(id=>pads[id-1])});held=remaining;}
-  const added=state.active.filter(id=>!held.includes(id));if(added.length){held=[...held,...added];await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:held.map(id=>pads[id-1])});}
+  const added=state.active.filter(id=>!held.includes(id));if(added.length){held=[...held,...added];maxContacts=Math.max(maxContacts,held.length);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:held.map(id=>pads[id-1])});}
   await new Promise(r=>setTimeout(r,8));
  }}finally{if(held.length)await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}
+ return maxContacts;
 }
 try{
  const html=await(await fetch(base)).text(),js=html.match(/src="([^"]*quest-[^"]+\.js)"/)[1],localHtml=await readFile('dist/index.html','utf8'),localJs=localHtml.match(/src="([^"]*quest-[^"]+\.js)"/)[1];
@@ -54,14 +58,33 @@ try{
   const result={world,grade,clips:[],links:[],layouts:[]};report.worlds.push(result);
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},hasTouch:mobile,isMobile:mobile,deviceScaleFactor:1});const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>report.errors.push(e.message));page.on('response',r=>{if(r.url().startsWith(base+'/assets/')&&r.status()>=400)report.errors.push(`${r.status()} ${r.url()}`);});await page.addInitScript(observe);let driver;
   try{
-   await page.goto(base);await activate(page.locator(`[data-world="${world}"]`));await activate(page.locator('#openBriefing'));assert.ok((await page.locator('#briefIntroduction').innerText()).length>20);await activate(page.locator(`[data-grade="${grade}"]`));await activate(page.locator('[data-mode="challenge"]'));await activate(page.locator('#start'));await page.waitForFunction(()=>!document.getElementById('arena').hidden&&document.getElementById('progress').value>.001);
+   await page.goto(base);await activate(page.locator(`[data-world="${world}"]`));await activate(page.locator('#openBriefing'));assert.ok((await page.locator('#briefIntroduction').innerText()).length>20);await activate(page.locator(`[data-grade="${grade}"]`));
+   if(await page.locator('#chartLevels').isVisible()){
+    const level=process.env.QA_CHART_LEVEL||'melody';assert.ok(['pulse','groove','melody'].includes(level));const choice=page.locator(`[data-chart-level="${level}"]`);await activate(choice);assert.equal(await choice.getAttribute('aria-pressed'),'true');assert.equal(await page.locator('#chartLevels [aria-pressed="true"]').count(),1);result.chartLevel=level;await page.screenshot({path:out+world+'-difficulty.png'});
+   }
+   await activate(page.locator('[data-mode="challenge"]'));await activate(page.locator('#start'));await page.waitForFunction(()=>!document.getElementById('arena').hidden&&document.getElementById('progress').value>.001);
+   if(process.env.QA_INPUT_FEEL==='1'){
+    const clicks=()=>page.evaluate(()=>window.__journeyQA.clicks),tap=()=>mobile?page.locator('[data-lane="0"]').tap():page.keyboard.press('a');
+    const pause=()=>activate(page.locator('#pause')),toggle=page.locator('#inputClick');
+    const restart=async()=>{await activate(page.locator('#restartPause'));await page.locator('#paused').waitFor({state:'hidden'});};
+    const before=await clicks();await tap();assert.equal(await clicks(),before+1);assert.equal(await page.locator('#score').innerText(),'0');
+    await pause();await activate(toggle);assert.equal(await toggle.getAttribute('aria-pressed'),'false');await restart();
+    const muted=await clicks();await tap();assert.equal(await clicks(),muted);assert.equal(await page.locator('#score').innerText(),'0');
+    await pause();await activate(toggle);assert.equal(await toggle.getAttribute('aria-pressed'),'true');await restart();
+    result.inputClick={unjudgedTap:1,mutedTap:0};
+   }
    result.song=await page.locator('#playingTitle').innerText();result.layouts.push(await bounds(page,'.quest'));
    if(mobile)driver=touchPlayer(page,context);else await page.evaluate(()=>window.__journeyQA.startKeyboard());
-   await page.waitForFunction(()=>document.getElementById('progress').value>.35,null,{timeout:100000});
+   if(process.env.QA_INPUT_FEEL==='1'&&result.chartLevel==='melody'){
+    await page.waitForFunction(()=>window.__journeyQA.pair);
+    await page.screenshot({path:out+world+'-pair.png'});
+   }
+   await page.waitForFunction(()=>document.getElementById('progress').value>.12&&window.__journeyQA.heads.length>0,null,{timeout:100000});
    result.canvas=await page.locator('canvas').evaluateAll(es=>es.filter(c=>['notes','world'].includes(c.id)).map(c=>{const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data,colors=new Set();for(let i=0;i<d.length;i+=40)colors.add(`${d[i]},${d[i+1]},${d[i+2]}`);return{id:c.id,width:c.width,height:c.height,colors:colors.size};}));
    // A musical rest can legitimately leave only lane/grid colors in this frame.
    assert.ok(result.canvas.every(c=>c.colors>(c.id==='world'?20:4)));assert.ok(await page.evaluate(()=>window.__journeyQA.maxHeads>0));await page.screenshot({path:out+world+'-game.png'});
-   await page.waitForFunction(()=>document.getElementById('results').open,null,{timeout:120000});if(driver){await driver;driver=undefined;}else await page.evaluate(()=>window.__journeyQA.stopKeyboard());
+   await page.waitForFunction(()=>document.getElementById('results').open,null,{timeout:120000});if(driver){result.maxContacts=await driver;driver=undefined;}else await page.evaluate(()=>window.__journeyQA.stopKeyboard());
+   if(process.env.QA_INPUT_FEEL==='1'&&mobile&&result.chartLevel==='melody')assert.equal(result.maxContacts,2);
    result.stats=await page.locator('#stats').textContent();result.judges=await page.evaluate(()=>window.__journeyQA.judges);assert.ok(result.stats.includes('처치 4/4'),result.stats);assert.ok(Object.keys(result.judges).some(t=>t.includes('COMBO')));result.layouts.push(await bounds(page,'#results'));
    const fields=page.locator('#quiz fieldset');assert.equal(await fields.count(),5);result.items=[];
    await activate(page.locator('#answer'));assert.ok(!(await page.locator('#explanation').textContent()).includes('5/5'));await pictures(page);
@@ -84,7 +107,7 @@ try{
    }
    await activate(page.locator('#answer'));result.quiz=await page.locator('#explanation').innerText();assert.ok(result.quiz.includes('5/5'));assert.equal(await page.locator('#quiz .question-feedback[data-correct=true]').count(),5);result.layouts.push(await bounds(page,'#results'));await page.locator('#explanation').scrollIntoViewIfNeeded();await page.screenshot({path:out+world+'-correct.png'});
    if(mobile){await page.setViewportSize({width:320,height:740});await pictures(page);result.layouts.push(await bounds(page,'#results'));await page.screenshot({path:out+world+'-320-result.png'});await page.setViewportSize({width:390,height:844});}
-   result.inputs=await page.evaluate(()=>({touch:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch'&&e.type==='pointerdown').length,allTrusted:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch').every(e=>e.trusted)}));if(mobile){assert.ok(result.inputs.touch>50);assert.equal(result.inputs.allTrusted,true);assert.ok((result.judges['HOLD!']||0)>0,'No successful mobile long note');}
+   result.inputs=await page.evaluate(()=>({touch:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch'&&e.type==='pointerdown').length,allTrusted:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch').every(e=>e.trusted)}));if(mobile){assert.ok(result.inputs.touch>20);assert.equal(result.inputs.allTrusted,true);if(!result.chartLevel||result.chartLevel==='melody')assert.ok((result.judges['HOLD!']||0)>0,'No successful mobile long note');}
    await activate(page.locator('#resultHome'));assert.ok(await page.locator('#library').isVisible());assert.equal(await page.locator('dialog[open]').count(),0);result.pass=true;
   }finally{if(driver){await context.close();await driver.catch(e=>result.driverClose=String(e));}else await context.close();await writeFile(out+'report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(result));}
  }

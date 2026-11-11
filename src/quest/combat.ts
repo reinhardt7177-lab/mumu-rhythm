@@ -6,6 +6,15 @@ export const ENEMIES = [
   { name: '침묵의 마왕', place: '04 · 마지막 악장', hp: 220, color: '#ff6388' },
 ];
 export const FLIGHT_SECONDS = .32;
+export const COUNTER_FLIGHT_SECONDS = .38;
+export const MAX_ENERGY = 100;
+interface Counterattack {
+  time: number;
+  at: number;
+  target: number;
+  damage: number;
+  loss?: number;
+}
 export interface MusicalAttack {
   time: number;
   at: number;
@@ -22,16 +31,19 @@ export class Combat {
   private budgetFor?: (power:number,progress:number)=>number;
   private observedDamage=0;
   private observedJudges=0;
-  constructor(budget:number|((power:number,progress:number)=>number)=ENEMIES[3].hp){
+  constructor(budget:number|((power:number,progress:number)=>number)=ENEMIES[3].hp, private openingHp?:readonly[number,number,number]){
     this.bossHp=typeof budget==='number'&&Number.isFinite(budget)?Math.max(1,Math.round(budget)):ENEMIES[3].hp;
     if(typeof budget==='function')this.budgetFor=budget;
+    this.hp=this.maxHp;
   }
-  get maxHp(){return this.stage===3?this.bossHp:ENEMIES[this.stage].hp;}
+  get maxHp(){return this.stage===3?this.bossHp:this.openingHp?.[this.stage]??ENEMIES[this.stage].hp;}
   get expectedDamagePerNote(){return this.observedJudges>=8?this.observedDamage/this.observedJudges:16.5;}
   private pending: MusicalAttack[] = [];
+  private counter?: Counterattack;
+  get counterattack(): Readonly<Counterattack> | undefined { return this.counter; }
   stage = 0;
   hp = ENEMIES[0].hp;
-  harmony = 100;
+  energy = MAX_ENERGY;
   kills = 0;
   combo = 0;
   won = false;
@@ -51,7 +63,6 @@ export class Combat {
     const skill = combo > 0 && combo % 8 === 0;
     const damage = skill ? 48 : perfect ? 18 : 12;
     this.lastSkill = skill ? '화음 폭발' : perfect ? '강세 음표' : '8분음표 탄환';
-    this.harmony = Math.min(100, this.harmony + 2);
     return damage;
   }
   private apply(damage: number) {
@@ -79,15 +90,37 @@ export class Combat {
     for (const attack of this.pending) {
       if (attack.target !== this.stage || this.hp <= 0) continue;
       if (attack.at > time) { waiting.push(attack); continue; }
+      this.resolveCounter(attack.at);
       this.apply(attack.damage);
       if(this.hp===0){attack.defeated=true;if(this.stage===3)attack.kind='boss';}
       impacts.push(attack);
     }
     this.pending = waiting;
+    this.resolveCounter(time);
     this.update(progress);
     return impacts;
   }
-  finish() { return this.advance(Infinity, this.progress); }
-  private observe(perfect:boolean,combo:number){this.observedJudges++;this.observedDamage+=combo>0&&combo%8===0?48:perfect?18:12;}
-  miss() { this.observedJudges++;this.combo = 0; this.harmony = Math.max(0, this.harmony - 3); }
+  finish() {
+    if (this.counter?.loss === undefined) this.counter = undefined;
+    return this.advance(Infinity, this.progress);
+  }
+  private observe(perfect:boolean,combo:number){
+    this.observedJudges++;
+    this.observedDamage+=combo>0&&combo%8===0?48:perfect?18:12;
+    this.energy=Math.min(MAX_ENERGY,this.energy+(perfect?3:2));
+  }
+  miss(time: number, damage = 8) {
+    this.observedJudges++;
+    this.combo = 0;
+    if (this.hp <= 0 || this.won || this.counter && (this.counter.loss === undefined || time - this.counter.time < .55)) return;
+    this.counter = { time, at: time + COUNTER_FLIGHT_SECONDS, target: this.stage, damage };
+  }
+  private resolveCounter(time: number) {
+    const counter = this.counter;
+    if (!counter || counter.loss !== undefined) return;
+    if (counter.target !== this.stage || this.hp <= 0) { this.counter = undefined; return; }
+    if (counter.at > time) return;
+    counter.loss = Math.min(this.energy, counter.damage);
+    this.energy -= counter.loss;
+  }
 }

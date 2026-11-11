@@ -29,6 +29,26 @@ describe('listening item quality, not only playback',()=>{
   expect(get('listen-34-rest-1').audio![0].events.slice(4).map(e=>e.beat)).toEqual([4,6,7]);
   expect(get('listen-56-rest-1').audio![0].events.slice(4).map(e=>e.beat)).toEqual([4,4.5,6,7]);
  });
+ it('explains preparation beats immediately and keeps the complete four-beat count',()=>{
+  for(const q of questions.filter(q=>q.lessonId==='rest')){
+   expect(q.prompt,q.id).toContain('준비박(가락 전에 박을 맞추는 소리)');
+   expect(q.prompt,q.id).toContain('네 번');
+   expect(q.prompt,q.id).toMatch(/한 박씩 끝까지|네 번째 준비박의 한 박을 끝까지/);
+  }
+ });
+ it('explains supporting vocabulary without naming the heard instruments in prompts',()=>{
+  for(const q of questions.filter(q=>q.lessonId==='timbre')){
+   expect(q.prompt,q.id).not.toMatch(/피아노|플루트|클라리넷|바이올린|첼로|트럼펫/);
+   expect(q.why,q.id).not.toContain('샘플');
+  }
+  for(const id of ['listen-56-timbre-1','listen-56-timbre-2','listen-56-timbre-3']){
+   expect(get(id).prompt,id).toContain('악기군(악기를 종류별로 묶은 것)');
+  }
+  for(const id of ['listen-56-dynamics-1','listen-56-dynamics-2']){
+   expect(get(id).prompt,id).toContain('셈여림(소리의 세기)');
+   expect(get(id).prompt,id).toContain('기기의 소리 크기');
+  }
+ });
  it('makes the older-band timbre application a three-instrument grouping, not the younger matching task again',()=>{
   const q=get('listen-56-timbre-4');
   expect(q.audio!.map(c=>c.instrument)).toEqual(['piano','trumpet','flute']);

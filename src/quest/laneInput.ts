@@ -9,8 +9,9 @@ export class LaneInput{
  private sources=new Map<string,number>();
  private impulses=Array<number>(5).fill(-Infinity);
  down(lane:number,source:string,time:number){
-  if(!Number.isInteger(lane)||lane<0||lane>=5||!Number.isFinite(time)||this.sources.has(source))return;
+  if(!Number.isInteger(lane)||lane<0||lane>=5||!Number.isFinite(time)||this.sources.has(source))return false;
   this.sources.set(source,lane);this.impulses[lane]=time;
+  return true;
  }
  up(source:string){this.sources.delete(source);}
  clear(){this.sources.clear();this.impulses.fill(-Infinity);}

@@ -141,7 +141,7 @@ describe('authored listening bank', () => {
     expect(passage.map(e => e.beat - passage[0].beat)).toEqual([0, 1.5, 2, 3]);
     expect(passage.map(e => e.duration)).toEqual([1, 0.5, 1, 1]);
     expect(passage.every(e => e.midi === 67 && e.velocity === 0.5)).toBe(true);
-    expect(answer(q)).toBe('둘째 박의 뒤쪽 반 박 시작');
+    expect(answer(q)).toBe('둘째 박의 뒤쪽 반 박이 시작할 때');
     expect(q.prompt).toContain('시작하나요');
     expect(q.prompt).not.toMatch(/소리가 끝|얼마나 쉬/);
     expect(q.why).not.toMatch(/소리가 끝|소리가 한 박 동안/);
@@ -256,7 +256,7 @@ describe('authored listening bank', () => {
       expect(a.events).toEqual([{ beat: 0, duration: 3, midi: [60, 64, 67], velocity: 0.5 }]);
       expect(b.events.map(e => e.midi)).toEqual([60, 64, 67]);
       expect(b.events.map(e => [e.beat, e.duration])).toEqual([[0, 1], [1, 1], [2, 1]]);
-      expect(answer(q)).toBe(grade === '34' ? 'A는 함께, B는 차례로 울린다' : 'A는 도·미·솔을 동시에, B는 같은 음들을 차례로 연주한다');
+      expect(answer(q)).toBe(grade === '34' ? 'A는 함께, B는 차례로 울린다' : 'A는 도·미·솔을 한꺼번에, B는 같은 음들을 차례로 연주한다');
     }
   });
 
