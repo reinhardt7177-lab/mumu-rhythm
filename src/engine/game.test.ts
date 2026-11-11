@@ -45,6 +45,14 @@ describe("musical hit response", () => {
     game.pressNote("tap", 1000);
     expect(pop).toHaveBeenLastCalledWith(0, false, undefined);
   });
+  it("uses percussion even for precise hits when pitch was estimated from a recording", async () => {
+    const { game, pop } = setup();
+    await game.start({ ...pitched, chartSource: "recording" }, "challenge");
+    game.pressNote("tap", 3000);
+    expect(pop).toHaveBeenLastCalledWith(0, false, undefined);
+    game.pressNote("hold", 5000);
+    expect(pop).toHaveBeenLastCalledWith(1, false, undefined);
+  });
 });
 
 describe("direct note input", () => {

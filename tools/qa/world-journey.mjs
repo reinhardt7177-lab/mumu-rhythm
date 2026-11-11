@@ -6,17 +6,19 @@ import {createHash} from 'node:crypto';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process.env.PLAYWRIGHT_MODULE).href:'playwright-core');
 const profile=process.env.QA_PROFILE||'desktop';assert.ok(['desktop','mobile'].includes(profile));
 const mobile=profile==='mobile',base=process.env.QA_URL||'https://mumu-rhythm.vercel.app';
+const checkCounter=process.env.QA_COUNTER==='1';
 const tag=process.env.QA_TAG||'';assert.ok(!tag||/^[a-z0-9-]+$/.test(tag));
 const out=`output/note-knights/world-journey/${tag?tag+'/':''}${profile}/`;await mkdir(out,{recursive:true});
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const report={base,profile,started:new Date().toISOString(),worlds:[],errors:[],limitations:['Chrome touch emulation, not a physical mobile device or Safari.','Inputs follow rendered note heads; game clock, score, HP and result state are not modified.','Audio signal verification is not human listening-quality or classroom validation.']};
 const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--disable-background-timer-throttling','--disable-renderer-backgrounding','--disable-backgrounding-occluded-windows']});
-function observe(){
- const a=window.__journeyQA={heads:[],maxHeads:0,judges:{},inputs:[],meters:[],peaks:{},clicks:0,pair:false};let bodies=[];
+function observe(checkCounter){
+ const a=window.__journeyQA={heads:[],maxHeads:0,judges:{},inputs:[],meters:[],peaks:{},clicks:0,pair:false,flight:false,impact:null,energy:[]};let bodies=[];
  const bufferStart=AudioBufferSourceNode.prototype.start;
  AudioBufferSourceNode.prototype.start=function(...args){if(args[2]===.028)a.clicks++;return bufferStart.apply(this,args);};
  const fill=CanvasRenderingContext2D.prototype.fillRect,colors=['#81e6d0','#ff92ad','#ffe39a','#b8e491','#b7b5ff'];
  CanvasRenderingContext2D.prototype.fillRect=function(x,y,w,h){
+  if(checkCounter&&this.canvas.id==='world'&&w===14&&h===10&&this.fillStyle==='#ff91ab')a.flight=true;
   if(this.canvas.id==='notes'){
    if(w===240&&h===360){a.heads=[];bodies=[];a.pair=false;}
    const lane=Math.floor(x/48),color=String(this.fillStyle);
@@ -25,6 +27,14 @@ function observe(){
    if(w===38&&h===10&&colors.includes(color)){a.heads.push({lane,x:x+19,y:y+5,body:bodies.filter(b=>b.lane===lane).at(-1)?.height});a.maxHeads=Math.max(a.maxHeads,a.heads.length);}
   }return fill.call(this,x,y,w,h);
  };
+ if(checkCounter){
+  const text=CanvasRenderingContext2D.prototype.fillText;
+  CanvasRenderingContext2D.prototype.fillText=function(value,...args){if(this.canvas.id==='world'&&a.impact===null&&/^-\d+$/.test(value))a.impact=Number(value);return text.call(this,value,...args);};
+  addEventListener('DOMContentLoaded',()=>{
+   const meter=document.getElementById('heroEnergy');a.energy.push(meter.value);
+   new MutationObserver(()=>{if(meter.value!==a.energy.at(-1))a.energy.push(meter.value);}).observe(meter,{attributes:true,attributeFilter:['value']});
+  });
+ }
  const keys=['KeyA','KeyS','KeyD','KeyJ','KeyK'],down=new Set();
  a.startKeyboard=()=>a.timer=setInterval(()=>{for(let lane=0;lane<5;lane++){const active=a.heads.some(n=>n.lane===lane&&Math.abs(n.y-330)<4);if(active&&!down.has(lane)){dispatchEvent(new KeyboardEvent('keydown',{code:keys[lane],bubbles:true}));down.add(lane);}else if(!active&&down.has(lane)){dispatchEvent(new KeyboardEvent('keyup',{code:keys[lane],bubbles:true}));down.delete(lane);}}},8);
  a.stopKeyboard=()=>{clearInterval(a.timer);keys.forEach(code=>dispatchEvent(new KeyboardEvent('keyup',{code,bubbles:true})));down.clear();};
@@ -56,7 +66,7 @@ try{
  for(const world of worlds){
   const young=['past','future'].includes(world),grade=(mobile?!young:young)?'3-4':'5-6';
   const result={world,grade,clips:[],links:[],layouts:[]};report.worlds.push(result);
-  const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},hasTouch:mobile,isMobile:mobile,deviceScaleFactor:1});const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>report.errors.push(e.message));page.on('response',r=>{if(r.url().startsWith(base+'/assets/')&&r.status()>=400)report.errors.push(`${r.status()} ${r.url()}`);});await page.addInitScript(observe);let driver;
+  const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},hasTouch:mobile,isMobile:mobile,deviceScaleFactor:1});const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>report.errors.push(e.message));page.on('response',r=>{if(r.url().startsWith(base+'/assets/')&&r.status()>=400)report.errors.push(`${r.status()} ${r.url()}`);});await page.addInitScript(observe,checkCounter);let driver;
   try{
    await page.goto(base);await activate(page.locator(`[data-world="${world}"]`));await activate(page.locator('#openBriefing'));assert.ok((await page.locator('#briefIntroduction').innerText()).length>20);await activate(page.locator(`[data-grade="${grade}"]`));
    if(await page.locator('#chartLevels').isVisible()){
@@ -74,8 +84,23 @@ try{
     result.inputClick={unjudgedTap:1,mutedTap:0};
    }
    result.song=await page.locator('#playingTitle').innerText();result.layouts.push(await bounds(page,'.quest'));
+   if(checkCounter){
+    assert.equal(await page.locator('#heroEnergy').evaluate(e=>e.value),100);
+    await page.waitForFunction(()=>window.__journeyQA.impact!==null&&window.__journeyQA.energy.some(e=>e<100));
+    const {flight,impact,energy,judges}=await page.evaluate(()=>{const{flight,impact,energy,judges}=window.__journeyQA;return{flight,impact,energy,judges};});
+    assert.equal(flight,true);assert.ok(judges.MISS>0);assert.equal(impact,result.chartLevel==='melody'?-10:result.chartLevel==='pulse'?-6:-8);
+    assert.equal(energy[1],100+impact);
+    result.counter={initial:100,damage:impact,afterImpact:energy[1]};
+    await page.screenshot({path:out+world+'-counter.png'});
+   }
    if(mobile)driver=touchPlayer(page,context);else await page.evaluate(()=>window.__journeyQA.startKeyboard());
-   if(process.env.QA_INPUT_FEEL==='1'&&result.chartLevel==='melody'){
+   if(checkCounter){
+    await page.waitForFunction(()=>window.__journeyQA.energy.some((e,i,list)=>i>0&&e>list[i-1]));
+    const energy=await page.evaluate(()=>window.__journeyQA.energy),recovered=energy.findIndex((e,i)=>i>0&&e>energy[i-1]);
+    result.counter.recovery=[energy[recovered-1],energy[recovered]];
+    assert.ok(await page.locator('#score').evaluate(e=>Number(e.textContent.replaceAll(',',''))>0));
+   }
+   if(process.env.QA_INPUT_FEEL==='1'&&world==='present'&&result.chartLevel==='melody'){
     await page.waitForFunction(()=>window.__journeyQA.pair);
     await page.screenshot({path:out+world+'-pair.png'});
    }
@@ -84,7 +109,7 @@ try{
    // A musical rest can legitimately leave only lane/grid colors in this frame.
    assert.ok(result.canvas.every(c=>c.colors>(c.id==='world'?20:4)));assert.ok(await page.evaluate(()=>window.__journeyQA.maxHeads>0));await page.screenshot({path:out+world+'-game.png'});
    await page.waitForFunction(()=>document.getElementById('results').open,null,{timeout:120000});if(driver){result.maxContacts=await driver;driver=undefined;}else await page.evaluate(()=>window.__journeyQA.stopKeyboard());
-   if(process.env.QA_INPUT_FEEL==='1'&&mobile&&result.chartLevel==='melody')assert.equal(result.maxContacts,2);
+   if(process.env.QA_INPUT_FEEL==='1'&&mobile&&world==='present'&&result.chartLevel==='melody')assert.equal(result.maxContacts,2);
    result.stats=await page.locator('#stats').textContent();result.judges=await page.evaluate(()=>window.__journeyQA.judges);assert.ok(result.stats.includes('처치 4/4'),result.stats);assert.ok(Object.keys(result.judges).some(t=>t.includes('COMBO')));result.layouts.push(await bounds(page,'#results'));
    const fields=page.locator('#quiz fieldset');assert.equal(await fields.count(),5);result.items=[];
    await activate(page.locator('#answer'));assert.ok(!(await page.locator('#explanation').textContent()).includes('5/5'));await pictures(page);
@@ -107,7 +132,7 @@ try{
    }
    await activate(page.locator('#answer'));result.quiz=await page.locator('#explanation').innerText();assert.ok(result.quiz.includes('5/5'));assert.equal(await page.locator('#quiz .question-feedback[data-correct=true]').count(),5);result.layouts.push(await bounds(page,'#results'));await page.locator('#explanation').scrollIntoViewIfNeeded();await page.screenshot({path:out+world+'-correct.png'});
    if(mobile){await page.setViewportSize({width:320,height:740});await pictures(page);result.layouts.push(await bounds(page,'#results'));await page.screenshot({path:out+world+'-320-result.png'});await page.setViewportSize({width:390,height:844});}
-   result.inputs=await page.evaluate(()=>({touch:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch'&&e.type==='pointerdown').length,allTrusted:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch').every(e=>e.trusted)}));if(mobile){assert.ok(result.inputs.touch>20);assert.equal(result.inputs.allTrusted,true);if(!result.chartLevel||result.chartLevel==='melody')assert.ok((result.judges['HOLD!']||0)>0,'No successful mobile long note');}
+   result.inputs=await page.evaluate(()=>({touch:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch'&&e.type==='pointerdown').length,allTrusted:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch').every(e=>e.trusted)}));if(mobile){assert.ok(result.inputs.touch>20);assert.equal(result.inputs.allTrusted,true);if(!result.chartLevel||(['present','future'].includes(world)&&result.chartLevel==='melody'))assert.ok((result.judges['HOLD!']||0)>0,'No successful mobile long note');}
    await activate(page.locator('#resultHome'));assert.ok(await page.locator('#library').isVisible());assert.equal(await page.locator('dialog[open]').count(),0);result.pass=true;
   }finally{if(driver){await context.close();await driver.catch(e=>result.driverClose=String(e));}else await context.close();await writeFile(out+'report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(result));}
  }

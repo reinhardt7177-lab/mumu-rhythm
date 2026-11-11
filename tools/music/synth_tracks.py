@@ -12,11 +12,14 @@ The two new melodies are original scale-degree sequences written for this projec
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, Literal
 
 import numpy as np
 
-from synth_core import HOLD_NOTE_MIN_BEATS, Mix, synth_note
+from synth_core import HOLD_NOTE_MIN_BEATS, SAMPLE_RATE, Mix, synth_note
+
+ScoreRole = Literal["pulse", "bass", "lead", "rhythm"]
+ScoreSource = tuple[float, float, int | None, ScoreRole]
 
 
 @dataclass
@@ -120,7 +123,7 @@ def sections_for(beats: list[tuple[str, str, float, float, str]]) -> list[dict[s
 # ====================================================================== S1 Neon Run
 
 
-def neon_run() -> TrackResult:
+def neon_run(chart_sources: list[ScoreSource] | None = None) -> TrackResult:
     """V5 Neon Run: identical arrangement, seed 7177, identical RNG call order."""
     bpm, lead_beats, bars, tail = 150, 4, 48, 1.6
     total_beats = lead_beats + bars * 4
@@ -131,6 +134,11 @@ def neon_run() -> TrackResult:
     chord_intervals = [0, 3, 7, 10]
     arp_patterns = [[0, 2, 1, 3, 2, 1, 0, 2], [0, 1, 3, 2, 1, 3, 2, 1]]
     beat_seconds = mix.beat_seconds
+
+    def part(beat: float, beats: float, midi: int, gain: float, voice: str, pan: float, role: ScoreRole) -> None:
+        mix.note(beat, beats, midi, gain, voice, pan)
+        if chart_sources is not None:
+            chart_sources.append((beat, beats, midi, role))
 
     for bar in range(bars):
         section_beat = lead_beats + bar * 4
@@ -147,10 +155,12 @@ def neon_run() -> TrackResult:
             if not (16 <= bar < 20) or beat in (0, 2):
                 if beat in (0, 2) or (bar >= 36 and beat == 3):
                     mix.place(kick_sample * intensity, absolute)
+                    if chart_sources is not None and beat == 0:
+                        chart_sources.append((absolute, len(kick_sample) * bpm / (SAMPLE_RATE * 60), None, "pulse"))
                 if beat in (1, 3):
                     mix.place(snare_sample * intensity, absolute)
             bass_midi = root + 12 + ([0, 0, 7, 10][beat] if bar >= 4 else 0)
-            mix.place(synth_note(bass_midi, 0.82 * beat_seconds, 0.22 * intensity, "bass", -0.05), absolute)
+            part(absolute, 0.82, bass_midi, 0.22 * intensity, "bass", -0.05, "bass")
 
         for step in range(8):
             absolute = section_beat + step * 0.5
@@ -158,14 +168,15 @@ def neon_run() -> TrackResult:
             if bar >= 4 and not (16 <= bar < 20):
                 chord = [root + 24 + interval for interval in chord_intervals]
                 arp_midi = chord[arp_patterns[bar % 2][step]]
-                mix.place(synth_note(arp_midi, 0.38 * beat_seconds, 0.092 * intensity, "pluck", (step % 5 - 2) * 0.18), absolute)
+                # The arpeggio is foreground until the dedicated lead enters.
+                part(absolute, 0.38, arp_midi, 0.092 * intensity, "pluck", (step % 5 - 2) * 0.18, "lead" if bar < 8 else "rhythm")
 
         motif = [0, 3, 7, 10, 7, 12, 10, 7] if bar < 24 else [0, 7, 10, 12, 15, 12, 10, 7]
         if bar >= 8 and not (16 <= bar < 20):
             for step, interval in enumerate(motif):
                 if bar < 36 and step % 2 == 1:
                     continue
-                mix.place(synth_note(root + 24 + interval, 0.42 * beat_seconds, 0.105 * intensity, "lead", (step % 5 - 2) * 0.14), section_beat + step * 0.5)
+                part(section_beat + step * 0.5, 0.42, root + 24 + interval, 0.105 * intensity, "lead", (step % 5 - 2) * 0.14, "lead")
 
     audio = mix.master(delay_seconds=0.3, pump_floor=0.72, pump_depth=0.28)
 
@@ -330,7 +341,7 @@ MELODY_2 = [(0, .5, 12), (.5, .5, 10), (1, 1, 7), (2, .5, 9), (2.5, .5, 7), (3, 
             (6, 2, 3), (8, .5, 0), (8.5, .5, 2), (9, 1, 3), (10, 1, 5), (11, 1, 2), (12, 4, 0)]
 
 
-def robot_parade() -> TrackResult:
+def robot_parade(chart_sources: list[ScoreSource] | None = None) -> TrackResult:
     bpm, lead_beats, bars, tail = 124, 4, 28, 1.8
     total_beats = lead_beats + bars * 4
     mix = Mix(bpm, total_beats, tail, seed=31_124)
@@ -374,6 +385,10 @@ def robot_parade() -> TrackResult:
             score.add(Event(bar_beat(bar) + offset, beats, melody_root + semis, "chip", 0.05, -0.3))
 
     score.render(mix)
+    if chart_sources is not None:
+        roles: dict[str, ScoreRole] = {"bass": "bass", "brass": "lead", "chip": "lead"}
+        chart_sources.extend((event.beat, event.beats, int(event.midi), roles[event.voice])
+                             for event in score.events if event.voice in roles)
 
     for bar in range(bars):
         start = bar_beat(bar)
@@ -390,6 +405,8 @@ def robot_parade() -> TrackResult:
                 continue
             if bar >= 4 or beat in (0, 2):
                 mix.place(kick_sample * intensity, start + beat)
+                if chart_sources is not None and beat == 0:
+                    chart_sources.append((start + beat, len(kick_sample) * bpm / (SAMPLE_RATE * 60), None, "pulse"))
             if beat in (1, 3) and not gears:
                 mix.place(snare_sample * intensity * 0.9, start + beat)
                 if finale:

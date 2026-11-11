@@ -9,7 +9,7 @@ const out = 'output/note-knights/learning-120/'+(tag?tag+'/':''); await mkdir(ou
 const report = { base, started: new Date().toISOString(), worlds: [], errors: [], limitations: ['Synthetic keyboard input follows rendered note heads; no game clock or score overrides.', 'Tablet touch uses trusted Chrome CDP emulation, not physical hardware.'] };
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'] });
 function observe() {
- const a = window.__gameQA = { heads: [], judges: {}, input: [] }; let bodies = [];
+ const a = window.__gameQA = { heads: [], judges: {}, input: [], trackDown: [] }; let bodies = [];
  const fill = CanvasRenderingContext2D.prototype.fillRect, colors = ['#81e6d0', '#ff92ad', '#ffe39a', '#b8e491', '#b7b5ff'];
  CanvasRenderingContext2D.prototype.fillRect = function (x, y, w, h) {
   if (this.canvas.id === 'notes') {
@@ -27,6 +27,10 @@ function observe() {
  addEventListener('DOMContentLoaded', () => {
   new MutationObserver(() => { const text = document.getElementById('judge').textContent; a.judges[text] = (a.judges[text] || 0) + 1; }).observe(document.getElementById('judge'), { childList: true });
   for (const type of ['pointerdown', 'pointerup', 'pointercancel']) document.addEventListener(type, e => a.input.push({ type, trusted: e.isTrusted, pointerType: e.pointerType }), true);
+  document.getElementById('notes').addEventListener('pointerdown',e=>{
+   const r=e.currentTarget.getBoundingClientRect(),x=(e.clientX-r.left)*240/r.width,y=(e.clientY-r.top)*360/r.height;
+   a.trackDown.push({x,y,heads:a.heads.filter(n=>n.lane===Math.floor(x/48)).map(n=>({...n}))});
+  },true);
  });
 }
 async function open(touch = false) {
@@ -40,7 +44,7 @@ async function start(page, world, grade, mode = 'challenge') {
 }
 try {
  const content = await (await fetch(base + '/assets/education/music-bank-120.json')).json();
- const worlds=(process.env.QA_WORLDS||'past,present,future,fantasy').split(',');assert.ok(worlds.every(id=>['past','present','future','fantasy'].includes(id)));
+ const worlds=process.env.QA_TOUCH_ONLY==='1'?[]:(process.env.QA_WORLDS||'past,present,future,fantasy').split(',');assert.ok(worlds.every(id=>['past','present','future','fantasy'].includes(id)));
  for (const world of worlds) {
   const { page, context,bundle } = await open(), grade = ['past', 'future'].includes(world) ? '3-4' : '5-6';
   const result = { world, grade,bundle }; report.worlds.push(result);
@@ -79,12 +83,29 @@ try {
   const p1 = point(pads[0].x, pads[0].y), p2 = point(pads[1].x, pads[1].y, 2);
   await send('touchStart', [p1]); await send('touchStart', [p1, p2]); await page.waitForTimeout(70);
   report.touch.held = await page.locator('[data-lane].down').count(); assert.equal(report.touch.held, 2); await send('touchEnd', []);
+  await page.waitForFunction(()=>!document.querySelector('[data-lane].down'));
   for (const early of [false, true]) {
-   await page.waitForFunction(() => window.__gameQA.heads.some(n => n.body > 25 && n.y > 75 && n.y < 285 && !n.white), null, { timeout: 20000 });
-   const target = await page.evaluate(() => { const n = window.__gameQA.heads.find(n => n.body > 25 && n.y > 75 && n.y < 285 && !n.white), r = document.getElementById('notes').getBoundingClientRect(); return { ...n, x: r.left + n.x / 240 * r.width, y: r.top + n.y / 360 * r.height }; });
-   const before = await page.evaluate(() => ({ ...window.__gameQA.judges })); await send('touchStart', [point(target.x, target.y)]); await page.waitForTimeout(80);
-   assert.ok(await page.evaluate(lane => window.__gameQA.heads.some(n => n.lane === lane && n.white), target.lane));
-   if (early) { await send('touchEnd', []); await page.waitForTimeout(300); assert.ok(await page.evaluate(n => (window.__gameQA.judges.MISS || 0) > n, before.MISS || 0)); report.touch.earlyRelease = true; }
+   const candidate=await page.waitForFunction(()=>{
+    const {heads,judges}=window.__gameQA,n=heads.find(n=>n.body>25&&n.y>75&&n.y<285&&!n.white);
+    if(!n)return false;
+    const r=document.getElementById('notes').getBoundingClientRect();
+    return {lane:n.lane,x:r.left+n.x/240*r.width,y:r.top+n.y/360*r.height,before:{...judges}};
+   },null,{timeout:20000});
+   const {before,...target}=await candidate.jsonValue();await send('touchStart',[point(target.x,target.y)]);
+   try{await page.waitForFunction(lane=>window.__gameQA.heads.some(n=>n.lane===lane&&n.white),target.lane,{timeout:400});}
+   finally{(report.touch.attempts??=[]).push(await page.evaluate(()=>window.__gameQA.trackDown.at(-1)));}
+   if (early) {
+    const held=await page.evaluate(lane=>{
+     const {heads,judges}=window.__gameQA,n=heads.find(n=>n.lane===lane&&n.white);
+     return {lane,y:n.y,miss:judges.MISS||0,complete:judges['HOLD!']||0};
+    },target.lane);
+    await send('touchEnd', []); await page.waitForTimeout(300);
+    const released=await page.evaluate(({lane,y,miss,complete})=>{
+     const {heads,judges}=window.__gameQA;
+     return (judges.MISS||0)>miss&&(judges['HOLD!']||0)===complete&&!heads.some(n=>n.lane===lane&&n.body>25&&n.y>=y-4&&n.y<y+130);
+    },held);
+    assert.ok(released,'Released hold did not disappear with a MISS before reaching the hitline');report.touch.earlyRelease=true;
+   }
    else { await page.waitForFunction(n => (window.__gameQA.judges['HOLD!'] || 0) > n, before['HOLD!'] || 0, { timeout: 9000 }); await send('touchEnd', []); report.touch.holdComplete = true; }
   }
   report.touch.trusted = await page.evaluate(() => window.__gameQA.input.filter(e => e.pointerType === 'touch').every(e => e.trusted)); assert.ok(report.touch.trusted);

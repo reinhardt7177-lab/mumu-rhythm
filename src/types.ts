@@ -7,11 +7,11 @@ export interface MelodyNote {
   id: string;
   beat: number;
   durationBeats: number;
-  midi: number;
+  midi: number | null;
   lane: number;
   phrase: string;
   accent?: boolean;
-  musicalRole?: "lead" | "bass";
+  musicalRole?: "lead" | "bass" | "pulse" | "rhythm";
   paired?: boolean;
 }
 
@@ -60,6 +60,8 @@ export interface Song {
   approachSeconds?: number;
   backingTrack: string;
   backingTrackFallback?: string;
+  chartSource?: "score" | "recording";
+  measureStarts?: readonly number[];
   palette: SongPalette;
   mission: ListeningMission;
   melody: MelodyNote[];

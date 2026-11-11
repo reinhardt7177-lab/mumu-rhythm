@@ -13,6 +13,7 @@ import { NoteTrack } from './noteTrack';
 import { renderApp } from './view';
 import { MUSIC_LIBRARY, librarySong } from './catalog';
 import {previewScene,spriteRect} from './sceneLayout';
+import { StagePreview } from './stagePreview';
 import{holdForInput}from'./laneInput';
 import{BOSS_THEMES,bossBudget,type BossWorld}from'./boss';
 import{LESSONS,quizFor}from'./bank';
@@ -37,12 +38,14 @@ const battlefield=new Battlefield(el<HTMLCanvasElement>('world'));
 const notes=el<HTMLCanvasElement>('notes');
 const laneButtons=[...document.querySelectorAll<HTMLButtonElement>('[data-lane]')];
 const track=new NoteTrack(notes,laneButtons,el('judge'));
+const previewHero=document.querySelector<HTMLElement>('.travel-bard')!,previewEnemy=document.querySelector<HTMLElement>('.travel-enemy')!;
+const stagePreview=new StagePreview(el<HTMLCanvasElement>('stagePreview'),previewHero,previewEnemy,el<HTMLButtonElement>('replayPreview'));
 const pressed=new Map<string,string>();
 let world=WORLDS[0],song=songForWorld(world.id),combat=new Combat();
 let snapshot:GameSnapshot|null=null,running=false,starting=false,mode:PlayMode='challenge';
 let grade:GradeBand='3-4';
 let chartLevel:ChartLevel='pulse';
-const chartLabel:Record<ChartLevel,string>={pulse:'가락',groove:'반주',melody:'합주'};
+const chartLabel:Record<ChartLevel,string>={pulse:'초급 · 첫 박',groove:'중급 · 반주',melody:'고급 · 가락과 리듬'};
 const counterDamage:Record<ChartLevel,number>={pulse:6,groove:8,melody:10};
 const inputClickKey='mumu-quest-input-click';
 let inputClick=localStorage.getItem(inputClickKey)!=='off';
@@ -62,12 +65,8 @@ function selectWorld(next:MusicalWorld,nextSong:Song=songForWorld(next.id)) {
   root.dataset.worldTheme=world.id;
   el<HTMLImageElement>('worldArt').src=world.background;
   el<HTMLImageElement>('worldArt').alt=world.title+' 픽셀 풍경';
-  el('eraLabel').textContent=world.era;
   el('worldTitle').textContent=world.title;
-  el('worldStory').textContent=world.atmosphere;
-  el('worldIndex').textContent=String(WORLDS.indexOf(world)+1).padStart(2,'0');
   el('selectedSong').textContent=song.title;
-  el('selectedSongTitle').textContent=song.title;
   el('selectedMeta').textContent=`${song.featuredInstrument} · ${duration(songDurationSeconds(song))}`;
   el('footerWorld').textContent=world.title;
   document.querySelectorAll<HTMLButtonElement>('[data-world]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.world===filterWorld)));
@@ -79,6 +78,7 @@ function selectWorld(next:MusicalWorld,nextSong:Song=songForWorld(next.id)) {
   el('songList').innerHTML=MUSIC_LIBRARY.filter(item=>!filterWorld||item.worldId===filterWorld).map(({song:item},i)=>`<button class="song-row" data-song="${item.id}" aria-pressed="${item.id===song.id}"><span class="song-number">${String(i+1).padStart(2,'0')}</span><span class="song-row-text"><strong>${item.title}</strong><small>${item.featuredInstrument}</small></span><span class="song-duration">${duration(songDurationSeconds(item))}</span></button>`).join('');
   document.querySelectorAll<HTMLButtonElement>('[data-song]').forEach(button=>button.onclick=()=>{const item=librarySong(button.dataset.song!);selectWorld(WORLDS.find(w=>w.id===item.worldId)!,item.song);});
   placePreview();
+  stagePreview.play(world.id,song.bpm);
 }
 
 function openBriefing() {
@@ -177,7 +177,7 @@ async function start() {
   el<HTMLButtonElement>('start').disabled=true;el<HTMLButtonElement>('closeBriefing').disabled=true;
   el('loading').textContent='음악을 준비하고 있어요…';
   try {
-    const encounterSong=doubleScroll(chartForLevel(song,chartLevel)),encounterMode=mode;
+    const encounterSong=doubleScroll(await chartForLevel(song,chartLevel)),encounterMode=mode;
     combat=new Combat((power,progress)=>bossBudget(encounterSong,encounterMode,power,progress,snapshot?.notes),encounterHealth(encounterSong));snapshot=null;journeyStage=-1;pressed.clear();track.reset();battlefield.setWorld(world);
     await Promise.all([battlefield.ready,track.ready]);
     await game.start(encounterSong,encounterMode);running=true;
@@ -190,7 +190,7 @@ async function start() {
   } catch {
     game.stop();running=false;paused.close();results.close();
     if(!briefing.open)briefing.showModal();
-    el('loading').textContent='음원을 불러오지 못했어요. 다시 눌러 주세요.';
+    el('loading').textContent='연주를 준비하지 못했어요. 다시 눌러 주세요.';
   } finally {
     starting=false;el<HTMLButtonElement>('start').disabled=false;el<HTMLButtonElement>('closeBriefing').disabled=false;
   }
@@ -303,7 +303,7 @@ function placePreview(){
   const preview=document.querySelector<HTMLElement>('.world-preview')!;
   const {width,height}=preview.getBoundingClientRect();
   if(!width||!height)return;
-  const hero=document.querySelector<HTMLElement>('.travel-bard')!,enemy=document.querySelector<HTMLElement>('.travel-enemy')!;
+  const hero=previewHero,enemy=previewEnemy;
   const heroSize=hero.getBoundingClientRect().height,enemySize=enemy.getBoundingClientRect().height;
   const layout=previewScene(world.id,width,height,heroSize,enemySize),image=el('worldArt');
   Object.assign(image.style,{left:`${layout.background.x}px`,top:`${layout.background.y}px`,width:`${layout.background.width}px`,height:`${layout.background.height}px`});
@@ -311,7 +311,7 @@ function placePreview(){
     const rect=spriteRect(anchor,size);
     Object.assign(element.style,{left:`${rect.x}px`,top:`${rect.y}px`,right:'auto',bottom:'auto'});
   }
-  preview.dataset.compact=String(height<550);
+  stagePreview.resize(width,height,layout);
 }
 new ResizeObserver(placePreview).observe(document.querySelector('.world-preview')!);
 void battlefield.ready.then(()=>{if(!running)battlefield.draw(0,combat);});

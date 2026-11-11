@@ -23,7 +23,7 @@ function recording(
     sourceUrl: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file.replaceAll(" ", "_"))}`,
     credit: `${file.replace(/\.(ogg|flac)$/, "")} - ${performer}. ${license}. Game excerpt with fades, loudness normalization and silent count-in.`,
     chartType: "rhythmic-onset",
-    changes: "Game excerpt, fade-in/out, loudness normalization, 8-beat silent count-in, OGG/AAC encoding. No melody transcription or pitch inference.",
+    changes: "Game excerpt, fade-in/out, loudness normalization, 8-beat silent count-in and OGG/AAC encoding.",
   };
 }
 

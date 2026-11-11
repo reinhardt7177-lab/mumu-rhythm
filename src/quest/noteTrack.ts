@@ -82,7 +82,12 @@ export class NoteTrack {
       }
     }
     const spb=60/s.song.bpm,approach=s.song.approachSeconds??DEFAULT_APPROACH_SECONDS;
-    for(let b=Math.floor(s.beat);b<s.beat+approach/spb;b++) {
+    if(s.song.measureStarts)for(const beat of s.song.measureStarts){
+      if(beat<s.beat-.5)continue;
+      if(beat>s.beat+approach/spb)break;
+      c.fillStyle='#46506a';c.fillRect(0,Math.round(trackY(beat*spb-s.songTime,approach)),240,1);
+    }
+    else for(let b=Math.floor(s.beat);b<s.beat+approach/spb;b++) {
       const y=trackY(b*spb-s.songTime,approach);
       c.fillStyle=b%s.song.beatsPerBar===0?'#46506a':'#2a354c';c.fillRect(0,Math.round(y),240,1);
     }
