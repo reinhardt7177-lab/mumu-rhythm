@@ -63,12 +63,16 @@ try{
  const bytes=Buffer.from(await(await fetch(base+js)).arrayBuffer());assert.equal(sha(bytes),sha(await readFile('dist'+localJs)));report.bundle={path:js,sha256:sha(bytes)};
  const bankBytes=Buffer.from(await(await fetch(base+'/assets/education/music-bank-120.json')).arrayBuffer());assert.equal(sha(bankBytes),sha(await readFile('public/assets/education/music-bank-120.json')));const bank=JSON.parse(bankBytes);
  const worlds=(process.env.QA_WORLDS||'past,present,future,fantasy').split(',');assert.ok(worlds.every(w=>['past','present','future','fantasy'].includes(w)));
- for(const world of worlds){
+ const selectedSongs=process.env.QA_SONGS?.split(',');if(selectedSongs)assert.equal(selectedSongs.length,worlds.length);
+ for(const [index,world] of worlds.entries()){
+  const songId=selectedSongs?.[index];
   const young=['past','future'].includes(world),grade=(mobile?!young:young)?'3-4':'5-6';
   const result={world,grade,clips:[],links:[],layouts:[]};report.worlds.push(result);
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},hasTouch:mobile,isMobile:mobile,deviceScaleFactor:1});const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>report.errors.push(e.message));page.on('response',r=>{if(r.url().startsWith(base+'/assets/')&&r.status()>=400)report.errors.push(`${r.status()} ${r.url()}`);});await page.addInitScript(observe,checkCounter);let driver;
   try{
-   await page.goto(base);await activate(page.locator(`[data-world="${world}"]`));await activate(page.locator('#openBriefing'));assert.ok((await page.locator('#briefIntroduction').innerText()).length>20);await activate(page.locator(`[data-grade="${grade}"]`));
+   await page.goto(base);await activate(page.locator(`[data-world="${world}"]`));
+   if(songId)await activate(page.locator(`[data-song="${songId}"]`));
+   await activate(page.locator('#openBriefing'));assert.ok((await page.locator('#briefIntroduction').innerText()).length>20);await activate(page.locator(`[data-grade="${grade}"]`));
    if(await page.locator('#chartLevels').isVisible()){
     const level=process.env.QA_CHART_LEVEL||'melody';assert.ok(['pulse','groove','melody'].includes(level));const choice=page.locator(`[data-chart-level="${level}"]`);await activate(choice);assert.equal(await choice.getAttribute('aria-pressed'),'true');assert.equal(await page.locator('#chartLevels [aria-pressed="true"]').count(),1);result.chartLevel=level;await page.screenshot({path:out+world+'-difficulty.png'});
    }
@@ -132,7 +136,7 @@ try{
    }
    await activate(page.locator('#answer'));result.quiz=await page.locator('#explanation').innerText();assert.ok(result.quiz.includes('5/5'));assert.equal(await page.locator('#quiz .question-feedback[data-correct=true]').count(),5);result.layouts.push(await bounds(page,'#results'));await page.locator('#explanation').scrollIntoViewIfNeeded();await page.screenshot({path:out+world+'-correct.png'});
    if(mobile){await page.setViewportSize({width:320,height:740});await pictures(page);result.layouts.push(await bounds(page,'#results'));await page.screenshot({path:out+world+'-320-result.png'});await page.setViewportSize({width:390,height:844});}
-   result.inputs=await page.evaluate(()=>({touch:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch'&&e.type==='pointerdown').length,allTrusted:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch').every(e=>e.trusted)}));if(mobile){assert.ok(result.inputs.touch>20);assert.equal(result.inputs.allTrusted,true);if(!result.chartLevel||(['present','future'].includes(world)&&result.chartLevel==='melody'))assert.ok((result.judges['HOLD!']||0)>0,'No successful mobile long note');}
+   result.inputs=await page.evaluate(()=>({touch:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch'&&e.type==='pointerdown').length,allTrusted:window.__journeyQA.inputs.filter(e=>e.pointerType==='touch').every(e=>e.trusted)}));if(mobile){assert.ok(result.inputs.touch>20);assert.equal(result.inputs.allTrusted,true);if(!result.chartLevel||((['present','future'].includes(world)||songId==='moonlight-waltz')&&result.chartLevel==='melody'))assert.ok((result.judges['HOLD!']||0)>0,'No successful mobile long note');}
    await activate(page.locator('#resultHome'));assert.ok(await page.locator('#library').isVisible());assert.equal(await page.locator('dialog[open]').count(),0);result.pass=true;
   }finally{if(driver){await context.close();await driver.catch(e=>result.driverClose=String(e));}else await context.close();await writeFile(out+'report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(result));}
  }

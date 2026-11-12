@@ -4105,5 +4105,1575 @@ export const synthTracks: Record<string, GeneratedTrack> = {
         "mode": "play"
       }
     ]
+  },
+  "rooftop-swing": {
+    "bpm": 136,
+    "totalBeats": 132,
+    "notes": [
+      {
+        "beat": 4,
+        "duration": 0.47,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 4.667,
+        "duration": 0.21,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 6,
+        "duration": 0.504,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 6.667,
+        "duration": 0.218,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 8,
+        "duration": 0.47,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 8.667,
+        "duration": 0.202,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 9,
+        "duration": 0.521,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 10,
+        "duration": 0.487,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 11,
+        "duration": 0.63,
+        "midi": 57,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 12,
+        "duration": 0.378,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 12.667,
+        "duration": 0.193,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 14,
+        "duration": 0.403,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 14.667,
+        "duration": 0.185,
+        "midi": 77,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 15,
+        "duration": 0.63,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 16,
+        "duration": 0.546,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 17,
+        "duration": 0.353,
+        "midi": 65,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 18,
+        "duration": 1.9,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 20,
+        "duration": 0.47,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 20.667,
+        "duration": 0.21,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 22,
+        "duration": 0.504,
+        "midi": 86,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 22.667,
+        "duration": 0.218,
+        "midi": 83,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 24,
+        "duration": 0.47,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 24.667,
+        "duration": 0.202,
+        "midi": 73,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 25,
+        "duration": 0.521,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 26,
+        "duration": 0.487,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 27,
+        "duration": 0.63,
+        "midi": 57,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 28,
+        "duration": 0.378,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 28.667,
+        "duration": 0.193,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 30,
+        "duration": 0.403,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 30.667,
+        "duration": 0.185,
+        "midi": 77,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 31,
+        "duration": 0.63,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 32,
+        "duration": 0.546,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 33,
+        "duration": 0.353,
+        "midi": 65,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 34,
+        "duration": 1.9,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 36.667,
+        "duration": 0.21,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 38,
+        "duration": 0.504,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 38.667,
+        "duration": 0.218,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 40,
+        "duration": 0.47,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 40.667,
+        "duration": 0.202,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 41,
+        "duration": 0.521,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 42,
+        "duration": 0.487,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 43,
+        "duration": 0.63,
+        "midi": 57,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 44,
+        "duration": 0.378,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 44.667,
+        "duration": 0.193,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 46,
+        "duration": 0.403,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 46.667,
+        "duration": 0.185,
+        "midi": 77,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 47,
+        "duration": 0.63,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 48,
+        "duration": 0.546,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 49,
+        "duration": 0.353,
+        "midi": 65,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 50,
+        "duration": 1.9,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 68,
+        "duration": 0.378,
+        "midi": 60,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 68.667,
+        "duration": 0.193,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 70,
+        "duration": 0.403,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 70.667,
+        "duration": 0.185,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 71,
+        "duration": 0.63,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 72,
+        "duration": 0.546,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 73,
+        "duration": 0.353,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 74,
+        "duration": 1.9,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 76,
+        "duration": 0.47,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 76.667,
+        "duration": 0.21,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 78,
+        "duration": 0.504,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 78.667,
+        "duration": 0.218,
+        "midi": 77,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 80,
+        "duration": 0.47,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 80.667,
+        "duration": 0.202,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 82,
+        "duration": 0.487,
+        "midi": 65,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 83,
+        "duration": 0.63,
+        "midi": 55,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 84,
+        "duration": 0.378,
+        "midi": 64,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 84.667,
+        "duration": 0.193,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 86,
+        "duration": 0.403,
+        "midi": 86,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 86.667,
+        "duration": 0.185,
+        "midi": 83,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 88,
+        "duration": 0.546,
+        "midi": 73,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 89,
+        "duration": 0.353,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 90,
+        "duration": 1.9,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 92,
+        "duration": 0.47,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 92.667,
+        "duration": 0.21,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 94,
+        "duration": 0.504,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 94.667,
+        "duration": 0.218,
+        "midi": 77,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 96,
+        "duration": 0.47,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 96.667,
+        "duration": 0.202,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 98,
+        "duration": 0.487,
+        "midi": 65,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 99,
+        "duration": 0.63,
+        "midi": 55,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 100,
+        "duration": 0.47,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 100.667,
+        "duration": 0.21,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 102,
+        "duration": 0.504,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 102.667,
+        "duration": 0.218,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 104,
+        "duration": 0.47,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 104.667,
+        "duration": 0.202,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 105,
+        "duration": 0.521,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 106,
+        "duration": 0.487,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 107,
+        "duration": 0.63,
+        "midi": 57,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 108,
+        "duration": 0.378,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 108.667,
+        "duration": 0.193,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 110,
+        "duration": 0.403,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 110.667,
+        "duration": 0.185,
+        "midi": 77,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 111,
+        "duration": 0.63,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 112,
+        "duration": 0.546,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 113,
+        "duration": 0.353,
+        "midi": 65,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 114,
+        "duration": 1.9,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 116,
+        "duration": 0.47,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 116.667,
+        "duration": 0.21,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 118,
+        "duration": 0.504,
+        "midi": 86,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 118.667,
+        "duration": 0.218,
+        "midi": 83,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 120,
+        "duration": 0.47,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 120.667,
+        "duration": 0.202,
+        "midi": 73,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 121,
+        "duration": 0.521,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 122,
+        "duration": 0.487,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 123,
+        "duration": 0.63,
+        "midi": 57,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 124,
+        "duration": 0.378,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 124.667,
+        "duration": 0.193,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 126,
+        "duration": 0.403,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 126.667,
+        "duration": 0.185,
+        "midi": 77,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 127,
+        "duration": 0.63,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 128,
+        "duration": 0.588,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 129,
+        "duration": 2.92,
+        "midi": 60,
+        "lane": 1,
+        "accent": false
+      }
+    ],
+    "sections": [
+      {
+        "id": "count-in",
+        "label": "준비박",
+        "startBeat": 0,
+        "endBeat": 4,
+        "mode": "listen"
+      },
+      {
+        "id": "theme",
+        "label": "첫 가락",
+        "startBeat": 4,
+        "endBeat": 52,
+        "mode": "play"
+      },
+      {
+        "id": "bridge",
+        "label": "반주에 귀 기울여요",
+        "startBeat": 52,
+        "endBeat": 68,
+        "mode": "listen"
+      },
+      {
+        "id": "answer",
+        "label": "다시 들리는 가락",
+        "startBeat": 68,
+        "endBeat": 100,
+        "mode": "play"
+      },
+      {
+        "id": "finale",
+        "label": "마지막 합주",
+        "startBeat": 100,
+        "endBeat": 132,
+        "mode": "play"
+      }
+    ]
+  },
+  "moonlight-waltz": {
+    "bpm": 108,
+    "totalBeats": 99,
+    "notes": [
+      {
+        "beat": 3,
+        "duration": 0.672,
+        "midi": 55,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 4,
+        "duration": 0.378,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 4.5,
+        "duration": 0.378,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 5,
+        "duration": 0.689,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 6,
+        "duration": 0.756,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 7,
+        "duration": 0.706,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 8,
+        "duration": 0.361,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 8.5,
+        "duration": 0.353,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 9,
+        "duration": 0.672,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 9.9,
+        "duration": 0.412,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 10.5,
+        "duration": 0.361,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 11,
+        "duration": 0.697,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 12,
+        "duration": 1.82,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 14,
+        "duration": 0.706,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 15,
+        "duration": 0.672,
+        "midi": 59,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 16,
+        "duration": 0.378,
+        "midi": 66,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 16.5,
+        "duration": 0.378,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 17,
+        "duration": 0.689,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 18,
+        "duration": 0.756,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 19,
+        "duration": 0.706,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 20,
+        "duration": 0.361,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 20.5,
+        "duration": 0.353,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 21,
+        "duration": 0.672,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 21.9,
+        "duration": 0.412,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 22.5,
+        "duration": 0.361,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 23,
+        "duration": 0.697,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 24,
+        "duration": 1.82,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 26,
+        "duration": 0.706,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 27,
+        "duration": 0.672,
+        "midi": 55,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 28,
+        "duration": 0.378,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 28.5,
+        "duration": 0.378,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 29,
+        "duration": 0.689,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 30,
+        "duration": 0.756,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 31,
+        "duration": 0.706,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 32,
+        "duration": 0.361,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 32.5,
+        "duration": 0.353,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 33,
+        "duration": 0.672,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 33.9,
+        "duration": 0.412,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 34.5,
+        "duration": 0.361,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 35,
+        "duration": 0.697,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 36,
+        "duration": 1.82,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 38,
+        "duration": 0.706,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 51,
+        "duration": 0.672,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 51.9,
+        "duration": 0.412,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 52.5,
+        "duration": 0.361,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 53,
+        "duration": 0.697,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 54,
+        "duration": 1.82,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 56,
+        "duration": 0.706,
+        "midi": 52,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 57,
+        "duration": 0.672,
+        "midi": 60,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 58,
+        "duration": 0.378,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 58.5,
+        "duration": 0.378,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 59,
+        "duration": 0.689,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 60,
+        "duration": 0.756,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 61,
+        "duration": 0.706,
+        "midi": 78,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 62,
+        "duration": 0.361,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 62.5,
+        "duration": 0.353,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 63,
+        "duration": 0.672,
+        "midi": 66,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 63.9,
+        "duration": 0.412,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 64.5,
+        "duration": 0.361,
+        "midi": 78,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 65,
+        "duration": 0.697,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 66,
+        "duration": 1.82,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 68,
+        "duration": 0.706,
+        "midi": 60,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 69,
+        "duration": 0.672,
+        "midi": 57,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 70,
+        "duration": 0.378,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 70.5,
+        "duration": 0.378,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 71,
+        "duration": 0.689,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 72,
+        "duration": 0.756,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 73,
+        "duration": 0.706,
+        "midi": 78,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 74,
+        "duration": 0.361,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 74.5,
+        "duration": 0.353,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 75,
+        "duration": 0.672,
+        "midi": 55,
+        "lane": 0,
+        "accent": false
+      },
+      {
+        "beat": 76,
+        "duration": 0.378,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 76.5,
+        "duration": 0.378,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 77,
+        "duration": 0.689,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 78,
+        "duration": 0.756,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 79,
+        "duration": 0.706,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 80,
+        "duration": 0.361,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 80.5,
+        "duration": 0.353,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 81,
+        "duration": 0.672,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 81.9,
+        "duration": 0.412,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 82.5,
+        "duration": 0.361,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 83,
+        "duration": 0.697,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 84,
+        "duration": 1.82,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 86,
+        "duration": 0.706,
+        "midi": 62,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 87,
+        "duration": 0.672,
+        "midi": 59,
+        "lane": 1,
+        "accent": false
+      },
+      {
+        "beat": 88,
+        "duration": 0.378,
+        "midi": 66,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 88.5,
+        "duration": 0.378,
+        "midi": 71,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 89,
+        "duration": 0.689,
+        "midi": 74,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 90,
+        "duration": 0.756,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 91,
+        "duration": 0.706,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 92,
+        "duration": 0.361,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 92.5,
+        "duration": 0.353,
+        "midi": 67,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 93,
+        "duration": 0.672,
+        "midi": 69,
+        "lane": 2,
+        "accent": false
+      },
+      {
+        "beat": 93.9,
+        "duration": 0.412,
+        "midi": 72,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 94.5,
+        "duration": 0.361,
+        "midi": 81,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 95,
+        "duration": 0.697,
+        "midi": 76,
+        "lane": 3,
+        "accent": false
+      },
+      {
+        "beat": 96,
+        "duration": 0.588,
+        "midi": 79,
+        "lane": 4,
+        "accent": false
+      },
+      {
+        "beat": 97,
+        "duration": 1.92,
+        "midi": 55,
+        "lane": 0,
+        "accent": false
+      }
+    ],
+    "sections": [
+      {
+        "id": "count-in",
+        "label": "준비박",
+        "startBeat": 0,
+        "endBeat": 3,
+        "mode": "listen"
+      },
+      {
+        "id": "theme",
+        "label": "첫 가락",
+        "startBeat": 3,
+        "endBeat": 39,
+        "mode": "play"
+      },
+      {
+        "id": "bridge",
+        "label": "반주에 귀 기울여요",
+        "startBeat": 39,
+        "endBeat": 51,
+        "mode": "listen"
+      },
+      {
+        "id": "answer",
+        "label": "다시 들리는 가락",
+        "startBeat": 51,
+        "endBeat": 75,
+        "mode": "play"
+      },
+      {
+        "id": "finale",
+        "label": "마지막 합주",
+        "startBeat": 75,
+        "endBeat": 99,
+        "mode": "play"
+      }
+    ]
   }
 };

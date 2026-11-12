@@ -61,7 +61,7 @@ describe('three music-led levels for the full library', () => {
           expect(previous.lane, label).toBeLessThan(note.lane);
           expect(Math.max(note.durationBeats, previous.durationBeats), label).toBeLessThan(HOLD_NOTE_MIN_BEATS);
         } else {
-          const minGap = source.kind === 'score' ? .5 : .18 * song.bpm / 60;
+          const minGap = source.kind === 'score' ? (song.chartSubdivision === 3 && i === 2 ? 1 / 3 : .5) : .18 * song.bpm / 60;
           expect(note.beat - previous.beat, label).toBeGreaterThanOrEqual(minGap - 1e-7);
           if (previous.durationBeats >= HOLD_NOTE_MIN_BEATS)
             expect(note.beat, label).toBeGreaterThan(previous.beat + previous.durationBeats);

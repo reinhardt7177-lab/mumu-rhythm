@@ -115,9 +115,9 @@ describe('world chord sovereigns',()=>{
   expect(c.advance(attack.at,.8)).toEqual([attack]);expect(c.hp).toBe(52);
   expect(c.advance(attack.at+1,.81)).toEqual([]);expect(c.hp).toBe(52);
  });
- it.each<PlayMode>(['challenge','explore'])('wins near the playable finale of all 14 library charts in %s',mode=>{
+ it.each<PlayMode>(['challenge','explore'])('wins near the playable finale of every library chart in %s',mode=>{
   const rows=MUSIC_LIBRARY.map(({song})=>({song,good:simulate(song,false,mode),perfect:simulate(song,true,mode)}));
-  expect(rows).toHaveLength(14);
+  expect(rows).toHaveLength(16);
   for(const{song,good,perfect}of rows)for(const result of[good,perfect]){
    const label=`${song.id} ${mode} HP=${result.budget}`;
    expect(result.entry,label).toBeGreaterThanOrEqual(.72);

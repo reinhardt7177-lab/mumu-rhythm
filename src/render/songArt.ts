@@ -387,7 +387,7 @@ function gears(art: ArtContext): void {
   }
 }
 
-const DRAWERS = [circuit, keys, frills, gallop, spiral, clouds, gears];
+const DRAWERS = [circuit, keys, frills, gallop, spiral, clouds, gears, keys, clouds];
 
 /** Draws the procedural artwork for `song` into `canvas` at its CSS size (DPR capped at 2). */
 export function drawSongArt(canvas: HTMLCanvasElement, song: Song, variant: ArtVariant = "card"): void {

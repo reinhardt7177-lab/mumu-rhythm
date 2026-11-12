@@ -197,6 +197,8 @@ const plans: Record<string, SongPlan> = {
   'cloud-hop': { title: '구름 점프', listen: '오리지널 전자음악의 앞뒤 가락을 대화에 빗대어 들어 보세요.', topics: ['dialogue', 'direction', 'timbre', 'rest', 'expression'] },
   'neon-run': { title: '네온 런', listen: '오리지널 신스 곡에서 가락과 반주에 번갈아 귀를 기울여 보세요.', topics: ['layers', 'timbre', 'chord', 'rhythm', 'tempo'] },
   'robot-parade': { title: '로봇 퍼레이드', listen: '오리지널 곡의 낮은 반주에서 되돌아오는 리듬꼴을 찾아보세요.', topics: ['ostinato', 'pulse', 'repetition', 'rest', 'layers'] },
+  'rooftop-swing': { title: '옥상 스윙', listen: '베이스에 맞춰 발로 박을 짚으며 전자피아노의 길고 짧은 소리를 비교해 보세요.', topics: ['rhythm', 'duration', 'pulse', 'chord', 'timbre'] },
+  'moonlight-waltz': { title: '달빛 왈츠', listen: '낮은 첫 박과 뒤의 여린 두 박을 들으며 쿵, 짝, 짝을 세어 보세요.', topics: ['pulse', 'layers', 'direction', 'timbre', 'chord'] },
   'bach-prelude': { title: '바흐 전주곡 C장조', listen: '피아노 소리가 함께 울리는지 차례로 펼쳐지는지 집중해 들어 보세요.', topics: ['chord', 'layers', 'repetition', 'duration', 'expression'] },
   'beethoven-fifth': { title: '베토벤 운명 교향곡', listen: '짧은 리듬을 기억하며 다시 들리는 곳과 소리 사이의 쉼을 찾아보세요.', topics: ['repetition', 'duration', 'rest', 'contrast', 'forte'] },
   'morning-mood': { title: '아침의 기분', listen: '가락을 주고받는 듯한 순간과 관악기의 소리 빛깔을 탐색해 보세요.', topics: ['woodwind', 'timbre', 'dialogue', 'direction', 'expression'] },

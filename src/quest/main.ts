@@ -1,4 +1,5 @@
 import './style.css';
+import './library.css';
 import { createIcons, Pause, Play, Info, LayoutGrid, ArrowRight, RotateCcw, X, Headphones, Music2, Maximize, Minimize,BookOpen,Volume2 } from 'lucide';
 import { songDurationSeconds } from '../content/songs';
 import { doubleScroll } from '../core/scrollSpeed';
@@ -41,7 +42,10 @@ const track=new NoteTrack(notes,laneButtons,el('judge'));
 const previewHero=document.querySelector<HTMLElement>('.travel-bard')!,previewEnemy=document.querySelector<HTMLElement>('.travel-enemy')!;
 const stagePreview=new StagePreview(el<HTMLCanvasElement>('stagePreview'),previewHero,previewEnemy,el<HTMLButtonElement>('replayPreview'));
 const pressed=new Map<string,string>();
-let world=WORLDS[0],song=songForWorld(world.id),combat=new Combat();
+const opening=librarySong('rooftop-swing');
+const menuSongs=[opening,librarySong('cloud-hop'),librarySong('morning-mood'),...MUSIC_LIBRARY.filter(item=>!['rooftop-swing','cloud-hop','morning-mood'].includes(item.song.id))];
+const rooftopArt='/assets/art/worlds-v2/rooftop-menu.webp';
+let world=WORLDS.find(item=>item.id===opening.worldId)!,song=opening.song,combat=new Combat();
 let snapshot:GameSnapshot|null=null,running=false,starting=false,mode:PlayMode='challenge';
 let grade:GradeBand='3-4';
 let chartLevel:ChartLevel='pulse';
@@ -53,36 +57,75 @@ let quizRound=0;
 let filterWorld:string|null=null;
 let finaleFrame=0;
 let journeyStage=-1;
+let previewRequest:AbortController|null=null;
+const listenPreview=el<HTMLButtonElement>('listenPreview');
+
+function previewButton(active:boolean){
+  const label=active?'미리 듣기 멈춤':'미리 듣기';
+  listenPreview.title=label;listenPreview.setAttribute('aria-label',label);
+  listenPreview.setAttribute('aria-pressed',String(active));
+  listenPreview.innerHTML=`<i data-lucide="${active?'pause':'play'}" aria-hidden="true"></i>`;
+  createIcons({icons});
+}
+function stopPreview(){
+  if(previewRequest){previewRequest.abort();previewRequest=null;audio.stop();previewButton(false);}
+  el('previewStatus').textContent='';
+}
+listenPreview.onclick=async()=>{
+  if(previewRequest){stopPreview();return;}
+  const request=new AbortController();previewRequest=request;
+  el('previewStatus').textContent='';previewButton(true);
+  try{
+    await audio.preview(song,{signal:request.signal,onEnd:()=>{
+      if(previewRequest===request){previewRequest=null;previewButton(false);}
+    }});
+  }catch{
+    if(previewRequest!==request)return;
+    previewRequest=null;previewButton(false);el('previewStatus').textContent='소리를 재생하지 못했어요. 다시 눌러 주세요.';
+  }
+};
 
 const duration=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
 function selectWorld(next:MusicalWorld,nextSong:Song=songForWorld(next.id)) {
   if(running||starting)return;
+  if(nextSong.id!==song.id)stopPreview();
   world=next;song=nextSong;setLearning();
   const root=el('app');
   root.style.setProperty('--accent',world.accent);root.style.setProperty('--world-surface',world.surface);
   root.style.setProperty('--actor-sheet',`url('${world.actors}')`);
   root.style.setProperty('--world-image',`url('${world.background}')`);
   root.dataset.worldTheme=world.id;
-  el<HTMLImageElement>('worldArt').src=world.background;
+  el<HTMLImageElement>('worldArt').src=world.id==='present'?rooftopArt:world.background;
   el<HTMLImageElement>('worldArt').alt=world.title+' 픽셀 풍경';
-  el('worldTitle').textContent=world.title;
   el('selectedSong').textContent=song.title;
   el('selectedMeta').textContent=`${song.featuredInstrument} · ${duration(songDurationSeconds(song))}`;
-  el('footerWorld').textContent=world.title;
   document.querySelectorAll<HTMLButtonElement>('[data-world]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.world===filterWorld)));
   el('allSongs').setAttribute('aria-pressed',String(filterWorld===null));
   track.setTheme(world.id);battlefield.setWorld(world);battlefield.draw(0,combat);
   el('journey').innerHTML=world.stops.map((stop,i)=>`<span data-stop="${i}">${String(i+1).padStart(2,'0')} ${stop}</span>`).join('');
   journeyStage=-1;
-  el('libraryCount').textContent=`${MUSIC_LIBRARY.length}곡`;
-  el('songList').innerHTML=MUSIC_LIBRARY.filter(item=>!filterWorld||item.worldId===filterWorld).map(({song:item},i)=>`<button class="song-row" data-song="${item.id}" aria-pressed="${item.id===song.id}"><span class="song-number">${String(i+1).padStart(2,'0')}</span><span class="song-row-text"><strong>${item.title}</strong><small>${item.featuredInstrument}</small></span><span class="song-duration">${duration(songDurationSeconds(item))}</span></button>`).join('');
-  document.querySelectorAll<HTMLButtonElement>('[data-song]').forEach(button=>button.onclick=()=>{const item=librarySong(button.dataset.song!);selectWorld(WORLDS.find(w=>w.id===item.worldId)!,item.song);});
+  const entries=menuSongs.filter(item=>!filterWorld||item.worldId===filterWorld),list=el('songList');
+  el('libraryCount').textContent=`${entries.length}곡`;
+  if(list.dataset.filter!==String(filterWorld)){
+    list.dataset.filter=String(filterWorld);
+    list.innerHTML=entries.map(({song:item},i)=>`<button class="song-row" data-song="${item.id}"><span class="song-number">${String(i+1).padStart(2,'0')}</span><span class="song-row-text"><strong>${item.title}</strong></span><span class="song-duration">${duration(songDurationSeconds(item))}</span></button>`).join('');
+    list.scrollTop=0;
+    list.querySelectorAll<HTMLButtonElement>('[data-song]').forEach(button=>button.onclick=()=>{const item=librarySong(button.dataset.song!);selectWorld(WORLDS.find(w=>w.id===item.worldId)!,item.song);});
+  }
+  list.querySelectorAll<HTMLButtonElement>('[data-song]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.song===song.id)));
+  const selected=list.querySelector<HTMLElement>('[aria-pressed="true"]');
+  if(selected&&list.clientHeight){
+    const rect=selected.getBoundingClientRect(),bounds=list.getBoundingClientRect();
+    if(rect.top<bounds.top)list.scrollTop+=rect.top-bounds.top;
+    else if(rect.bottom>bounds.bottom)list.scrollTop+=rect.bottom-bounds.bottom;
+  }
   placePreview();
   stagePreview.play(world.id,song.bpm);
 }
 
 function openBriefing() {
   if(starting||running)return;
+  stopPreview();
   el('briefTitle').textContent=song.title;el('briefOrigin').textContent=song.origin;
   el('briefIntroduction').textContent=librarySong(song.id).introduction;
   el('briefInstruments').textContent=song.instruments.join(' · ');
@@ -172,6 +215,7 @@ const game=new RhythmGame(audio,{
 
 async function start() {
   if(starting)return;starting=true;
+  stopPreview();
   quizAudio.stop();notebook.close();
   cancelAnimationFrame(finaleFrame);finaleFrame=0;
   el<HTMLButtonElement>('start').disabled=true;el<HTMLButtonElement>('closeBriefing').disabled=true;
@@ -229,7 +273,10 @@ el('inputClick').onclick=()=>{
  el('inputClick').setAttribute('aria-pressed',String(inputClick));
 };
 for(const id of ['home','leavePause','resultHome'])el(id).onclick=home;
-document.querySelectorAll<HTMLButtonElement>('[data-world]').forEach(b=>b.onclick=()=>{filterWorld=b.dataset.world!;selectWorld(WORLDS.find(w=>w.id===filterWorld)!);});
+document.querySelectorAll<HTMLButtonElement>('[data-world]').forEach(b=>b.onclick=()=>{
+  filterWorld=b.dataset.world!;const next=WORLDS.find(w=>w.id===filterWorld)!;
+  selectWorld(next,next===world?song:next.id===opening.worldId?opening.song:songForWorld(next.id));
+});
 el('allSongs').onclick=()=>{filterWorld=null;selectWorld(world,song);};
 document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode==='challenge'?'challenge':'explore';document.querySelectorAll('[data-mode]').forEach(n=>n.setAttribute('aria-pressed',String(n===b)));});
 document.querySelectorAll<HTMLButtonElement>('[data-grade]').forEach(b=>b.onclick=()=>{grade=b.dataset.grade==='5-6'?'5-6':'3-4';setLearning();});
@@ -277,14 +324,15 @@ notes.onpointerdown=e=>{
 function release(e:PointerEvent){releaseInput(String(e.pointerId),e.timeStamp);}
 notes.onpointerup=release;notes.onpointercancel=release;notes.onlostpointercapture=release;
 laneButtons.forEach(b=>{b.onpointerdown=e=>{if(!inputAllowed())return;e.preventDefault();press(Number(b.dataset.lane),`b${e.pointerId}`,e.timeStamp);b.setPointerCapture(e.pointerId);};b.onpointerup=e=>releaseInput(`b${e.pointerId}`,e.timeStamp);b.onpointercancel=b.onpointerup;b.onlostpointercapture=b.onpointerup;});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){quizAudio.stop();if(running&&!snapshot?.paused)void pause();}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){stopPreview();quizAudio.stop();if(running&&!snapshot?.paused)void pause();}});
 window.addEventListener('blur',releaseAll);
 el('answer').onclick=()=>{
   el('explanation').textContent=resultQuiz.grade();
 };
-el('notebook').onclick=async()=>{if(running&&!snapshot?.paused)await pause();notebook.open(grade);};
+el('notebook').onclick=async()=>{stopPreview();if(running&&!snapshot?.paused)await pause();notebook.open(grade);};
 results.addEventListener('close',()=>quizAudio.stop());
 el('credits').onclick=async()=>{
+  stopPreview();
   if(running&&!snapshot?.paused)await pause();
   const info=librarySong(song.id),container=el('musicCredit');container.replaceChildren();
   const text=document.createElement('p');text.textContent=info.credit+' '+info.license+(info.changes?' '+info.changes:'');container.append(text);
@@ -298,7 +346,7 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed
 el('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await el('app').requestFullscreen();}catch{el('fullscreen').title='브라우저 전체화면 권한을 확인하세요';}};
 document.addEventListener('fullscreenchange',()=>{const full=!!document.fullscreenElement;el('fullscreen').innerHTML=`<i data-lucide="${full?'minimize':'maximize'}"></i>`;el('fullscreen').setAttribute('aria-label',full?'전체화면 종료':'전체화면');el('fullscreen').title=full?'전체화면 종료':'전체화면';createIcons({icons});});
 el<HTMLButtonElement>('pause').disabled=true;el<HTMLButtonElement>('home').disabled=true;
-selectWorld(world);
+selectWorld(world,song);
 function placePreview(){
   const preview=document.querySelector<HTMLElement>('.world-preview')!;
   const {width,height}=preview.getBoundingClientRect();

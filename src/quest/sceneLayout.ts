@@ -18,6 +18,12 @@ export function spriteRect(anchor:Point,size:number){
 }
 
 export function previewScene(worldId:string,width:number,height:number,heroSize:number,enemySize:number){
+  if(worldId==='present'){
+    const scale=Math.max(width/480,height/270),floor=233;
+    const y=clamp(height*.88-floor*scale,height-270*scale,0);
+    return {background:{x:(width-480*scale)/2,y,width:480*scale,height:270*scale},
+      hero:{x:width*.29,y:floor*scale+y},enemy:{x:width*.71,y:floor*scale+y}};
+  }
   const actors=sceneActors(worldId,0);
   const scale=Math.max(width/480,height/320);
   const background={x:(width-480*scale)/2,y:clamp(height*.76-actors.groundY*scale,height-320*scale,0),width:480*scale,height:320*scale};

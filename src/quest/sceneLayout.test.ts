@@ -33,8 +33,8 @@ describe('world stage placement',()=>{
    for(const w of WORLDS){
     const p=previewScene(w.id,width,height,size,size),world=sceneActors(w.id,0);
     const scale=p.background.width/480;
-    expect(p.hero.y).toBeCloseTo(world.hero.y*scale+p.background.y);
-    expect(p.enemy.y).toBeCloseTo(world.enemy.y*scale+p.background.y);
+    expect(p.hero.y).toBeCloseTo((w.id==='present'?233:world.hero.y)*scale+p.background.y);
+    expect(p.enemy.y).toBeCloseTo((w.id==='present'?233:world.enemy.y)*scale+p.background.y);
     for(const a of [p.hero,p.enemy]){expect(a.x-size/2).toBeGreaterThanOrEqual(8);expect(a.x+size/2).toBeLessThanOrEqual(width-8);expect(a.y).toBeGreaterThan(size*120/128);expect(a.y).toBeLessThan(height-8);}
     expect(p.enemy.x-p.hero.x).toBeGreaterThanOrEqual(size);
    }

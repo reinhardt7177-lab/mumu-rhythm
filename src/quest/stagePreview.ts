@@ -1,5 +1,4 @@
 import { ACTOR_WINDUP_SECONDS, enemyFrame, heroFrame } from './actors';
-import { drawNoteBar } from './noteBar';
 import type { Point } from './sceneLayout';
 
 const COLORS = ['#81e6d0', '#ff92ad', '#ffe39a', '#b8e491', '#b7b5ff'];
@@ -11,7 +10,7 @@ const PALETTES: Record<string, readonly [string, string]> = {
   past: ['#ffda83', '#ff967f'], present: ['#ffc081', '#ff83b0'],
   future: ['#a4edff', '#cba6ff'], fantasy: ['#e9ffad', '#d9a9fa'],
 };
-const LEAD = .7, IMPACT = .31;
+const LEAD = .7, IMPACT = .38;
 
 export function previewBeats(world: string, bpm: number) {
   const interval = Math.max(.43, Math.min(.63, 60 / bpm));
@@ -82,65 +81,39 @@ export class StagePreview {
     const hits = time < 0 ? [] : events.filter(event => time >= event.at);
     const recent = hits.at(-1), age = recent ? time - recent.at : Infinity;
     const [light, shadow] = PALETTES[this.world] ?? PALETTES.past;
-    const trackW = Math.min(354, Math.round(w * (w < 540 ? .48 : .33)));
-    const laneW = Math.floor(trackW / 5), left = Math.round((w - laneW * 5) / 2);
-    const top = Math.round(h * (h < 460 ? .38 : .32)), bottom = Math.round(h * .72);
-    const railHeight = bottom - top, barH = h < 460 ? 7 : 11;
     c.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     c.clearRect(0, 0, w, h);
     this.pose(this.hero, heroFrame(age, time, time < 0));
     this.pose(this.enemy, enemyFrame(0, age >= IMPACT && age < IMPACT + .18));
 
-    for (let lane = 0; lane < 5; lane++) {
-      const x = left + lane * laneW, active = recent?.lane === lane && age < .22;
-      c.fillStyle = lane % 2 ? '#161527c9' : '#1d192ec9';
-      c.fillRect(x, top, laneW - 1, railHeight);
-      if (active) {
-        c.fillStyle = COLORS[lane]; c.globalAlpha = .3 * (1 - age / .22);
-        c.fillRect(x, top, laneW - 1, railHeight); c.globalAlpha = 1;
-      }
-      c.fillStyle = COLORS[lane]; c.fillRect(x, bottom + 4, laneW - 1, 3);
+    const lift = Math.min(h * .17, 105), arcHeight = Math.min(h * .10, 55);
+    const point = (p: number, lane: number) => {
+      const arc = Math.sin(p * Math.PI);
+      const curve = this.world === 'future' ? 0 : this.world === 'fantasy' ? arc * Math.cos(p * Math.PI) : arc;
+      return {x:hero.x+(enemy.x-hero.x)*p,y:hero.y-lift+(enemy.y-hero.y)*p-curve*arcHeight-(lane-2)*arc*5};
+    };
+    const drawNote = ({x,y}: Point, size: number, color: string, alpha: number) => {
+      x=Math.round(x);y=Math.round(y);c.globalAlpha=alpha;c.fillStyle='#19243a';
+      c.fillRect(x-size-1,y-size+1,2*size+1,size+2);c.fillRect(x-1,y-4*size-1,size+2,4*size+2);
+      c.fillStyle=color;
+      c.fillRect(x-size,y-size,2*size,size);c.fillRect(x,y-4*size,size,4*size);
+      c.fillRect(x+size,y-4*size,size*2,size);c.fillRect(x+size*2,y-3*size,size,size);
+    };
+    if(time<0){
+      [.34,.50,.66].forEach((p,i)=>drawNote(point(p,i+1),w<540?3:5,i===1?'#fff6db':light,.86));
     }
-    for (let y = 1; y < 4; y++) {
-      c.fillStyle = '#fff1e229'; c.fillRect(left, Math.round(top + railHeight * y / 4), laneW * 5, 1);
-    }
-    c.save();
-    c.beginPath(); c.rect(left, top, laneW * 5, railHeight + 1); c.clip();
-    for (const [i, event] of events.entries()) {
-      const progress = time < 0 ? (i < 4 ? .2 + i * .17 : -1) : 1 - (event.at - time) / LEAD;
-      if (progress < 0 || progress >= 1) continue;
-      drawNoteBar(c, { x: left + event.lane * laneW + 5, y: Math.round(top + progress * railHeight) - barH,
-        width: laneW - 11, height: barH }, COLORS[event.lane], {});
-    }
-    c.restore();
-    c.fillStyle = '#fff0d8'; c.fillRect(left, bottom - 1, laneW * 5, 2);
-    if (recent && age < .18) {
-      const x = left + (recent.lane + .5) * laneW;
-      for (let i = -2; i <= 2; i++) {
-        c.globalAlpha = 1 - age / .18;
-        c.fillStyle = i % 2 ? COLORS[recent.lane] : '#fff6dd';
-        c.fillRect(Math.round(x + i * (3 + age * 40)), Math.round(bottom - (3 - Math.abs(i)) * age * 65), 3, 3);
-      }
-      c.globalAlpha = 1;
-    }
-
     if (age >= ACTOR_WINDUP_SECONDS && age < IMPACT) {
-      const p = (age - ACTOR_WINDUP_SECONDS) / (IMPACT - ACTOR_WINDUP_SECONDS), dx = enemy.x - hero.x;
-      const lift = Math.min(h * .115, 92);
-      for (let i = 5; i >= 0; i--) {
-        const q = Math.max(0, p - i * .055), x = hero.x + dx * q;
-        const arc = Math.sin(q * Math.PI);
-        const curve = this.world === 'future' ? 0 : this.world === 'fantasy' ? arc * Math.cos(q * Math.PI * 3) * .38
-          : this.world === 'present' ? arc * .22 : arc * .55;
-        const y = hero.y - lift + (enemy.y - hero.y) * q - curve * lift;
-        c.fillStyle = i % 2 ? shadow : light;
-        c.globalAlpha = 1 - i * .15;
-        const size = i ? 4 : 9;
-        c.fillRect(Math.round(x - size / 2), Math.round(y), size, size);
-        if (!i) c.fillRect(Math.round(x + 2), Math.round(y - 14), 3, 17);
+      const p = (age - ACTOR_WINDUP_SECONDS) / (IMPACT - ACTOR_WINDUP_SECONDS);
+      for (let i = 4; i > 0; i--) {
+        const q = p-i*.085;
+        if(q<0)continue;
+        const {x,y}=point(q,recent!.lane);
+        c.fillStyle=i%2?COLORS[recent!.lane]:light;c.globalAlpha=1-i*.17;
+        c.fillRect(Math.round(x),Math.round(y),i<3?5:3,i<3?5:3);
       }
+      drawNote(point(p,recent!.lane),w<540?4:6,'#fff6db',1);
     } else if (age >= IMPACT && age < IMPACT + .3) {
-      const p = (age - IMPACT) / .3, y = enemy.y - Math.min(h * .115, 92);
+      const p = (age - IMPACT) / .3, y = enemy.y - lift;
       const finale = hits.length === events.length;
       c.globalAlpha = 1 - p;
       const count = finale ? 12 : 8;

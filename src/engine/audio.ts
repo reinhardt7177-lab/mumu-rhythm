@@ -46,7 +46,8 @@ export class AudioEngine {
     if (contextTime !== undefined && outputPerformanceTime !== undefined && contextTime > 0 && outputPerformanceTime > 0) {
       return contextTime + (performanceTime - outputPerformanceTime) / 1000 - userOffset;
     }
-    return this.context.currentTime - (this.context.outputLatency ?? 0) - userOffset;
+    const eventOffset = (performanceTime - performance.now()) / 1000;
+    return this.context.currentTime - (this.context.outputLatency ?? 0) - userOffset + eventOffset;
   }
 
   setMasterVolume(value: number): void {
@@ -77,8 +78,9 @@ export class AudioEngine {
     await this.loadSongBuffer(song);
   }
 
-  async preview(song: Song): Promise<void> {
+  async preview(song: Song, options?: { signal: AbortSignal; onEnd: () => void }): Promise<void> {
     await this.preload(song);
+    if (options?.signal.aborted) return;
     this.stop();
     const context = this.context!;
     const backing = this.buffers.get(this.resolvedBacking.get(song.id) ?? song.backingTrack)!;
@@ -88,6 +90,7 @@ export class AudioEngine {
     const source = this.track(context.createBufferSource());
     source.buffer = backing;
     source.connect(this.backingBus!);
+    if (options) source.addEventListener('ended', () => { if (!options.signal.aborted) options.onEnd(); }, { once: true });
     source.start(startAt, Math.max(0, previewOffset), duration);
   }
 

@@ -435,4 +435,104 @@ def robot_parade(chart_sources: list[ScoreSource] | None = None) -> TrackResult:
     return TrackResult("robot-parade", "Robot Parade", audio, chart, mix.total_seconds, loudness=-15.0, limit=0.8)
 
 
-TRACKS: list[Callable[[], TrackResult]] = [neon_run, cloud_hop, robot_parade]
+def small_ensemble(track_id: str, title: str, meter: int, bpm: int, chart_sources: list[ScoreSource] | None) -> TrackResult:
+    jazz = meter == 4
+    bars, lead = 32, meter
+    total = lead + bars * meter
+    mix = Mix(bpm, total, 1.45, seed=7300 + bpm)
+    score = Score()
+    voice = "tines" if jazz else "harp"
+    lane_for = lane_mapper(55, 81)
+    # Bass root followed by a compact chord voicing. The contrasting middle
+    # phrase borrows the same palette but starts from a different harmony.
+    chords = ([(48, (59, 62, 64, 67)), (45, (55, 59, 60, 64)),
+               (50, (60, 64, 65, 69)), (43, (53, 57, 59, 62)),
+               (52, (62, 67, 71, 74)), (45, (55, 59, 61, 64)),
+               (50, (60, 64, 65, 69)), (43, (53, 57, 59, 62))] if jazz else
+              [(43, (55, 59, 62, 67)), (40, (55, 59, 64, 67)),
+               (48, (55, 60, 64, 67)), (50, (57, 62, 66, 69)),
+               (47, (54, 59, 62, 66)), (48, (55, 60, 64, 67)),
+               (45, (57, 60, 64, 69)), (50, (57, 62, 66, 69))])
+    motifs = ([[(0, .56, 1), (2/3, .25, 2), (1, .56, 3), (2, .6, 4), (2+2/3, .26, 3), (3, .64, 2)],
+               [(0, .56, 4), (2/3, .24, 3), (1, .62, 2), (2, .58, 1), (3, .75, 0)],
+               [(0, .45, 0), (2/3, .23, 2), (1, .66, 3), (2, .48, 4), (2+2/3, .22, 3), (3, .75, 4)],
+               [(0, .65, 3), (1, .42, 1), (2, 1.9, 2)]] if jazz else
+              [[(0, .8, 0), (1, .45, 1), (1.5, .45, 2), (2, .82, 3)],
+               [(0, .9, 4), (1, .84, 3), (2, .43, 2), (2.5, .42, 1)],
+               [(0, .8, 1), (.9, .49, 2), (1.5, .43, 4), (2, .83, 3)],
+               [(0, 1.82, 2), (2, .84, 0)]])
+    kick, snare = mix.kick(), mix.snare()
+
+    def note(beat, length, pitch, instrument, gain, pan, role, playable):
+        event = Event(beat, length, pitch, instrument, gain, pan, lane_for(pitch) if playable and role == "lead" else None)
+        score.add(event)
+        if chart_sources is not None and role:
+            chart_sources.append((beat, length, pitch, role))
+
+    for bar in range(bars):
+        start = lead + bar * meter
+        interlude = 12 <= bar < 16
+        finale = bar >= 24
+        root, tones = chords[(bar + (4 if interlude else 0)) % 8]
+        if bar == bars - 1:
+            root, tones = chords[0]
+        bass_steps = [0, 1, 2, 3] if jazz else [0, 1, 2]
+        for beat in bass_steps:
+            pitch = root if beat == 0 else root + (7 if beat == 1 else 12 if jazz else 7)
+            length = .68 if jazz else .78
+            note(start + beat, length, pitch, "bass" if jazz or beat == 0 else "harp", .21 if beat == 0 else .145, -.19, "bass", False)
+            if beat == 0 and chart_sources is not None:
+                chart_sources.append((start, length, pitch, "pulse"))
+        for beat in ([2/3, 2+2/3] if jazz else [1, 2]):
+            for i, pitch in enumerate(tones):
+                note(start + beat, .51 if jazz else .75, pitch, voice, .043 if not interlude else .072, -.33 + i * .18, None, False)
+        for i, pitch in enumerate(tones[1:]):
+            note(start, meter - .06, pitch, "pad", .020 + (0.014 if finale else 0), -.35 + i * .28, None, False)
+        if jazz:
+            mix.place(kick * .6, start)
+            for beat in (1, 3):
+                mix.place(snare * (.42 if not interlude else .26), start + beat)
+            for beat in (0, 2/3, 1, 1+2/3, 2, 2+2/3, 3, 3+2/3):
+                mix.place(mix.hat(False, .26) * (.48 if beat % 1 else .29), start + beat)
+        else:
+            mix.place(kick * .23, start)
+        if interlude:
+            continue
+        if bar == bars - 1:
+            pattern = [(0, .7, 4), (1, meter - 1.08, 0)]
+        else:
+            pattern = motifs[(bar + (2 if 16 <= bar < 24 else 0)) % 4]
+        melody = [root + 12, *(pitch + 12 for pitch in tones)]
+        # Sort in pitch order so the written contour stays distinct over inversions.
+        melody = sorted(melody)
+        for offset, length, step in pattern:
+            pitch = melody[step]
+            gain = (.185 if jazz else .205) * (1.12 if finale else 1) * (1.08 if offset == 0 else .88 if offset % 1 else 1)
+            note(start+offset, length, pitch, voice, gain, .16, "lead", True)
+            if not jazz or finale:
+                note(start+offset, length, pitch-12, "pluck" if jazz else "bell", gain*.22, -.25, None, False)
+
+    score.render(mix)
+    sections = sections_for([
+        ("count-in", "준비박", 0, lead, "listen"),
+        ("theme", "첫 가락", lead, lead + 12*meter, "play"),
+        ("bridge", "반주에 귀 기울여요", lead + 12*meter, lead + 16*meter, "listen"),
+        ("answer", "다시 들리는 가락", lead + 16*meter, lead + 24*meter, "play"),
+        ("finale", "마지막 합주", lead + 24*meter, total, "play"),
+    ])
+    audio = mix.master(delay_seconds=mix.beat_seconds*(2/3 if jazz else 1), pump_floor=.96, pump_depth=.04,
+                       delay_right=.11 if jazz else .18, delay_left=.05 if jazz else .12)
+    return TrackResult(track_id, title, audio,
+                       {"bpm": bpm, "totalBeats": total, "notes": score.chart_notes(), "sections": sections},
+                       mix.total_seconds, loudness=-15.0, limit=.83)
+
+
+def rooftop_swing(chart_sources: list[ScoreSource] | None = None) -> TrackResult:
+    return small_ensemble("rooftop-swing", "Rooftop Swing", 4, 136, chart_sources)
+
+
+def moonlight_waltz(chart_sources: list[ScoreSource] | None = None) -> TrackResult:
+    return small_ensemble("moonlight-waltz", "Moonlight Waltz", 3, 108, chart_sources)
+
+
+TRACKS: list[Callable[[], TrackResult]] = [neon_run, cloud_hop, robot_parade, rooftop_swing, moonlight_waltz]

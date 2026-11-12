@@ -51,7 +51,7 @@ export interface Song {
   grade: string;
   difficulty: "빠른 도전" | "최고 속도";
   bpm: number;
-  beatsPerBar: 2 | 4;
+  beatsPerBar: 2 | 3 | 4;
   leadInBeats: number;
   totalBeats: number;
   featuredInstrument: string;
@@ -61,6 +61,7 @@ export interface Song {
   backingTrack: string;
   backingTrackFallback?: string;
   chartSource?: "score" | "recording";
+  chartSubdivision?: 2 | 3;
   measureStarts?: readonly number[];
   palette: SongPalette;
   mission: ListeningMission;

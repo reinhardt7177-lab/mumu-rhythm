@@ -25,7 +25,9 @@ export function buildLevelChart(song: Song, events: readonly SourceEvent[], leve
   }
   candidates.sort((a, b) => a.beat - b.beat);
   const spb = 60 / song.bpm;
-  const gap = Math.max(chartSource === 'score' ? .5 : 0, ({ pulse: .50, groove: .27, melody: .18 }[level]) / spb);
+  const triplets = chartSource === 'score' && song.chartSubdivision === 3 && level === 'melody';
+  const gap = Math.max(chartSource === 'score' ? (triplets ? 1 / 3 : .5) : 0,
+    ({ pulse: .50, groove: .27, melody: triplets ? .14 : .18 }[level]) / spb);
   const melody: MelodyNote[] = [];
   function fits(note: MelodyNote, except?: MelodyNote) {
     return melody.every(other => {

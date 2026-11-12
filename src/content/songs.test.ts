@@ -2,17 +2,18 @@ import { describe, expect, it } from "vitest";
 import { HOLD_NOTE_MIN_BEATS } from "../types";
 import { songDurationSeconds, songs } from "./songs";
 import { synthTracks } from "./synthCharts.generated";
+import { synthScores } from "./synthScores.generated";
 
 // Keys only: proves each referenced audio file ships in public/ without loading it.
 const shippedAudio = Object.keys(import.meta.glob("/public/assets/audio/**/*.{ogg,m4a}", { query: "?url", import: "default" }))
   .map((path) => path.replace(/^\/public/, ""));
 
-const NEW_SYNTH_IDS = ["cloud-hop", "robot-parade"];
+const NEW_SYNTH_IDS = ["cloud-hop", "robot-parade", "rooftop-swing", "moonlight-waltz"];
 
 describe("song catalogue", () => {
-  it("keeps the five existing songs and adds exactly two original synth songs", () => {
+  it("keeps the existing songs and ships both new arrangements", () => {
     expect(songs.map((song) => song.id)).toEqual([
-      "neon-run", "cloud-hop", "robot-parade", "turkish-march", "can-can", "william-tell", "hungarian-dance",
+      "neon-run", "cloud-hop", "robot-parade", "rooftop-swing", "moonlight-waltz", "turkish-march", "can-can", "william-tell", "hungarian-dance",
     ]);
     expect(Object.keys(synthTracks)).toEqual(["neon-run", ...NEW_SYNTH_IDS]);
   });
@@ -29,6 +30,15 @@ describe("song catalogue", () => {
     expect(new Set(songs.map((song) => song.mission.badge)).size).toBe(songs.length);
     for (const song of songs) expect(song.mission.options[song.mission.answerIndex]).toBeDefined();
   });
+});
+
+it("authors an audible swing subdivision and three-beat waltz downbeats", () => {
+  const swing = synthScores["rooftop-swing"], waltz = synthScores["moonlight-waltz"];
+  expect(swing.some(([beat, , , role]) => role === "lead" && Math.abs(beat % 1 - 2 / 3) < 1e-6)).toBe(true);
+  const pulses = waltz.filter(event => event[3] === "pulse");
+  expect(pulses).toHaveLength(32);
+  expect(pulses.every(([beat], i) => beat === 3 + i * 3)).toBe(true);
+  expect(waltz.filter(event => event[3] === "bass")).toHaveLength(96);
 });
 
 describe.each(NEW_SYNTH_IDS)("original synth song %s", (id) => {

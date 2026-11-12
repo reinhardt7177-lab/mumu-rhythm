@@ -4,11 +4,11 @@ import { learningFor, type GradeBand } from './learning';
 
 const ids = ['can-can', 'turkish-march', 'william-tell', 'cloud-hop', 'neon-run',
   'robot-parade', 'bach-prelude', 'beethoven-fifth', 'morning-mood', 'mountain-king',
-  'borodin-scherzo', 'brahms-tragic', 'tchaikovsky-march', 'bach-fugue'];
+  'borodin-scherzo', 'brahms-tragic', 'tchaikovsky-march', 'bach-fugue', 'rooftop-swing', 'moonlight-waltz'];
 const bands: GradeBand[] = ['3-4', '5-6'];
 
 describe('elementary music learning packs', () => {
-  it('covers the actual 14-song library, not the unused legacy song', () => {
+  it('covers the complete playable library, not the unused legacy song', () => {
     expect(MUSIC_LIBRARY.map(x => x.song.id).sort()).toEqual([...ids].sort());
   });
 
@@ -49,7 +49,7 @@ describe('elementary music learning packs', () => {
     }
     for (const grade of bands) {
       const packs = ids.map(id => learningFor(id, grade));
-      expect(new Set(packs.map(p => p.questions.map(q => q.concept).join('|'))).size).toBe(14);
+      expect(new Set(packs.map(p => p.questions.map(q => q.concept).join('|'))).size).toBe(ids.length);
       expect(new Set(packs.flatMap(p => p.questions.map(q => q.q))).size).toBeGreaterThanOrEqual(20);
       expect(packs.some(p => p.questions.every(q => !/포르테/.test(q.q)))).toBe(true);
     }

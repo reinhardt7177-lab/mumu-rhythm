@@ -59,6 +59,8 @@ All four derivatives add a short gameplay lead-in and apply fades, filtering, pe
 
 The four-world redesign adds theater, rooftop and orbital backgrounds in `public/assets/art/worlds-v2/`, plus a shared ghost/golem/demon atlas at `public/assets/art/quest-v1/enemies.png`. Art is newly AI-generated and locally normalized; prompts and provenance are in `public/assets/art/worlds-v2/PRODUCTION.md`. Existing forest, bard and slime are reused.
 
+The music library uses a newly generated daylight rooftop backdrop (`public/assets/art/worlds-v2/rooftop-menu.webp`), resized and encoded locally. It does not replace the gameplay rooftop backdrop or any actor sprites.
+
 The redesign bundles NeoDunggeunmo from the [official webfont repository](https://github.com/neodgm/neodgm-webfont). Copyright (c) 2021-2026 Eunbin Jeong (Dalgona.), reserved font name NeoDunggeunmo. The font is distributed under SIL OFL 1.1; full notice and license are bundled in `public/assets/fonts/NEODGM-LICENSE.txt` and accessible from game credits.
 
 The Note Knights forest quality slice uses newly AI-generated art in `public/assets/art/quest-v1/`: a forest background, an eight-frame bard sheet and a four-frame slime sheet. The built-in image tool generated complete sheets; local processing preserves alpha and normalizes the shared scale and bottom-center anchor. Prompts and processing notes are in `public/assets/art/quest-v1/PRODUCTION.md`; originals are retained under `output/note-knights/source/`. Later encounters now use the shared generated monster atlas from the four-world redesign.
@@ -79,4 +81,4 @@ The optional GPU effects layer uses [CanvasKit](https://skia.org/docs/user/modul
 
 ## Original synth recording
 
-Neon Run, Cloud Hop and Robot Parade are generated locally by `tools/music/build_synth_tracks.py` (scores in `tools/music/synth_tracks.py`). Their melodies are original scale-degree sequences written for this project, not arrangements of existing songs. They use no third-party samples or model output. The score, synthesis, arrangement, mix, gameplay chart, OGG, and M4A derivatives are original project assets.
+Neon Run, Cloud Hop, Robot Parade, Rooftop Swing and Moonlight Waltz are generated locally by `tools/music/build_synth_tracks.py` (scores in `tools/music/synth_tracks.py`). Their melodies are written for this project, not arrangements of existing songs. They use no third-party samples. The score, synthesis, arrangement, mix, gameplay chart, OGG, and M4A derivatives are original project assets.

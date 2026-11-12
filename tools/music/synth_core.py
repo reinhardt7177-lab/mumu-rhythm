@@ -76,6 +76,14 @@ def synth_note(midi: float, duration: float, amplitude: float, voice: str, pan: 
         opening = np.minimum(1, time * 14)
         mono = sum(np.sin(phase * harmonic) / harmonic * (opening if harmonic > 2 else 1) for harmonic in range(1, 9)) * 0.7
         env = envelope(length, 0.025, 0.12, 0.7, min(0.15, duration * 0.3))
+    elif voice == "tines":
+        color = 1.4 * np.exp(-time * 8.0)
+        mono = .86 * np.sin(phase + color * np.sin(phase * 2)) + .14 * np.sin(phase * 3) * np.exp(-time * 15)
+        env = envelope(length, .004, .24, .42, min(.18, duration * .3))
+    elif voice == "harp":
+        mono = sum(np.sin(phase * harmonic) * np.exp(-time * (1.1 + harmonic)) / harmonic**1.35
+                   for harmonic in range(1, 8))
+        env = envelope(length, .002, .18, .58, min(.22, duration * .4))
     else:  # pluck
         mono = sum(np.sin(phase * harmonic) / harmonic for harmonic in range(1, 6))
         env = envelope(length, 0.002, 0.12, 0.18, min(0.13, duration * 0.4))

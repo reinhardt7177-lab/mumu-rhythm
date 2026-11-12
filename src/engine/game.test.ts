@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Song } from "../types";
+import { HOLD_NOTE_MIN_BEATS, type Song } from "../types";
+import { CHART_LEVELS, chartForLevel } from "../content/musicalChart";
+import { doubleScroll } from "../core/scrollSpeed";
+import { MUSIC_LIBRARY } from "../quest/catalog";
+import { noteGeometry, TRACK } from "../quest/noteTrackGeometry";
 import type { AudioEngine } from "./audio";
 import { RhythmGame, type GameSnapshot } from "./game";
 
@@ -26,6 +30,28 @@ function setup() {
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("library audio clock and hitline", () => {
+  it.each(MUSIC_LIBRARY.map(({song}) => [song.id, song] as const))("%s centers and judges every note in all three charts", async (_, original) => {
+    for (const level of CHART_LEVELS) {
+      const chart = doubleScroll(await chartForLevel(original, level));
+      const {game,onJudge,onFrame,frame} = setup();
+      const spb = 60 / chart.bpm;
+      await game.start(chart,"challenge");
+      for (const note of chart.melody) {
+        const time = note.beat * spb;
+        frame(time);
+        const live = onFrame.mock.lastCall![0].notes.find(n=>n.id===note.id)!;
+        expect(noteGeometry(live,time,spb,chart.approachSeconds)).toMatchObject({x:(note.lane+.5)*TRACK.laneWidth,y:TRACK.hitlineY});
+        expect(game.pressLane(note.lane,time*1000)).toMatchObject({noteId:note.id,judge:"PERFECT"});
+        if (note.durationBeats >= HOLD_NOTE_MIN_BEATS) frame((note.beat + note.durationBeats) * spb);
+        expect(onJudge.mock.lastCall![0]).toMatchObject({noteId:note.id,judge:"PERFECT"});
+      }
+      expect(onJudge).toHaveBeenCalledTimes(chart.melody.length);
+      game.stop();
+    }
+  });
+});
 
 describe("musical hit response", () => {
   const pitched: Song = { ...song, melody: song.melody.map(n => ({ ...n, musicalRole: "lead" })) };

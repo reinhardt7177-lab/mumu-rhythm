@@ -52,7 +52,7 @@ export interface VisualFrame {
 
 export interface SongMotif {
   /** Shader/preview motif id. */
-  id: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  id: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
   name: string;
   /** Five MV colors: warm white, coral, teal, gold, blue ordering. */
   colors: [string, string, string, string, string];
@@ -68,6 +68,8 @@ const MOTIFS: Record<string, SongMotif> = {
   "hungarian-dance": { id: 4, name: "spiral", colors: ["#fff0e0", "#e85a70", "#2cb8b0", "#e6b54c", "#5a70e8"], night: "#1c1026" },
   "cloud-hop": { id: 5, name: "clouds", colors: ["#fffaf0", "#ff8fb1", "#5fd4e8", "#ffd97a", "#7f9bff"], night: "#0e1b36" },
   "robot-parade": { id: 6, name: "gears", colors: ["#f4ffe8", "#ff9f43", "#3fd9a2", "#d8f24a", "#5b8cff"], night: "#0f1510" },
+  "rooftop-swing": { id: 7, name: "tines", colors: ["#fff4da", "#f69a8c", "#68d9d2", "#ffca81", "#ba9de8"], night: "#21182b" },
+  "moonlight-waltz": { id: 8, name: "moonlight", colors: ["#eaf5ff", "#efa6dd", "#88d4cf", "#ffe0a8", "#a89bff"], night: "#171a35" },
 };
 
 export function songMotif(songId: string): SongMotif {

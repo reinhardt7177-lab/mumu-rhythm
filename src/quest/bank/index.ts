@@ -9,6 +9,7 @@ const focuses:Record<string,LessonId[]>={
  'can-can':['pulse','rhythm','dynamics','form'],'turkish-march':['duration','melody','pitch','rhythm'],
  'william-tell':['timbre','pulse','tempo','rhythm'],'cloud-hop':['melody','rest','pitch','timbre'],
  'neon-run':['harmony','rhythm','tempo','timbre'],'robot-parade':['pulse','rhythm','rest','form'],
+ 'rooftop-swing':['rhythm','pulse','timbre','harmony'],'moonlight-waltz':['pulse','melody','harmony','timbre'],
  'bach-prelude':['harmony','duration','pitch','form'],'beethoven-fifth':['rhythm','rest','dynamics','form'],
  'morning-mood':['melody','pitch','timbre','dynamics'],'mountain-king':['tempo','dynamics','form','pulse'],
  'borodin-scherzo':['timbre','rhythm','duration','melody'],'brahms-tragic':['dynamics','rest','harmony','form'],

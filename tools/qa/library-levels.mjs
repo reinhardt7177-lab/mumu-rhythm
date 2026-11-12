@@ -21,7 +21,9 @@ try {
 await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe' });
 try {
-  assert.equal(expected.length, 14);
+  assert.equal(expected.length, 16);
+  const selected = process.env.QA_SONGS ? expected.filter(song => process.env.QA_SONGS.split(',').includes(song.id)) : expected;
+  assert.ok(selected.length);
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, hasTouch: true });
   page.on('pageerror', error => report.errors.push(error.message));
   await page.addInitScript(() => {
@@ -37,7 +39,7 @@ try {
   });
   await page.goto(base);
   const seen = new Set();
-  for (const [index, song] of expected.entries()) {
+  for (const [index, song] of selected.entries()) {
     const summary = [];
     for (const [step, chart] of song.levels.entries()) {
       const width = (index + step) % 2 ? 320 : 1440;
@@ -72,7 +74,7 @@ try {
     }
     console.log(`${song.id}: ${summary.join(' / ')}`);
   }
-  assert.equal(report.cases.length, 42);
+  assert.equal(report.cases.length, selected.length * 3);
   assert.deepEqual(report.errors, []);
   report.pass = true;
 } finally {

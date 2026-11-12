@@ -5,7 +5,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from synth_tracks import ScoreSource, neon_run, robot_parade
+from synth_tracks import ScoreSource, moonlight_waltz, neon_run, robot_parade, rooftop_swing
 
 TARGET = Path(__file__).resolve().parents[2] / "src/content/synthScores.generated.ts"
 
@@ -22,7 +22,7 @@ def main() -> None:
         "])[]> = {",
     ]
     counts = []
-    for render in (neon_run, robot_parade):
+    for render in (neon_run, robot_parade, rooftop_swing, moonlight_waltz):
         events: list[ScoreSource] = []
         track = render(events)
         lines.append(f"  {json.dumps(track.id)}: [")
